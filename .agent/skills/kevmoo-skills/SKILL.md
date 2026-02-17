@@ -30,6 +30,7 @@ license: Apache-2.0
 - **NEVER** use destructive or state changing `git` commands (`push` and
   `commit` are examples) without explicit approval.
 - **NEVER** make sweeping architectural changes without explicit approval.
+- **NEVER** run the `gh` command without explicit approval.
 
 ## Before declaring yourself DONE with any Dart task
 - Ensure all modified Dart files cleanly pass `dart format`.
