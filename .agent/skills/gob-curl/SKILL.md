@@ -50,7 +50,7 @@ gob-curl 'https://dart-review.googlesource.com/changes/<change-id>/detail?o=LABE
 # Example: gob-curl 'https://dart-review.googlesource.com/changes/sdk~478860/detail?o=LABELS&o=MESSAGES&o=CURRENT_REVISION&o=CURRENT_COMMIT&o=CURRENT_FILES'
 ```
 
-### Digging into Tryjob Failures (Buildbucket)
+**2. Digging into Tryjob Failures (Buildbucket)**
 
 When a tryjob fails (e.g., `dart/try/dart2wasm-linux-optimized-jsc-try`), the
 Gerrit message will often include a link to the Buildbucket build, for example:
@@ -74,38 +74,8 @@ You can use the Buildbucket CLI (`bb`) to quickly fetch the failure details:
    ```
    *Example:* `bb log 8689486480122051441 "build dart"`
 
-**2. Get Inline Review Comments**
-Retrieve inline comments left by reviewers on specific files in the CL.
-```bash
-gob-curl 'https://dart-review.googlesource.com/changes/<change-id>/comments'
-```
-
-**3. Get Reviewers and their Votes Detailed**
-If you need specific details on who has reviewed the CL and what their votes are.
-```bash
-gob-curl 'https://dart-review.googlesource.com/changes/<change-id>/reviewers'
-```
-
-**4. Get the Commit Message of the Current Revision**
-```bash
-gob-curl 'https://dart-review.googlesource.com/changes/<change-id>/revisions/current/commit'
-```
-
-**5. Check Tryjob and Test Results**
-Tryjob and CI test results are typically recorded as messages on the CL. To see
-if tests passed or failed on the latest patchset:
-```bash
-gob-curl 'https://dart-review.googlesource.com/changes/<change-id>/detail?o=MESSAGES&o=LABELS'
-```
-Check the `messages` array for the most recent status updates from CI bots
-(e.g., "Tryjobs failed" or "Dry run: This CL passed all dry run builders"). The
-`attention_set` object may also indicate a reason like `ps#8: Tryjobs failed`.
-
-**6. Fetch Raw Failure Logs from BuildBucket**
-If you see that a specific tryjob failed (e.g., `dart2wasm-linux-optimized-jsc-try`), 
-you can extract the Build ID from the Gerrit messages (usually an 18-19 digit number
-in the URL like `https://cr-buildbucket.appspot.com/build/8689486480122051441`) and
-fetch the raw failure logs:
+**Alternative method using curl:**
+If you do not have the `bb` CLI installed, you can extract the Build ID and use the BuildBucket API:
 
 ```bash
 # Get the failing step and log URLs inside the BuildBucket API
@@ -118,6 +88,34 @@ curl -s -X POST 'https://cr-buildbucket.appspot.com/prpc/buildbucket.v2.Builds/G
 # use standard curl to fetch the raw textual breakdown of the error:
 curl -s 'https://logs.chromium.org/logs/dart/buildbucket/cr-buildbucket/<build-id>/+/u/<failed_step_name>/stdout?format=raw'
 ```
+
+**3. Get Inline Review Comments**
+Retrieve inline comments left by reviewers on specific files in the CL.
+```bash
+gob-curl 'https://dart-review.googlesource.com/changes/<change-id>/comments'
+```
+
+**4. Get Reviewers and their Votes Detailed**
+If you need specific details on who has reviewed the CL and what their votes are.
+```bash
+gob-curl 'https://dart-review.googlesource.com/changes/<change-id>/reviewers'
+```
+
+**5. Get the Commit Message of the Current Revision**
+```bash
+gob-curl 'https://dart-review.googlesource.com/changes/<change-id>/revisions/current/commit'
+```
+
+**6. Check Tryjob and Test Results**
+Tryjob and CI test results are typically recorded as messages on the CL. To see
+if tests passed or failed on the latest patchset:
+```bash
+gob-curl 'https://dart-review.googlesource.com/changes/<change-id>/detail?o=MESSAGES&o=LABELS'
+```
+Check the `messages` array for the most recent status updates from CI bots
+(e.g., "Tryjobs failed" or "Dry run: This CL passed all dry run builders"). The
+`attention_set` object may also indicate a reason like `ps#8: Tryjobs failed`.
+
 
 ### Constraints and Best Practices
 *   Always use single quotes (`'`) around the URL when calling `gob-curl` to
