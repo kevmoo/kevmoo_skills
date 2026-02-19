@@ -84,8 +84,8 @@ curl -s -X POST 'https://cr-buildbucket.appspot.com/prpc/buildbucket.v2.Builds/G
      -d '{"id": "<build-id>", "mask": {"fields": "steps"}}' \
      | tail -n +2 | jq -r 'if .steps then .steps[] | select(.status == "FAILURE") | .name, (.logs[]?.viewUrl) else empty end'
 
-# Once you identify the raw log URL (often ending in `stdout`, or `stdout?format=raw`), 
-# use standard curl to fetch the raw textual breakdown of the error:
+# The previous command provides a viewUrl for browsers. To get the raw log,
+# construct a URL like the one below using the build ID and failed step name:
 curl -s 'https://logs.chromium.org/logs/dart/buildbucket/cr-buildbucket/<build-id>/+/u/<failed_step_name>/stdout?format=raw'
 ```
 
