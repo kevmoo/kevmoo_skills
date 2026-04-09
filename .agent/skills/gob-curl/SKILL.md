@@ -50,13 +50,17 @@ gob-curl 'https://dart-review.googlesource.com/changes/<change-id>/detail?o=LABE
 # Example: gob-curl 'https://dart-review.googlesource.com/changes/sdk~478860/detail?o=LABELS&o=MESSAGES&o=CURRENT_REVISION&o=CURRENT_COMMIT&o=CURRENT_FILES'
 ```
 
-**2. Digging into Tryjob Failures (Buildbucket)**
+### 2. Digging into Tryjob Failures (Buildbucket)
 
 When a tryjob fails (e.g., `dart/try/dart2wasm-linux-optimized-jsc-try`), the
 Gerrit message will often include a link to the Buildbucket build, for example:
 `https://cr-buildbucket.appspot.com/build/8689486480122051441`.
 
 You can use the Buildbucket CLI (`bb`) to quickly fetch the failure details:
+
+**NOTE:** Some `bb` commands may require you to be authenticated. If you see
+"Login required", ask the user to run `bb auth-login` in their terminal.
+
 
 1. **Find the failed steps**:
    Extract the Build ID from the URL (`8689486480122051441`) and use `bb get`
