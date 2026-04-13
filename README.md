@@ -16,11 +16,4 @@ procedural, actionable instructions to AI assistants for specific domains or tas
 | Skill | Description | Key Features |
 |-------|-------------|--------------|
 | **[kevmoo-skills](.agent/skills/kevmoo-skills/SKILL.md)** | Personal preferences and common workflows. | Workflow automation, personal preferences |
-
-## The Agent Usage Lifecycle
-
-AI assistants interact with this repository using the following lifecycle:
-
-1.  **Ingest**: The agent reads the `.agent/skills` directory to discover available capabilities.
-2.  **Activate**: The agent checks the `When to use this skill` section of a `SKILL.md` file to determine if it applies to the current context or user request.
-3.  **Execute**: The agent carefully follows the structured workflows, specific constraints, and code patterns defined within the activated skill file.
+| **[gob-curl](.agent/skills/gob-curl/SKILL.md)** | Inspect the status of a Gerrit CL. | Gerrit CL inspection, CI results |
