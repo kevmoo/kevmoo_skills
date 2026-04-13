@@ -7,11 +7,11 @@ description: |-
 license: Apache-2.0
 ---
 
-## When to use this skill
+## 2. When to use this skill
 - ALWAYS use these rules. If this rule is active, it's because the author
   (kevmoo) wants them applied.
 
-## How to use this skill
+## 3. How to use this skill
 1.  **Analysis**: Review the codebase to understand the current context and
     identify areas where preferences can be applied.
 2.  **Tooling/Dependencies**: Ensure any required personal tools or standard
@@ -23,19 +23,19 @@ license: Apache-2.0
 5.  **Verification**: Ensure the code formatting is correct and tests (if any)
     are operational.
 
-## When editing or creating markdown files
+## 4. When editing or creating markdown files
 - Try to make new files (and newly added lines) wrap to 80 columns.
 
-## CRITICAL CONSTRAINTS
+## 5. Constraints
 - **NEVER** use destructive or state changing `git` commands (`push` and
   `commit` are examples) without explicit approval.
 - **NEVER** make sweeping architectural changes without explicit approval.
 - **NEVER** run the `gh` command without explicit approval.
 
-## Before declaring yourself DONE with any Dart task
+## 6. Before declaring yourself DONE with any Dart task
 - Ensure all modified Dart files cleanly pass `dart format`.
 - Ensure all modified Dart files pass `dart analyze`.
 - Ensure all modified Dart files pass `dart test`.
 
-## Strategies for Discovery
+## 7. Strategies for Discovery
 - Identify test files: `find_by_name test "*_test.dart"`
