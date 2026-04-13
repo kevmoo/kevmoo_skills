@@ -17,3 +17,4 @@ procedural, actionable instructions to AI assistants for specific domains or tas
 |-------|-------------|--------------|
 | **[kevmoo-skills](.agent/skills/kevmoo-skills/SKILL.md)** | Personal preferences and common workflows. | Workflow automation, personal preferences |
 | **[gob-curl](.agent/skills/gob-curl/SKILL.md)** | Inspect the status of a Gerrit CL. | Gerrit CL inspection, CI results |
+| **[github-cli](.agent/skills/github-cli/SKILL.md)** | Use the `gh` command to interact with GitHub. | PR status, CI checks, issues, actions |
