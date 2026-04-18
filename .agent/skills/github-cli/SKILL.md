@@ -23,46 +23,50 @@ Use the `run_command` tool to execute `gh` commands.
 *   **Non-interactive mode**: Many `gh` commands will attempt to be interactive if they suspect a terminal. To avoid hangs or blocking, use flags that provide all necessary information or output machine-readable formats (like `--json`).
 *   **Authentication**: If a command fails with an authentication error, inform the user.
 
+### Agent Workflow and Communication
+*   **Verify State Before Action**: Always run `git status` to check the
+    current local branch and whether the working tree is clean or dirty. Also
+    run `gh pr status` or `gh pr list --head <branch>` to identify the active
+    PR for the branch. Never assume you are on the correct branch or that the
+    PR number hasn't changed between interactions.
+*   **Default to Summary and Plan**: When asked to review changes or give
+    thoughts, always default to providing a SUMMARY of the feedback and your
+    recommendations. DO NOT proceed with making file edits unless the user
+    explicitly instructs you with phrases like "go fix it" or "address the
+    issues". If the scope of work is large, always prefer asking for
+    confirmation first.
+
 ### Useful Commands
 
 #### Pull Requests
 
-**1. View PR Status**
-To see the status of PRs relevant to the current branch or repository:
+**1. Sync & Context Verification (AI Preferred)**
+To check branch name, commit SHA (`headRefOid`), review status, and
+mergeability:
 ```bash
-gh pr status
+gh pr view --json number,title,state,reviewDecision,mergeable,headRefName,headRefOid
 ```
 
-**2. List Pull Requests**
+**2. Full Review & CI Snapshot (AI Preferred)**
+To get conversation, review feedback, and CI check results in structured JSON:
 ```bash
-gh pr list
+gh pr view --json comments,reviews,statusCheckRollup
 ```
 
-**3. View a Specific PR**
-To view the description and basic details:
+**3. Find PR by Branch**
+To find the PR number for a specific branch:
 ```bash
-gh pr view <pr-number>
-```
-To view comments as well:
-```bash
-gh pr view <pr-number> --comments
+gh pr list --head <branch-name>
 ```
 
-**4. Check CI Status**
-To see the status of checks (CI) for a specific PR:
-```bash
-gh pr checks <pr-number>
-```
-This is very useful for diagnosing CI failures.
-
-**5. View PR Diff**
+**4. View PR Diff**
 To see the diff of a PR:
 ```bash
 gh pr diff <pr-number>
 ```
 
-**6. Checkout a PR**
-To checkout a PR locally to run tests or inspect code:
+**5. Checkout a PR**
+To checkout a PR locally:
 ```bash
 gh pr checkout <pr-number>
 ```
@@ -95,23 +99,39 @@ To see logs for a specific run:
 gh run view <run-id> --log
 ```
 
-### State-Changing Operations (Caution)
 
-For operations like `gh pr create`, `gh pr merge`, `gh pr comment`, etc.:
-*   **Ask for confirmation** unless the user explicitly told you to perform the action (as per the general rules for state-changing operations).
-*   Ensure you provide all required flags to avoid interactive prompts.
-
-Example of adding a comment:
-```bash
-gh pr comment <pr-number> --body "Your comment here"
-```
 
 ### Guidelines for PR Reviews
 
 When asked to review a PR or address comments:
 
-1.  **Focus on Open Comments**: You should ONLY look at and address **open (unresolved)** comments. Do not spend time addressing comments that have already been resolved unless the user explicitly asks you to review them.
-    *   *Note*: If `gh pr view --comments` returns all comments, you must filter them to identify which ones still need attention.
+1.  **Focus on Open Comments**: You should ONLY look at and address **open
+    (unresolved)** comments. Do not spend time addressing comments that have
+    already been resolved unless the user explicitly asks you to review them.
+    *   *Note*: Users often use "comments" and "reviews" interchangeably. Be
+        clear when reporting that you found X comments (at the end of the PR)
+        vs Y reviews (inline feedback).
+    *   **Pro-Tip**: Since `gh` doesn't have a built-in flag for open comments,
+        you can use `gh api graphql` to find unresolved review threads. Here
+        is a query to list the body of unresolved comments:
+        ```bash
+        gh api graphql -F owner=':owner' -F repo=':repo' -F pr=:number -f query='
+          query($owner: String!, $repo: String!, $pr: Int!) {
+            repository(owner: $owner, name: $repo) {
+              pullRequest(number: $pr) {
+                reviewThreads(first: 100) {
+                  nodes {
+                    isResolved
+                    comments(first: 1) {
+                      nodes { body }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ' --jq '.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved == false) | .comments.nodes[0].body'
+        ```
 2.  **Verify Branch and Commit**: Before making any changes or running tests to address PR feedback, you MUST verify that the branch associated with the PR maps to your current workspace git repository and branch/commit.
     *   Run `gh pr view <pr-number> --json headRefName,headRepositoryOwner,headSha` to check the source branch and commit.
     *   Ensure you are on the correct branch and at the correct commit before proceeding.
