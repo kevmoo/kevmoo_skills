@@ -35,7 +35,8 @@ Use the `run_command` tool to execute `gh` commands.
         assume that is the target.
 *   **Default to Summary and Plan**: When asked to review changes or give
     thoughts, always default to providing a SUMMARY of the feedback and your
-    recommendations. DO NOT proceed with making file edits unless the user
+    recommendations. Be explicit and clear about your opinion on the best
+    course of action. DO NOT proceed with making file edits unless the user
     explicitly instructs you with phrases like "go fix it" or "address the
     issues". If the scope of work is large, always prefer asking for
     confirmation first.
