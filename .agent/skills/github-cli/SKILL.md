@@ -29,6 +29,10 @@ Use the `run_command` tool to execute `gh` commands.
     run `gh pr status` or `gh pr list --head <branch>` to identify the active
     PR for the branch. Never assume you are on the correct branch or that the
     PR number hasn't changed between interactions.
+    *   **Resolving Ambiguity**: If multiple repositories are active and the
+        target PR is not specified, check the active local branch in each. If a
+        branch name matches the source branch (`headRefName`) of an open PR,
+        assume that is the target.
 *   **Default to Summary and Plan**: When asked to review changes or give
     thoughts, always default to providing a SUMMARY of the feedback and your
     recommendations. DO NOT proceed with making file edits unless the user
@@ -135,6 +139,10 @@ When asked to review a PR or address comments:
 2.  **Verify Branch and Commit**: Before making any changes or running tests to address PR feedback, you MUST verify that the branch associated with the PR maps to your current workspace git repository and branch/commit.
     *   Run `gh pr view <pr-number> --json headRefName,headRepositoryOwner,headSha` to check the source branch and commit.
     *   Ensure you are on the correct branch and at the correct commit before proceeding.
+3.  **Ignore PR Author Comments**: Comments from the PR author can usually be
+    ignored when identifying tasks to address, unless they offer context to a
+    comment from another user (e.g., a reviewer). Prioritize addressing
+    feedback from reviewers.
 
 ### Constraints and Best Practices
 *   Always verify the repository context before running commands if unsure.
