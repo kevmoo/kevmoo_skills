@@ -20,9 +20,12 @@ Use `sem` instead of standard `git` commands (like `git diff`, `git log`, `git b
 Many `sem` commands require an `<entity_name>`. You can discover the exact names or IDs of entities in the codebase using the following methods:
 
 1. **List entities in a file or directory:**
-   Use `sem entities <path>` to see all parsed functions, classes, and types in a specific file or directory.
+   Use `sem entities <path>` to see all parsed functions, classes, and types in a specific file or directory. Add `--json` for programmatic parsing.
    ```bash
    sem entities src/utils.ts
+   
+   # For agentic/programmatic parsing:
+   sem entities src/utils.ts --json
    ```
 
 2. **From semantic diffs:**
