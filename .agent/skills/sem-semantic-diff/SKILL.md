@@ -89,13 +89,18 @@ sem log <entity_name>
 ```
 
 ### 6. Entity Context
-Show token-budgeted context for an entity, useful for feeding specific relevant code to context.
+Show token-budgeted context for an entity, useful for feeding specific relevant code to context. The `--budget` parameter specifies the maximum number of tokens to include.
 
 ```bash
 sem context <entity_name> --budget 8000
 ```
 
 ## Best Practices
-- **JSON Output for Processing**: Use `--format json` (or `--json`) when you need to parse the output programmatically.
+- **JSON Output for Processing**: Use `--format json` (or the `--json` shorthand where available) when you need to parse the output programmatically. This ensures consistency across all `sem` commands.
 - **File Extensions**: Use `--file-exts .ts .js` to filter large codebases.
-- **Handling Ambiguity**: If multiple entities have the same name, use `--file <FILE>` or `--entity-id <ENTITY_ID>` to disambiguate.
+- **Handling Ambiguity**: If multiple entities have the same name (e.g., a `setup` function in multiple test files), use `--file <FILE>` or `--entity-id <ENTITY_ID>` to disambiguate:
+  ```bash
+  sem impact setup --file src/test_utils.ts
+  # OR
+  sem impact --entity-id "src/test_utils.ts::function::setup"
+  ```
