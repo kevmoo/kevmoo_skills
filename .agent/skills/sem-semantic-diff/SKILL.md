@@ -20,12 +20,12 @@ Use `sem` instead of standard `git` commands (like `git diff`, `git log`, `git b
 Many `sem` commands require an `<entity_name>`. You can discover the exact names or IDs of entities in the codebase using the following methods:
 
 1. **List entities in a file or directory:**
-   Use `sem entities <path>` to see all parsed functions, classes, and types in a specific file or directory. Add `--json` for programmatic parsing.
+   Use `sem entities <path>` to see all parsed functions, classes, and types in a specific file or directory. Add `--format json` for programmatic parsing.
    ```bash
    sem entities src/utils.ts
    
    # For agentic/programmatic parsing:
-   sem entities src/utils.ts --json
+   sem entities src/utils.ts --format json
    ```
 
 2. **From semantic diffs:**
@@ -75,10 +75,10 @@ sem graph
 ```
 
 ### 4. Semantic Blame
-Identify who last modified a specific function or class (not just a line).
+Identify who last modified each function or class within a file.
 
 ```bash
-sem blame <entity_name>
+sem blame <file_path>
 ```
 
 ### 5. Semantic Log
@@ -89,14 +89,14 @@ sem log <entity_name>
 ```
 
 ### 6. Entity Context
-Show token-budgeted context for an entity, useful for feeding specific relevant code to context. The `--budget` parameter specifies the maximum number of tokens to include.
+Show token-budgeted context for an entity. This is intended for providing code snippets directly to an LLM's context window. The `--budget` parameter specifies the maximum number of tokens to include.
 
 ```bash
 sem context <entity_name> --budget 8000
 ```
 
 ## Best Practices
-- **JSON Output for Processing**: Use `--format json` (or the `--json` shorthand where available) when you need to parse the output programmatically. This ensures consistency across all `sem` commands.
+- **JSON Output for Processing**: Always prefer `--format json` when you need to parse the output programmatically. This ensures consistency across all `sem` commands.
 - **File Extensions**: Use `--file-exts .ts .js` to filter large codebases.
 - **Handling Ambiguity**: If multiple entities have the same name (e.g., a `setup` function in multiple test files), use `--file <FILE>` or `--entity-id <ENTITY_ID>` to disambiguate:
   ```bash
