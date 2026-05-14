@@ -14,7 +14,7 @@ This skill provides instructions on how to use `sem`, a semantic version control
 - **Structural Diffs & History:** Shows added, modified, renamed, or deleted entities across commits without formatting or whitespace noise.
 - **Internal Impact Analysis:** Tracing the transitive impact (`sem impact`) or callers/callees (`sem graph`) of local entities across the workspace.
 
-### What `sem` Does NOT Do Well (Important Limitations)
+### What `sem` Does Not Do (Important Limitations)
 - **External Dependencies:** `sem` only indexes entities defined within the local repository's source files. It **does not** parse or track external packages or transitive library dependencies (e.g., from `pubspec.yaml`, `node_modules`, `Cargo.toml`, etc.).
 - **External Impact Analysis:** Running `sem impact` on an external type or class (e.g., `DartType` or `ClassElement` from an external package) will fail with `error: Entity '...' not found`.
 - **Workflow for External Packages:** If tasked with evaluating how an external package is used across a codebase, **do not start with `sem`**. Use standard `grep` or `ripgrep` to find `import` statements and locate local wrapper classes or helper functions. Once local wrapper entities are identified, use `sem impact` on those local entities to trace their usage across the codebase.
@@ -143,7 +143,7 @@ sem entities src/ --format json
 ```
 
 ## Best Practices
-- **JSON Output for Processing**: Always use `--format json` when you need to parse the output programmatically. This ensures 100% consistency across all `sem` commands (as `sem diff` does not support `--json`).
+- **JSON Output for Processing**: Always use `--format json` when you need to parse the output programmatically. This ensures 100% consistency across all `sem` commands (as `sem diff` requires `--format json` and does not support a `--json` shorthand).
 - **File Extensions**: Use `--file-exts .ts .js` to filter large codebases.
 - **Handling Ambiguity**: If multiple entities have the same name (e.g., a `setup` function in multiple test files), use `--file <FILE>` or `--entity-id <ENTITY_ID>` to disambiguate:
   ```bash
