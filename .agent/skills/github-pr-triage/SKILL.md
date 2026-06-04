@@ -59,10 +59,13 @@ description: |-
    - Once approved, address the comments and failures one by one.
    - Follow standard development workflows: run formatting, analysis, and tests locally to verify fixes before finishing.
 
-8. **Offer Response & Resolution**:
-   - Once your code changes have been implemented, verified, committed, and pushed, **proactively ask the user** if they would like you to automatically post replies to the review comments explaining how they were fixed, and mark the corresponding threads as resolved on GitHub.
-   - Present this choice as a simple YES/NO question.
-   - If approved, execute the replies and resolutions using the commands listed below.
+8. **Verify Git State and Offer Resolution**:
+   - **Check Git Status first**: Before offering to reply or resolve threads, run `git status` to verify if the fixes are committed and pushed.
+     - **If uncommitted changes exist**: Warn the user (e.g., *"I see there are uncommitted changes. If I reply now, the code on GitHub won't match my replies."*).
+     - **If unpushed commits exist**: Warn the user (e.g., *"I see there are unpushed commits. If I reply now, the code changes won't be visible on GitHub yet."*).
+   - **Adhere to VCS Rules**: Do not guess whether you should commit or push. Follow the user's repository-specific version control rules (e.g., if there is a commit/push prohibition without permission, you must wait for a direct instruction to commit/push before executing those actions).
+   - **Offer to Reply & Resolve**: Present a simple YES/NO question asking the user if they would like you to reply to the review comments and resolve the threads.
+   - If approved, execute the replies and resolutions using the patterns listed below.
 
 ## Replying and Resolving Comments
 
@@ -87,6 +90,8 @@ Use these API patterns to reply to review comments and resolve threads:
 
 ## Constraints
 - **CRITICAL**: You MUST NOT modify files or make any code edits to address PR comments or CI failures before generating a `pr_triage_report.md` artifact and obtaining explicit user approval on the plan.
+- **No Git State Guessing**: Never assume you are allowed to commit or push code. Always request explicit permission if VCS operations are restricted, or follow the repository's established commit protocols.
+- **Sync Code Before Comments**: Do not post "Done" or "Fixed" comment replies or resolve threads on GitHub while the corresponding code fixes remain uncommitted or unpushed, unless the user explicitly directs you to do so anyway.
 - Do NOT address resolved comments unless requested.
 - Do NOT perform state-changing Git actions (commit, push) without explicit user permission.
 - Always use the `triage.dart` script to fetch PR information instead of manual API calls to ensure consistency and minimize context bloat.
