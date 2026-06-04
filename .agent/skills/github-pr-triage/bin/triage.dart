@@ -1,17 +1,69 @@
 import 'dart:convert';
 import 'dart:io';
 
+/// Main entry point for the PR triage tool.
+///
+/// This script retrieves the status, unresolved review comments, and CI check
+/// run failures for a specific GitHub Pull Request and outputs a structured
+/// markdown triage report.
+///
+/// ### CLI Arguments:
+/// - `-p`, `--pr` (or positional): The PR number (e.g., `123`) or a GitHub PR URL
+///   (e.g., `https://github.com/owner/repo/pull/123`).
+/// - `-C`, `--dir`: Path to the target git repository directory to run git/gh against.
+///   Defaults to the current working directory.
+///
+/// ### Workflow Lifecycle:
+/// 1. **Parse Arguments**: Resolves target directory and PR input.
+/// 2. **Auto-detection**: If no PR is explicitly specified, it detects the current
+///    git branch and queries GitHub for any associated open pull request.
+/// 3. **Repo Verification**: If a PR URL is provided, it validates that the URL
+///    matches the local repository configured in the target directory (exits on mismatch).
+/// 4. **Details Fetching**: Retrieves PR title, state, mergeable status, etc.
+/// 5. **Branch Verification**: Warns the user/agent if the active local branch does not
+///    match the PR's source branch, suggesting how to checkout the correct branch.
+/// 6. **Unresolved Comments Fetching**: Uses a GitHub GraphQL query to extract only
+///    unresolved threads and comments.
+/// 7. **CI/CD Checks Triage**: Identifies failed status checks and uses `gh run view`
+///    to fetch logs for the failed steps (if they are GitHub Actions).
+/// 8. **Report Generation**: Consolidates the results into a markdown format printed to stdout.
 void main(List<String> args) async {
   try {
     // 1. Parse CLI arguments.
     String? prInput;
+    String? targetDir;
     for (var i = 0; i < args.length; i++) {
-      if ((args[i] == '--pr' || args[i] == '-p') && i + 1 < args.length) {
-        prInput = args[i + 1];
-        break;
-      } else if (!args[i].startsWith('-')) {
-        prInput = args[i];
+      final arg = args[i];
+      if (arg == '--pr' || arg == '-p') {
+        if (i + 1 < args.length) {
+          prInput = args[i + 1];
+          i++;
+        } else {
+          stderr.writeln('Error: Missing value for option "$arg"');
+          exit(1);
+        }
+      } else if (arg == '--dir' || arg == '-C') {
+        if (i + 1 < args.length) {
+          targetDir = args[i + 1];
+          i++;
+        } else {
+          stderr.writeln('Error: Missing value for option "$arg"');
+          exit(1);
+        }
+      } else if (arg.startsWith('-')) {
+        stderr.writeln('Error: Unknown option "$arg"');
+        exit(1);
+      } else {
+        prInput = arg;
       }
+    }
+
+    final workingDir = targetDir != null
+        ? Directory(targetDir).absolute.path
+        : Directory.current.absolute.path;
+    if (!await Directory(workingDir).exists()) {
+      stderr.writeln('Error: Target directory "$workingDir" does not exist.');
+      exit(1);
     }
 
     String? prNumber;
@@ -44,7 +96,7 @@ void main(List<String> args) async {
           'symbolic-ref',
           '--short',
           'HEAD',
-        ])).trim();
+        ], workingDirectory: workingDir)).trim();
       } catch (_) {
         branch = '';
       }
@@ -62,7 +114,7 @@ void main(List<String> args) async {
         branch,
         '--json',
         'number,url',
-      ]);
+      ], workingDirectory: workingDir);
       final listJson = jsonDecode(listOutput) as List<dynamic>;
       if (listJson.isEmpty) {
         stderr.writeln(
@@ -74,19 +126,38 @@ void main(List<String> args) async {
     }
 
     // 3. Resolve owner and repo for context.
-    if (owner == null || repo == null) {
+    // 3. Resolve owner and repo for context.
+    String? localOwner;
+    String? localRepo;
+    try {
       final repoOutput = await _runCommand('gh', [
         'repo',
         'view',
         '--json',
         'owner,name',
-      ]);
+      ], workingDirectory: workingDir);
       final repoData = jsonDecode(repoOutput) as Map<String, dynamic>;
       final ownerData = repoData['owner'];
       if (ownerData is Map) {
-        owner ??= ownerData['login']?.toString();
+        localOwner = ownerData['login']?.toString();
       }
-      repo ??= repoData['name']?.toString();
+      localRepo = repoData['name']?.toString();
+    } catch (_) {
+      // Not a valid git repository or gh configuration not found.
+    }
+
+    if (owner == null || repo == null) {
+      owner = localOwner;
+      repo = localRepo;
+    } else if (localOwner != null && localRepo != null) {
+      if (localOwner.toLowerCase() != owner.toLowerCase() ||
+          localRepo.toLowerCase() != repo.toLowerCase()) {
+        stderr.writeln(
+          'Error: The target directory "$workingDir" is for repository "$localOwner/$localRepo", '
+          'but the specified PR is for repository "$owner/$repo".',
+        );
+        exit(1);
+      }
     }
 
     if (owner == null || repo == null) {
@@ -100,6 +171,7 @@ void main(List<String> args) async {
 
     // 4. Fetch PR details.
     stdout.writeln('Fetching details for PR #$prNumber from $owner/$repo...');
+    stdout.writeln('Target directory: $workingDir');
     final viewOutput = await _runCommand('gh', [
       ...repoArgs,
       'pr',
@@ -107,8 +179,31 @@ void main(List<String> args) async {
       prNumber,
       '--json',
       'number,title,state,reviewDecision,mergeable,headRefName,headRefOid,url',
-    ]);
+    ], workingDirectory: workingDir);
     final prData = jsonDecode(viewOutput) as Map<String, dynamic>;
+
+    // Validate active local branch matches PR head branch.
+    final prHeadBranch = prData['headRefName']?.toString();
+    String activeBranch;
+    try {
+      activeBranch = (await _runCommand('git', [
+        'symbolic-ref',
+        '--short',
+        'HEAD',
+      ], workingDirectory: workingDir)).trim();
+    } catch (_) {
+      activeBranch = '';
+    }
+
+    if (activeBranch.isNotEmpty &&
+        prHeadBranch != null &&
+        activeBranch != prHeadBranch) {
+      stdout.writeln(
+        '\nWARNING: Active local branch is "$activeBranch", but the PR branch is "$prHeadBranch".\n'
+        'Please ensure you are on the correct branch before making edits. You can checkout this PR by running:\n'
+        '  gh pr checkout $prNumber\n',
+      );
+    }
 
     // 5. Fetch unresolved review comments.
     stdout.writeln('Fetching unresolved review comments...');
@@ -148,7 +243,7 @@ void main(List<String> args) async {
       'pr=$prNumber',
       '-f',
       'query=$query',
-    ]);
+    ], workingDirectory: workingDir);
 
     final parsedGraphql = jsonDecode(graphqlResponse) as Map<String, dynamic>;
     if (parsedGraphql['errors'] != null) {
@@ -175,7 +270,7 @@ void main(List<String> args) async {
         prNumber,
         '--json',
         'name,state,bucket,link,workflow',
-      ]);
+      ], workingDirectory: workingDir);
       final checks = jsonDecode(checksOutput) as List<dynamic>;
       failedChecks = checks.where((c) => c['bucket'] == 'fail').toList();
     } catch (e) {
@@ -204,7 +299,7 @@ void main(List<String> args) async {
             'view',
             runId,
             '--log-failed',
-          ]);
+          ], workingDirectory: workingDir);
           checkLogs[checkName] = _truncateLog(logOutput);
         } catch (e) {
           checkLogs[checkName] = 'Failed to fetch logs: $e';
@@ -295,10 +390,15 @@ ${checkLogs[name] ?? 'No logs available.'}
   }
 }
 
-Future<String> _runCommand(String executable, List<String> arguments) async {
+Future<String> _runCommand(
+  String executable,
+  List<String> arguments, {
+  String? workingDirectory,
+}) async {
   final result = await Process.run(
     executable,
     arguments,
+    workingDirectory: workingDirectory,
     stdoutEncoding: utf8,
     stderrEncoding: utf8,
   );

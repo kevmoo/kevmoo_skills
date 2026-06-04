@@ -12,13 +12,14 @@ description: |-
 ## How to use this skill (The Workflow)
 
 1. **Run the Triage Script**:
-   Execute the `triage.dart` helper script using the `run_command` tool:
+   Execute the `triage.dart` helper script using the `run_command` tool.
+   Use the `--dir` (or `-C`) option to specify the path to the target repository directory (the project you want to triage). This ensures that the underlying `git` and `gh` commands resolve to the correct repository and branch:
    ```bash
-   dart .agent/skills/github-pr-triage/bin/triage.dart
+   dart <path-to-github-pr-triage-skill>/bin/triage.dart --dir <path-to-target-repository>
    ```
-   *Note*: If you need to target a specific PR or a URL, you can pass it as an argument:
+   *Note*: If you need to target a specific PR or URL, you can also pass `--pr`:
    ```bash
-   dart .agent/skills/github-pr-triage/bin/triage.dart --pr <pr-number-or-url>
+   dart <path-to-github-pr-triage-skill>/bin/triage.dart --dir <path-to-target-repository> --pr <pr-number-or-url>
    ```
    **Save the raw stdout of this script** as a new markdown artifact named `raw_triage_output.md` in the artifacts directory (using the `write_to_file` tool).
 
