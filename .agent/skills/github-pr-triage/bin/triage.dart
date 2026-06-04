@@ -38,7 +38,7 @@ void main(List<String> args) async {
 
     // 2. Auto-detect PR from current branch if not provided.
     if (prNumber == null) {
-      final branch = (await runCommand('git', [
+      final branch = (await _runCommand('git', [
         'symbolic-ref',
         '--short',
         'HEAD',
@@ -50,7 +50,7 @@ void main(List<String> args) async {
         exit(1);
       }
 
-      final listOutput = await runCommand('gh', [
+      final listOutput = await _runCommand('gh', [
         'pr',
         'list',
         '--head',
@@ -70,7 +70,7 @@ void main(List<String> args) async {
 
     // 3. Resolve owner and repo for context.
     if (owner == null || repo == null) {
-      final repoOutput = await runCommand('gh', [
+      final repoOutput = await _runCommand('gh', [
         'repo',
         'view',
         '--json',
@@ -85,7 +85,7 @@ void main(List<String> args) async {
 
     // 4. Fetch PR details.
     stdout.writeln('Fetching details for PR #$prNumber from $owner/$repo...');
-    final viewOutput = await runCommand('gh', [
+    final viewOutput = await _runCommand('gh', [
       ...repoArgs,
       'pr',
       'view',
@@ -121,7 +121,7 @@ void main(List<String> args) async {
     }
     ''';
 
-    final graphqlResponse = await runCommand('gh', [
+    final graphqlResponse = await _runCommand('gh', [
       'api',
       'graphql',
       '-F',
@@ -145,7 +145,7 @@ void main(List<String> args) async {
 
     // 6. Fetch CI check runs.
     stdout.writeln('Fetching check runs...');
-    final checksOutput = await runCommand('gh', [
+    final checksOutput = await _runCommand('gh', [
       ...repoArgs,
       'pr',
       'checks',
@@ -168,14 +168,14 @@ void main(List<String> args) async {
           'Fetching failed logs for check "$checkName" (Run ID: $runId)...',
         );
         try {
-          final logOutput = await runCommand('gh', [
+          final logOutput = await _runCommand('gh', [
             ...repoArgs,
             'run',
             'view',
             runId,
             '--log-failed',
           ]);
-          checkLogs[checkName] = truncateLog(logOutput);
+          checkLogs[checkName] = _truncateLog(logOutput);
         } catch (e) {
           checkLogs[checkName] = 'Failed to fetch logs: $e';
         }
@@ -263,7 +263,7 @@ ${checkLogs[name] ?? 'No logs available.'}
   }
 }
 
-Future<String> runCommand(String executable, List<String> arguments) async {
+Future<String> _runCommand(String executable, List<String> arguments) async {
   final result = await Process.run(executable, arguments);
   if (result.exitCode != 0) {
     throw ProcessException(
@@ -276,7 +276,7 @@ Future<String> runCommand(String executable, List<String> arguments) async {
   return result.stdout.toString();
 }
 
-String truncateLog(String log) {
+String _truncateLog(String log) {
   final lines = log.split('\n');
   if (lines.length <= 100) return log;
   final head = lines.take(15).join('\n');
