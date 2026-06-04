@@ -186,24 +186,21 @@ void main(List<String> args) async {
     }
 
     // 7. Generate and output the markdown report.
-    final report = StringBuffer();
-    report.writeln(
-      '# PR Triage Report: #${prData['number']} - ${prData['title']}',
-    );
-    report.writeln();
-    report.writeln('**URL**: [PR #${prData['number']}](${prData['url']})');
-    report.writeln('**Branch**: `${prData['headRefName']}`');
-    report.writeln('**Commit**: `${prData['headRefOid']}`');
-    report.writeln('**Review Decision**: `${prData['reviewDecision']}`');
-    report.writeln('**Mergeable**: `${prData['mergeable']}`');
-    report.writeln();
+    final report = StringBuffer('''
+# PR Triage Report: #${prData['number']} - ${prData['title']}
 
-    report.writeln(
-      '## Unresolved Review Comments (${unresolvedThreads.length})',
-    );
-    report.writeln();
+**URL**: [PR #${prData['number']}](${prData['url']})
+**Branch**: `${prData['headRefName']}`
+**Commit**: `${prData['headRefOid']}`
+**Review Decision**: `${prData['reviewDecision']}`
+**Mergeable**: `${prData['mergeable']}`
+
+## Unresolved Review Comments (${unresolvedThreads.length})
+
+''');
+
     if (unresolvedThreads.isEmpty) {
-      report.writeln('No unresolved review comments found! 🎉');
+      report.write('No unresolved review comments found! 🎉\n\n');
     } else {
       for (var i = 0; i < unresolvedThreads.length; i++) {
         final thread = unresolvedThreads[i];
@@ -216,36 +213,44 @@ void main(List<String> args) async {
         final line =
             firstComment['line'] ?? firstComment['originalLine'] ?? 'N/A';
 
-        report.writeln('### Comment #${i + 1}: `$path` (Line $line)');
-        report.writeln();
-        for (final comment in commentsList) {
-          final author = comment['author']?['login'] ?? 'ghost';
-          final body = comment['body'] as String? ?? '';
-          final date = comment['createdAt'] as String? ?? '';
-          report.writeln('**@$author** ($date):');
-          report.writeln('> ${body.replaceAll('\n', '\n> ')}');
-          report.writeln();
-        }
-        report.writeln('---');
-        report.writeln();
+        final commentsMarkdown = commentsList
+            .map((comment) {
+              final author = comment['author']?['login'] ?? 'ghost';
+              final body = comment['body'] as String? ?? '';
+              final date = comment['createdAt'] as String? ?? '';
+              return '''
+**@$author** ($date):
+> ${body.replaceAll('\n', '\n> ')}''';
+            })
+            .join('\n\n');
+
+        report.write('''
+### Comment #${i + 1}: `$path` (Line $line)
+
+$commentsMarkdown
+
+---
+
+''');
       }
     }
 
-    report.writeln('## Failed Status Checks (${failedChecks.length})');
-    report.writeln();
+    report.write('## Failed Status Checks (${failedChecks.length})\n\n');
     if (failedChecks.isEmpty) {
-      report.writeln('All checks passing! ✅');
+      report.write('All checks passing! ✅\n\n');
     } else {
       for (final check in failedChecks) {
         final name = check['name'] ?? 'Unknown Check';
         final link = check['link'] ?? '';
-        report.writeln('### ❌ $name');
-        report.writeln('Link: $link');
-        report.writeln();
-        report.writeln('```text');
-        report.writeln(checkLogs[name] ?? 'No logs available.');
-        report.writeln('```');
-        report.writeln();
+        report.write('''
+### ❌ $name
+Link: $link
+
+```text
+${checkLogs[name] ?? 'No logs available.'}
+```
+
+''');
       }
     }
 
