@@ -59,6 +59,32 @@ description: |-
    - Once approved, address the comments and failures one by one.
    - Follow standard development workflows: run formatting, analysis, and tests locally to verify fixes before finishing.
 
+8. **Offer Response & Resolution**:
+   - Once your code changes have been implemented, verified, committed, and pushed, **proactively ask the user** if they would like you to automatically post replies to the review comments explaining how they were fixed, and mark the corresponding threads as resolved on GitHub.
+   - Present this choice as a simple YES/NO question.
+   - If approved, execute the replies and resolutions using the commands listed below.
+
+## Replying and Resolving Comments
+
+Use these API patterns to reply to review comments and resolve threads:
+
+- **Reply to comment**:
+  ```bash
+  gh api repos/<owner>/<repo>/pulls/<pr_number>/comments/<comment_database_id>/replies -f body="<your reply>"
+  ```
+- **Resolve thread**:
+  ```bash
+  gh api graphql -f query='
+    mutation($threadId: ID!) {
+      resolveReviewThread(input: {threadId: $threadId}) {
+        thread {
+          isResolved
+        }
+      }
+    }
+  ' -F threadId='<thread_graphql_id>'
+  ```
+
 ## Constraints
 - **CRITICAL**: You MUST NOT modify files or make any code edits to address PR comments or CI failures before generating a `pr_triage_report.md` artifact and obtaining explicit user approval on the plan.
 - Do NOT address resolved comments unless requested.
