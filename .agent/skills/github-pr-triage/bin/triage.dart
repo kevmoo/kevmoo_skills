@@ -38,14 +38,19 @@ void main(List<String> args) async {
 
     // 2. Auto-detect PR from current branch if not provided.
     if (prNumber == null) {
-      final branch = (await _runCommand('git', [
-        'symbolic-ref',
-        '--short',
-        'HEAD',
-      ])).trim();
-      if (branch == 'main' || branch == 'master') {
+      String branch;
+      try {
+        branch = (await _runCommand('git', [
+          'symbolic-ref',
+          '--short',
+          'HEAD',
+        ])).trim();
+      } catch (_) {
+        branch = '';
+      }
+      if (branch.isEmpty || branch == 'main' || branch == 'master') {
         stderr.writeln(
-          'Active branch is "$branch". Please specify a target PR number or URL.',
+          'Active branch is ${branch.isEmpty ? 'detached HEAD' : '"$branch"'}. Please specify a target PR number or URL.',
         );
         exit(1);
       }
@@ -82,6 +87,13 @@ void main(List<String> args) async {
         owner ??= ownerData['login']?.toString();
       }
       repo ??= repoData['name']?.toString();
+    }
+
+    if (owner == null || repo == null) {
+      stderr.writeln(
+        'Error: Could not resolve GitHub repository owner or name.',
+      );
+      exit(1);
     }
 
     final repoArgs = ['-R', '$owner/$repo'];
@@ -139,6 +151,11 @@ void main(List<String> args) async {
     ]);
 
     final parsedGraphql = jsonDecode(graphqlResponse) as Map<String, dynamic>;
+    if (parsedGraphql['errors'] != null) {
+      stderr.writeln('GraphQL errors returned from GitHub API:');
+      stderr.writeln(jsonEncode(parsedGraphql['errors']));
+      exit(1);
+    }
     final threads =
         parsedGraphql['data']?['repository']?['pullRequest']?['reviewThreads']?['nodes']
             as List<dynamic>? ??
