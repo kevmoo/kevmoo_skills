@@ -115,6 +115,7 @@ void main(List<String> args) async {
                   line
                   originalLine
                   createdAt
+                  url
                 }
               }
             }
@@ -224,6 +225,7 @@ void main(List<String> args) async {
         final path = firstComment['path'] ?? 'Unknown File';
         final line =
             firstComment['line'] ?? firstComment['originalLine'] ?? 'N/A';
+        final url = firstComment['url']?.toString() ?? '';
 
         final commentsMarkdown = commentsList
             .map((comment) {
@@ -238,6 +240,7 @@ void main(List<String> args) async {
 
         report.write('''
 ### Comment #${i + 1}: `$path` (Line $line)
+Link: $url
 
 $commentsMarkdown
 

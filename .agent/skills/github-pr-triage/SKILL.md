@@ -20,6 +20,7 @@ description: |-
    ```bash
    dart .agent/skills/github-pr-triage/bin/triage.dart --pr <pr-number-or-url>
    ```
+   **Save the raw stdout of this script** as a new markdown artifact named `raw_triage_output.md` in the artifacts directory (using the `write_to_file` tool).
 
 2. **Verify Workspace State**:
    - The script output will show the PR URL, title, branch, and commit SHA.
@@ -39,7 +40,16 @@ description: |-
 
 5. **Generate a Triage Report (Artifact)**:
    - Create a markdown artifact named `pr_triage_report.md` in the artifacts directory.
-   - Summarize the unresolved comments, the CI/CD failures, and your proposed step-by-step implementation plan to resolve them.
+   - **Link to Raw Output**: Include a markdown link to the `raw_triage_output.md` artifact at the top of the report.
+   - The report MUST group associated comments and CI failures into cohesive action items (you may cluster multiple related comments or failures together if they address the same problem).
+   - For each action item/group, include:
+     - **Summary of Feedback/Failure**: A concise summary of the reviewer comment(s) or CI failure(s), including direct markdown links back to the comments/checks on GitHub. When linking to comments, use a descriptive link that includes both the comment number and the GitHub username of the reviewer (e.g. `[Comment #1 by @reviewer_username](url)`).
+     - **Agent Assessment (For Comments)**:
+       - **Agreement Level**: A short indicator of your agreement (e.g., `🔴 High`, `🟡 Medium`, `🟢 Low` or `⚪ None/Disagree`).
+       - **Rationale**: Your technical explanation of why you agree, disagree, or recommend a specific direction.
+     - **Planned Action**:
+       - The target file name(s) and specific line ranges.
+       - The proposed changes (e.g. explanation, code snippet/diff, or "No action needed").
    - Present this triage report to the user.
 
 6. **Wait for Approval**:
