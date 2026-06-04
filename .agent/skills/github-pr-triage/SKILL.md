@@ -90,7 +90,7 @@ Use these API patterns to reply to review comments and resolve threads:
 
 ## Constraints
 - **CRITICAL**: You MUST NOT modify files or make any code edits to address PR comments or CI failures before generating a `pr_triage_report.md` artifact and obtaining explicit user approval on the plan.
-- **No Git State Guessing**: Never assume you are allowed to commit or push code. Always request explicit permission if VCS operations are restricted, or follow the repository's established commit protocols.
+- **No Git State Guessing**: Never assume you are allowed to commit or push code. Always request explicit permission if VCS operations are restricted, or follow the repository's or user's established commit protocols.
 - **Sync Code Before Comments**: Do not post "Done" or "Fixed" comment replies or resolve threads on GitHub while the corresponding code fixes remain uncommitted or unpushed, unless the user explicitly directs you to do so anyway.
 - Do NOT address resolved comments unless requested.
 - Do NOT perform state-changing Git actions (commit, push) without explicit user permission.
