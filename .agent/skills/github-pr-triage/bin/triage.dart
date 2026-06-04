@@ -34,13 +34,26 @@ void main(List<String> args) async {
     String? targetDir;
     for (var i = 0; i < args.length; i++) {
       final arg = args[i];
-      if ((arg == '--pr' || arg == '-p') && i + 1 < args.length) {
-        prInput = args[i + 1];
-        i++;
-      } else if ((arg == '--dir' || arg == '-C') && i + 1 < args.length) {
-        targetDir = args[i + 1];
-        i++;
-      } else if (!arg.startsWith('-')) {
+      if (arg == '--pr' || arg == '-p') {
+        if (i + 1 < args.length) {
+          prInput = args[i + 1];
+          i++;
+        } else {
+          stderr.writeln('Error: Missing value for option "$arg"');
+          exit(1);
+        }
+      } else if (arg == '--dir' || arg == '-C') {
+        if (i + 1 < args.length) {
+          targetDir = args[i + 1];
+          i++;
+        } else {
+          stderr.writeln('Error: Missing value for option "$arg"');
+          exit(1);
+        }
+      } else if (arg.startsWith('-')) {
+        stderr.writeln('Error: Unknown option "$arg"');
+        exit(1);
+      } else {
         prInput = arg;
       }
     }
