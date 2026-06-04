@@ -140,9 +140,9 @@ void main(List<String> args) async {
     final graphqlResponse = await _runCommand('gh', [
       'api',
       'graphql',
-      '-F',
+      '-f',
       'owner=$owner',
-      '-F',
+      '-f',
       'repo=$repo',
       '-F',
       'pr=$prNumber',
@@ -296,7 +296,12 @@ ${checkLogs[name] ?? 'No logs available.'}
 }
 
 Future<String> _runCommand(String executable, List<String> arguments) async {
-  final result = await Process.run(executable, arguments);
+  final result = await Process.run(
+    executable,
+    arguments,
+    stdoutEncoding: utf8,
+    stderrEncoding: utf8,
+  );
   if (result.exitCode != 0) {
     throw ProcessException(
       executable,
