@@ -45,7 +45,11 @@ description: |-
    - For each action item/group, include:
      - **Summary of Feedback/Failure**: A concise summary of the reviewer comment(s) or CI failure(s), including direct markdown links back to the comments/checks on GitHub. When linking to comments, use a descriptive link that includes both the comment number and the GitHub username of the reviewer (e.g. `[Comment #1 by @reviewer_username](url)`).
      - **Agent Assessment (For Comments)**:
-       - **Agreement Level**: A short indicator of your agreement (e.g., `🔴 High`, `🟡 Medium`, `🟢 Low` or `⚪ None/Disagree`).
+       - **Agreement Level**: A short indicator of your agreement using one of these categories:
+         * `🔥 Urgent` (Critical fix for a crash, bug, or CI blocker; we should fix immediately)
+         * `👍 Solid` (Good suggestion; we should implement it)
+         * `🤷 Meh` (Optional nit or stylistic preference; we could address it but it's low priority)
+         * `👎 Disagree` (Incorrect or counter-productive suggestion; we should explain why and propose no action)
        - **Rationale**: Your technical explanation of why you agree, disagree, or recommend a specific direction.
      - **Planned Action**:
        - The target file name(s) and specific line ranges.
