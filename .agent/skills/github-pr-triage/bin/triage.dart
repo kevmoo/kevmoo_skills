@@ -77,8 +77,11 @@ void main(List<String> args) async {
         'owner,name',
       ]);
       final repoData = jsonDecode(repoOutput) as Map<String, dynamic>;
-      owner ??= (repoData['owner'] as Map<String, dynamic>)['login'] as String;
-      repo ??= repoData['name'] as String;
+      final ownerData = repoData['owner'];
+      if (ownerData is Map) {
+        owner ??= ownerData['login']?.toString();
+      }
+      repo ??= repoData['name']?.toString();
     }
 
     final repoArgs = ['-R', '$owner/$repo'];
@@ -145,22 +148,31 @@ void main(List<String> args) async {
 
     // 6. Fetch CI check runs.
     stdout.writeln('Fetching check runs...');
-    final checksOutput = await _runCommand('gh', [
-      ...repoArgs,
-      'pr',
-      'checks',
-      prNumber,
-      '--json',
-      'name,state,bucket,link,workflow',
-    ]);
-    final checks = jsonDecode(checksOutput) as List<dynamic>;
-    final failedChecks = checks.where((c) => c['bucket'] == 'fail').toList();
+    var failedChecks = <dynamic>[];
+    try {
+      final checksOutput = await _runCommand('gh', [
+        ...repoArgs,
+        'pr',
+        'checks',
+        prNumber,
+        '--json',
+        'name,state,bucket,link,workflow',
+      ]);
+      final checks = jsonDecode(checksOutput) as List<dynamic>;
+      failedChecks = checks.where((c) => c['bucket'] == 'fail').toList();
+    } catch (e) {
+      if (e is ProcessException && e.message.contains('no checks reported')) {
+        stdout.writeln('No checks reported for this PR.');
+      } else {
+        rethrow;
+      }
+    }
 
     // 7. Fetch logs for failed check runs (if they are GitHub Actions).
     final checkLogs = <String, String>{};
     for (final check in failedChecks) {
-      final link = check['link'] as String? ?? '';
-      final checkName = check['name'] as String? ?? 'Unknown Check';
+      final link = check['link']?.toString() ?? '';
+      final checkName = check['name']?.toString() ?? 'Unknown Check';
       final match = RegExp(r'/actions/runs/(\d+)').firstMatch(link);
       if (match != null) {
         final runId = match.group(1)!;
@@ -215,9 +227,9 @@ void main(List<String> args) async {
 
         final commentsMarkdown = commentsList
             .map((comment) {
-              final author = comment['author']?['login'] ?? 'ghost';
-              final body = comment['body'] as String? ?? '';
-              final date = comment['createdAt'] as String? ?? '';
+              final author = comment['author']?['login']?.toString() ?? 'ghost';
+              final body = comment['body']?.toString() ?? '';
+              final date = comment['createdAt']?.toString() ?? '';
               return '''
 **@$author** ($date):
 > ${body.replaceAll('\n', '\n> ')}''';

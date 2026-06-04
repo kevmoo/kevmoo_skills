@@ -50,6 +50,7 @@ description: |-
    - Follow standard development workflows: run formatting, analysis, and tests locally to verify fixes before finishing.
 
 ## Constraints
+- **CRITICAL**: You MUST NOT modify files or make any code edits to address PR comments or CI failures before generating a `pr_triage_report.md` artifact and obtaining explicit user approval on the plan.
 - Do NOT address resolved comments unless requested.
 - Do NOT perform state-changing Git actions (commit, push) without explicit user permission.
 - Always use the `triage.dart` script to fetch PR information instead of manual API calls to ensure consistency and minimize context bloat.
