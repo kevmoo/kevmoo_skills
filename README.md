@@ -15,7 +15,7 @@ procedural, actionable instructions to AI assistants for specific domains or tas
 
 | Skill | Description | Key Features |
 |-------|-------------|--------------|
-| **[kevmoo-skills](.agent/skills/kevmoo-skills/SKILL.md)** | Personal preferences and common workflows. | Workflow automation, personal preferences |
-| **[gob-curl](.agent/skills/gob-curl/SKILL.md)** | Inspect the status of a Gerrit CL. | Gerrit CL inspection, CI results |
-| **[github-pr-triage](.agent/skills/github-pr-triage/SKILL.md)** | Triage PR comments and CI failures. | Unresolved comments, CI log extraction, triage plan |
-| **[sem-semantic-diff](.agent/skills/sem-semantic-diff/SKILL.md)** | Use the `sem` CLI to view semantic codebase diffs. | Semantic diffs, impact analysis, dependency graphs |
+| **[kevmoo-skills](skills/kevmoo-skills/SKILL.md)** | Personal preferences and common workflows. | Workflow automation, personal preferences |
+| **[gob-curl](skills/gob-curl/SKILL.md)** | Inspect the status of a Gerrit CL. | Gerrit CL inspection, CI results |
+| **[github-pr-triage](skills/github-pr-triage/SKILL.md)** | Triage PR comments and CI failures. | Unresolved comments, CI log extraction, triage plan |
+| **[sem-semantic-diff](skills/sem-semantic-diff/SKILL.md)** | Use the `sem` CLI to view semantic codebase diffs. | Semantic diffs, impact analysis, dependency graphs |
