@@ -5,7 +5,7 @@ description: |-
 license: Apache-2.0
 ---
 
-## 2. When to use this skill
+## 1. When to use this skill
 
 Use this skill when you encounter a Dart function or class method suffering
 from the "Bloated Closure" or "Deeply Nested Scope" smell. Specifically, target
@@ -39,7 +39,7 @@ This is a Dart-specific variation of Martin Fowler's classic refactoring
     as a simple facade, which instantiates the private class and calls its
     main orchestrator method (typically `run()`).
 
-## 3. How to use this skill (The Workflow)
+## 2. How to use this skill (The Workflow)
 
 When executing this pattern, follow these procedural steps:
 
@@ -87,7 +87,7 @@ When executing this pattern, follow these procedural steps:
     *   Run unit and integration tests to guarantee that no behavioral
         regressions were introduced.
 
-## 4. Common Patterns
+## 3. Common Patterns
 
 Here are the concrete Dart transformations representing this pattern.
 
@@ -126,15 +126,15 @@ Result processOrder(Order order, User user, PaymentDetails payment) =>
 
 // The Method Object (Private to the file/library)
 class _ProcessOrderRunner {
-  final Order order;
-  final User user;
-  final PaymentDetails payment;
+  final Order _order;
+  final User _user;
+  final PaymentDetails _payment;
   
   // Local variables promoted to private instance fields
   bool _isValidated = false;
   final List<String> _auditLogs = [];
 
-  _ProcessOrderRunner(this.order, this.user, this.payment);
+  _ProcessOrderRunner(this._order, this._user, this._payment);
 
   // Core Orchestrator
   Result run() {
@@ -145,15 +145,15 @@ class _ProcessOrderRunner {
 
   // Nested scopes promoted to private instance methods
   void _validate() {
-    if (order.items.isEmpty) throw Exception("Empty order");
+    if (_order.items.isEmpty) throw Exception("Empty order");
     _isValidated = true;
-    _auditLogs.add("Validated by ${user.id}");
+    _auditLogs.add("Validated by ${_user.id}");
   }
 
   void _charge() {
     if (!_isValidated) throw Exception("Must validate first");
     // complex charging logic using payment details...
-    _auditLogs.add("Charged ${payment.method}");
+    _auditLogs.add("Charged ${_payment.method}");
   }
 }
 ```
@@ -279,7 +279,7 @@ class _ProcessDataBatchRunner<T> {
 }
 ```
 
-## 5. Constraints
+## 4. Constraints
 
 To verify safe, high-fidelity operations, always obey the following guardrails:
 
@@ -300,7 +300,7 @@ To verify safe, high-fidelity operations, always obey the following guardrails:
     `dart format`, pass static checks (`dart analyze`) with zero diagnostics,
     and execute all tests successfully (`dart test`).
 
-## 6. Strategies for Discovery
+## 5. Strategies for Discovery
 
 Use the following techniques and tools to discover bloated closures:
 
