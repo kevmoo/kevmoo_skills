@@ -213,9 +213,11 @@ void main(List<String> args) async {
         pullRequest(number: $pr) {
           reviewThreads(first: 100) {
             nodes {
+              id
               isResolved
               comments(first: 100) {
                 nodes {
+                  databaseId
                   author { login }
                   body
                   path
@@ -333,7 +335,9 @@ void main(List<String> args) async {
             thread['comments']?['nodes'] as List<dynamic>? ?? [];
         if (commentsList.isEmpty) continue;
 
+        final threadId = thread['id']?.toString() ?? 'Unknown Thread';
         final firstComment = commentsList.first;
+        final commentDbId = firstComment['databaseId']?.toString() ?? '';
         final path = firstComment['path'] ?? 'Unknown File';
         final line =
             firstComment['line'] ?? firstComment['originalLine'] ?? 'N/A';
@@ -351,7 +355,7 @@ void main(List<String> args) async {
             .join('\n\n');
 
         report.write('''
-### Comment #${i + 1}: `$path` (Line $line)
+### Comment #${i + 1} (Thread `$threadId`, Comment `$commentDbId`): `$path` (Line $line)
 Link: $url
 
 $commentsMarkdown
