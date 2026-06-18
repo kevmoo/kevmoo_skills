@@ -337,7 +337,8 @@ void main(List<String> args) async {
 
         final threadId = thread['id']?.toString() ?? 'Unknown Thread';
         final firstComment = commentsList.first;
-        final commentDbId = firstComment['databaseId']?.toString() ?? '';
+        final commentDbId =
+            firstComment['databaseId']?.toString() ?? 'Unknown Comment';
         final path = firstComment['path'] ?? 'Unknown File';
         final line =
             firstComment['line'] ?? firstComment['originalLine'] ?? 'N/A';
