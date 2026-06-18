@@ -45,6 +45,7 @@ description: |-
    - The report MUST group associated comments and CI failures into cohesive action items (you may cluster multiple related comments or failures together if they address the same problem).
    - For each action item/group, include:
      - **Summary of Feedback/Failure**: A concise summary of the reviewer comment(s) or CI failure(s), including direct markdown links back to the comments/checks on GitHub. When linking to comments, use a descriptive link that includes both the comment number and the GitHub username of the reviewer (e.g. `[Comment #1 by @reviewer_username](url)`).
+     - **Thread & Comment Identifiers (For Comments)**: Explicitly preserve the `Thread ID` (e.g. `PRRT_...`) and `Comment ID` (e.g. `3438780787`) from the comment header in `raw_triage_output.md` under each action item so Step 8 (`gh api`) has immediate access to both parameters without extra API lookups.
      - **Agent Assessment (For Comments)**:
        - **Agreement Level**: A short indicator of your agreement using one of these categories:
          * `🔥 Urgent` (Critical fix for a crash, bug, or CI blocker; we should fix immediately)
