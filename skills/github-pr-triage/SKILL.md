@@ -40,7 +40,7 @@ description: |-
    - Analyze the stack traces, compile errors, or analyzer failures to understand why they failed.
 
 5. **Generate a Triage Report (Artifact)**:
-   - Create a markdown artifact named `pr_triage_report.md` in the artifacts directory.
+   - Create a markdown artifact named `pr_triage_report.md` in the artifacts directory (using `write_to_file` with `RequestFeedback: true` in `ArtifactMetadata` to render an interactive 'Proceed' button).
    - **Link to Raw Output**: Include a markdown link to the `raw_triage_output.md` artifact at the top of the report.
    - The report MUST group associated comments and CI failures into cohesive action items (you may cluster multiple related comments or failures together if they address the same problem).
    - For each action item/group, include:
@@ -59,7 +59,7 @@ description: |-
    - Present this triage report to the user.
 
 6. **Wait for Approval**:
-   - DO NOT edit files or make changes until the user explicitly approves the proposed plan (e.g. "go fix it", "address the issues", "proceed").
+   - DO NOT edit files or make changes until the user explicitly approves the proposed plan via the interactive 'Proceed' button (or explicit chat confirmation).
 
 7. **Surgical Implementation & Verification**:
    - Once approved, address the comments and failures one by one.
@@ -70,8 +70,8 @@ description: |-
      - **If uncommitted changes exist**: Warn the user (e.g., *"I see there are uncommitted changes. If I reply now, the code on GitHub won't match my replies."*).
      - **If unpushed commits exist**: Warn the user (e.g., *"I see there are unpushed commits. If I reply now, the code changes won't be visible on GitHub yet."*).
    - **Adhere to VCS Rules**: Do not guess whether you should commit or push. Follow the user's repository-specific version control rules (e.g., if there is a commit/push prohibition without permission, you must wait for a direct instruction to commit/push before executing those actions).
-   - **Offer to Reply & Resolve**: Present a simple YES/NO question asking the user if they would like you to reply to the review comments and resolve the threads.
-   - If approved, execute the replies and resolutions using the patterns listed below.
+   - **Offer to Reply & Resolve**: Use the `ask_question` tool to ask the user if they would like you to reply to the review comments and resolve the threads (passing the options as a list parameter, e.g., ["Yes, reply and resolve threads", "No, do not reply or resolve"]). Do NOT output raw text like "YES / NO".
+   - If the user selects the option to reply and resolve, execute the replies and resolutions using the patterns listed below.
 
 ## Replying and Resolving Comments
 
