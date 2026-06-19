@@ -70,7 +70,7 @@ description: |-
      - **If uncommitted changes exist**: Warn the user (e.g., *"I see there are uncommitted changes. If I reply now, the code on GitHub won't match my replies."*).
      - **If unpushed commits exist**: Warn the user (e.g., *"I see there are unpushed commits. If I reply now, the code changes won't be visible on GitHub yet."*).
    - **Adhere to VCS Rules**: Do not guess whether you should commit or push. Follow the user's repository-specific version control rules (e.g., if there is a commit/push prohibition without permission, you must wait for a direct instruction to commit/push before executing those actions).
-   - **Offer to Reply & Resolve**: Use the `ask_question` tool to ask the user if they would like you to reply to the review comments and resolve the threads (providing options like "Yes, reply and resolve threads" and "No, do not reply or resolve"). Do NOT output raw text like "YES / NO".
+   - **Offer to Reply & Resolve**: Use the `ask_question` tool to ask the user if they would like you to reply to the review comments and resolve the threads (passing the options as a list parameter, e.g., ["Yes, reply and resolve threads", "No, do not reply or resolve"]). Do NOT output raw text like "YES / NO".
    - If the user selects the option to reply and resolve, execute the replies and resolutions using the patterns listed below.
 
 ## Replying and Resolving Comments
