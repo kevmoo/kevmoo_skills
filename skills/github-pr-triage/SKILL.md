@@ -65,13 +65,21 @@ description: |-
    - Once approved, address the comments and failures one by one.
    - Follow standard development workflows: run formatting, analysis, and tests locally to verify fixes before finishing.
 
-8. **Verify Git State and Offer Resolution**:
-   - **Check Git Status first**: Before offering to reply or resolve threads, run `git status` to verify if the fixes are committed and pushed.
-     - **If uncommitted changes exist**: Warn the user (e.g., *"I see there are uncommitted changes. If I reply now, the code on GitHub won't match my replies."*).
-     - **If unpushed commits exist**: Warn the user (e.g., *"I see there are unpushed commits. If I reply now, the code changes won't be visible on GitHub yet."*).
-   - **Adhere to VCS Rules**: Do not guess whether you should commit or push. Follow the user's repository-specific version control rules (e.g., if there is a commit/push prohibition without permission, you must wait for a direct instruction to commit/push before executing those actions).
-   - **Offer to Reply & Resolve**: Use the `ask_question` tool to ask the user if they would like you to reply to the review comments and resolve the threads (passing the options as a list parameter, e.g., ["Yes, reply and resolve threads", "No, do not reply or resolve"]). Do NOT output raw text like "YES / NO".
-   - If the user selects the option to reply and resolve, execute the replies and resolutions using the patterns listed below.
+8. **Verify Git State and Offer Unified Resolution Menu**:
+   - **Check Git Status first**: Run `git status` to check whether uncommitted fixes or unpushed commits exist.
+   - **Present Completion Options (`ask_question`)**: Use the `ask_question` tool to present a unified completion menu based on the working tree state (passing the options as a list parameter). Do NOT output raw text. By selecting an option that includes committing or pushing, the user explicitly authorizes those VCS operations for this workflow.
+     - **If uncommitted changes or unpushed commits exist**, offer:
+       1. `(Recommended) Commit fixes, push branch, reply to comments, and resolve threads`
+       2. `Commit fixes and push branch only`
+       3. `Reply to comments and resolve threads without committing/pushing`
+       4. `Do nothing`
+     - **If working tree is clean and all commits are pushed**, offer:
+       1. `(Recommended) Reply to comments and resolve threads`
+       2. `Do nothing`
+   - **Execute Selected Actions**:
+     - If committing is selected, stage the modified files and create a descriptive commit.
+     - If pushing is selected, run `git push`.
+     - If replying and resolving is selected, execute the `gh api` commands using the patterns listed below.
 
 ## Replying and Resolving Comments
 
@@ -96,8 +104,7 @@ Use these API patterns to reply to review comments and resolve threads:
 
 ## Constraints
 - **CRITICAL**: You MUST NOT modify files or make any code edits to address PR comments or CI failures before generating a `pr_triage_report.md` artifact and obtaining explicit user approval on the plan.
-- **No Git State Guessing**: Never assume you are allowed to commit or push code. Always request explicit permission if VCS operations are restricted, or follow the repository's or user's established commit protocols.
-- **Sync Code Before Comments**: Do not post "Done" or "Fixed" comment replies or resolve threads on GitHub while the corresponding code fixes remain uncommitted or unpushed, unless the user explicitly directs you to do so anyway.
+- **VCS Authorization**: Selecting an option in `ask_question` that explicitly mentions committing or pushing serves as the user's explicit permission to perform those operations for the triage fixes. Do NOT ask for permission a second time if the user selects one of those options.
+- **Sync Code Before Comments**: Do not post "Done" or "Fixed" comment replies or resolve threads on GitHub while the corresponding code fixes remain uncommitted or unpushed, unless the user explicitly selects an option directing you to do so.
 - Do NOT address resolved comments unless requested.
-- Do NOT perform state-changing Git actions (commit, push) without explicit user permission.
 - Always use the `triage.dart` script to fetch PR information instead of manual API calls to ensure consistency and minimize context bloat.
