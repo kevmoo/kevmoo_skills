@@ -67,7 +67,7 @@ description: |-
 
 8. **Verify Git State and Offer Unified Resolution Menu**:
    - **Check Git Status first**: Run `git status` to check whether uncommitted fixes or unpushed commits exist.
-   - **Present Completion Options (`ask_question`)**: Use the `ask_question` tool to present a unified completion menu based on the working tree state. By selecting an option that includes committing or pushing, the user explicitly authorizes those VCS operations for this workflow.
+   - **Present Completion Options (`ask_question`)**: Use the `ask_question` tool to present a unified completion menu based on the working tree state (passing the options as a list parameter). Do NOT output raw text. By selecting an option that includes committing or pushing, the user explicitly authorizes those VCS operations for this workflow.
      - **If uncommitted changes or unpushed commits exist**, offer:
        1. `(Recommended) Commit fixes, push branch, reply to comments, and resolve threads`
        2. `Commit fixes and push branch only`
