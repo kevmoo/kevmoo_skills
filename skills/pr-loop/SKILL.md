@@ -112,7 +112,7 @@ automated AI code review bot (such as `gemini-code-assist`,
   ```
 
 ### 6. Trigger Subsequent Review Pass
-* **CRITICAL OPERATIONAL REMAINDER**: `gemini-code-assist` automatically ingests
+* **CRITICAL OPERATIONAL REMINDER**: `gemini-code-assist` automatically ingests
   the *first* PR push. However, for **every subsequent push**, you MUST
   explicitly prompt the bot again by posting a comment on the main PR thread:
   ```bash
