@@ -21,3 +21,5 @@ procedural, actionable instructions to AI assistants for specific domains or tas
 | **[gob-curl](skills/gob-curl/SKILL.md)** | Inspect the status of a Gerrit CL. | Gerrit CL inspection, CI results |
 | **[github-pr-triage](skills/github-pr-triage/SKILL.md)** | Triage PR comments and CI failures. | Unresolved comments, CI log extraction, triage plan |
 | **[sem-semantic-diff](skills/sem-semantic-diff/SKILL.md)** | Use the `sem` CLI to view semantic codebase diffs. | Semantic diffs, impact analysis, dependency graphs |
+| **[pr-loop](skills/pr-loop/SKILL.md)** | Autonomous pull request review loop that polls for reviews and remediates feedback. | PR review loop, autonomous iteration, polling, feedback remediation |
+
