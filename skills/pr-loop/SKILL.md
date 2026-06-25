@@ -61,7 +61,7 @@ automated AI code review bot (such as `gemini-code-assist`,
 * **Manual CLI Queries (If executing directly via gh)**:
   * **Unresolved Review Threads**:
     ```bash
-    gh api graphql -F owner=<owner> -F repo=<repo> -F pr=<pr_number> -f query='query($owner: String!, $repo: String!, $pr: Int!) { repository(owner: $owner, name: $repo) { pullRequest(number: $pr) { reviewThreads(first: 100) { nodes { isResolved comments(first: 100) { nodes { databaseId author { login } body path line } } } } } } }'
+    gh api graphql -F owner=<owner> -F repo=<repo> -F pr=<pr_number> -f query='query($owner: String!, $repo: String!, $pr: Int!) { repository(owner: $owner, name: $repo) { pullRequest(number: $pr) { comments(last: 10) { nodes { body author { login } reactionGroups { content users { totalCount } } } } reviewThreads(first: 100) { nodes { isResolved comments(first: 100) { nodes { databaseId author { login } body path line } } } } } } }'
     ```
   * **CI/CD Checks & Workflow Logs**:
     ```bash
