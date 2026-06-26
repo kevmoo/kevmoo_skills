@@ -86,8 +86,8 @@ which are bypassed in favor of autonomous execution):
   ```
 * **Check Eyeball Reactions**: Inspect `reactionGroups` in the feedback output
   or PR view. If `gemini-code-assist` attached an 👀 (`EYES`) reaction, she is
-  actively analyzing the push right now! Schedule another 90s timer and go
-  idle.
+  actively analyzing the push right now! Schedule another 90s timer (with a
+  prompt to re-check PR comments and reactions) and go idle.
 * **Empty Check ([STOP])**: If there are zero unresolved review comments AND
   all CI checks are green/passing, **[STOP]**! The PR is 100% clean. Exit the
   loop and report victory.
