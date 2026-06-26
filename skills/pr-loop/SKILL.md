@@ -88,7 +88,7 @@ which are bypassed in favor of autonomous execution):
 * **Strict Termination Rules ([STOP])**:
   A PR is ONLY clean and ready for loop termination when `pr_status.dart` returns `"can_terminate": true`.
   Specifically, termination requires:
-  1. Every check run in `statusCheckRollup` / `gh pr checks` has `status == 'COMPLETED'` AND (`conclusion == 'SUCCESS'` OR `'NEUTRAL'`). If ANY check run is `'IN_PROGRESS'`, `'QUEUED'`, or `'PENDING'`, DO NOT STOP!
+  1. Every check run in `gh pr checks` has completed cleanly (i.e. no check has `bucket == 'pending'` or `bucket == 'fail'`). If ANY check run is pending, running, or failed, DO NOT STOP!
   2. `reviewThreads` has 0 unresolved threads.
   3. No review bot has an active `EYES` (👀) reaction processing feedback.
 * **Action on In-Progress Activity**: If `pr_status.dart` returns `"can_terminate": false` because CI checks are in-progress or a review bot has an active `EYES` reaction, **schedule another 90s timer** and **go idle**. DO NOT start triaging or editing code until BOTH review comments and CI runs have fully completed!

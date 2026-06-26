@@ -86,13 +86,17 @@ void main(List<String> args) async {
         '--json',
         'number,url',
       ], workingDirectory: workingDir);
-      final listJson = jsonDecode(listOutput) as List<dynamic>;
-      if (listJson.isEmpty) {
+      final decoded = jsonDecode(listOutput);
+      if (decoded is! List || decoded.isEmpty) {
         _fail(
           'No open PR found for branch "$branch". Please specify a PR number or URL.',
         );
       }
-      prNumber = listJson[0]['number'].toString();
+      final firstPr = decoded[0];
+      if (firstPr is! Map || firstPr['number'] == null) {
+        _fail('Unexpected PR data format from "gh pr list".');
+      }
+      prNumber = firstPr['number'].toString();
     }
 
     // Resolve owner and repo for context if not already parsed.
@@ -211,20 +215,28 @@ void main(List<String> args) async {
       } else if (parsed['errors'] != null) {
         graphqlError = 'GraphQL errors returned: ${parsed['errors']}';
       } else {
-        final prData = parsed['data']?['repository']?['pullRequest'];
-        if (prData != null) {
+        final data = parsed['data'];
+        final repository = data is Map ? data['repository'] : null;
+        final prData = repository is Map ? repository['pullRequest'] : null;
+        if (prData is Map) {
           if (_hasEyesReaction(prData)) {
             hasActiveEyesReaction = true;
           }
 
-          final rawThreads = prData['reviewThreads']?['nodes'];
+          final reviewThreads = prData['reviewThreads'];
+          final rawThreads = reviewThreads is Map
+              ? reviewThreads['nodes']
+              : null;
           final threads = rawThreads is List<dynamic>
               ? rawThreads
               : const <dynamic>[];
           for (final thread in threads) {
             if (thread is Map && thread['isResolved'] == false) {
               unresolvedThreadsCount++;
-              final rawComments = thread['comments']?['nodes'];
+              final commentsObj = thread['comments'];
+              final rawComments = commentsObj is Map
+                  ? commentsObj['nodes']
+                  : null;
               final comments = rawComments is List<dynamic>
                   ? rawComments
                   : const <dynamic>[];
@@ -287,13 +299,14 @@ void main(List<String> args) async {
       'has_active_eyes_reaction': false,
     };
     stdout.writeln(const JsonEncoder.withIndent('  ').convert(output));
-    exit(0);
+    exit(1);
   }
 }
 
 bool _hasEyesReaction(dynamic comment) {
   if (comment is! Map) return false;
-  final reactionGroups = comment['reactionGroups'] as List<dynamic>? ?? [];
+  final reactionGroups = comment['reactionGroups'];
+  if (reactionGroups is! List) return false;
   for (final group in reactionGroups) {
     if (group is Map && group['content'] == 'EYES') {
       final users = group['users'];
