@@ -80,25 +80,22 @@ which are bypassed in favor of autonomous execution):
 ### 3. Wakeup & Feedback Ingestion (Comments & CI/CD)
 * When reactive wakeup resumes your execution from the timer, inspect both
   reviewer comments and failing CI/CD status checks.
-* **Unified Triage Engine**: Run `triage.dart` as defined in `github-pr-triage`:
+* **Deterministic Status Verification Engine**:
+  Run the `pr_status.dart` helper script to evaluate whether the PR is ready for termination or requires further triage:
+  ```bash
+  dart <path-to-pr-loop-skill>/bin/pr_status.dart --dir .
+  ```
+* **Strict Termination Rules ([STOP])**:
+  A PR is ONLY clean and ready for loop termination when `pr_status.dart` returns `"can_terminate": true`.
+  Specifically, termination requires:
+  1. Every check run in `statusCheckRollup` / `gh pr checks` has `status == 'COMPLETED'` AND (`conclusion == 'SUCCESS'` OR `'NEUTRAL'`). If ANY check run is `'IN_PROGRESS'`, `'QUEUED'`, or `'PENDING'`, DO NOT STOP!
+  2. `reviewThreads` has 0 unresolved threads.
+  3. No review bot has an active `EYES` (👀) reaction processing feedback.
+* **Action on In-Progress Activity**: If `pr_status.dart` returns `"can_terminate": false` because CI checks are in-progress or a review bot has an active `EYES` reaction, **schedule another 90s timer** and **go idle**. DO NOT start triaging or editing code until BOTH review comments and CI runs have fully completed!
+* **Unified Triage Engine**: If `pr_status.dart` indicates unresolved threads or failed CI runs exist, run `triage.dart` as defined in `github-pr-triage`:
   ```bash
   dart <path-to-github-pr-triage-skill>/bin/triage.dart --dir .
   ```
-* **Wait for BOTH Review Comments AND CI to Finish**:
-  Before starting a triage/remediation round, verify that BOTH review comments
-  and CI status checks have completed:
-  * **Review In-Progress**: Inspect `reactionGroups` in feedback output or PR
-    view. If `gemini-code-assist` attached an 👀 (`EYES`) reaction, she is
-    actively analyzing the push right now!
-  * **CI In-Progress**: Inspect CI checks (`gh pr checks`). If any checks are
-    pending, queued, or in-progress, CI is still running.
-  * **Action**: If EITHER review comments are in progress OR CI checks are
-    pending/running, **schedule another 90s timer** and **go idle**. DO NOT
-    start triaging or editing code until BOTH review comments and CI runs have
-    fully completed!
-* **Empty Check ([STOP])**: If there are zero unresolved review comments AND
-  all CI checks are green/passing, **[STOP]**! The PR is 100% clean. Exit the
-  loop and report victory.
 
 ### 4. Critical Assessment, Empirical Verification & Loop Convergence
 * **Follow `github-pr-triage` Rules to the Letter**:

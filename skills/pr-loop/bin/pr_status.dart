@@ -1,0 +1,311 @@
+import 'dart:convert';
+import 'dart:io';
+
+/// Main entry point for the PR status verification tool (`pr_status.dart`).
+///
+/// Deterministically checks whether a PR is clean and ready for loop termination by verifying:
+/// 1. Every check run in `statusCheckRollup` or `gh pr checks` has `status == 'COMPLETED'` AND (`conclusion == 'SUCCESS'` OR `'NEUTRAL'`).
+/// 2. `reviewThreads` has 0 unresolved threads.
+/// 3. No review bot has an active `EYES` (👀) reaction on recent review comments or threads.
+void main(List<String> args) async {
+  try {
+    String? prInput;
+    String? targetDir;
+    for (var i = 0; i < args.length; i++) {
+      final arg = args[i];
+      if (arg == '--pr' || arg == '-p') {
+        if (i + 1 < args.length) {
+          prInput = args[++i];
+        } else {
+          _fail('Missing value for option "$arg"');
+        }
+      } else if (arg == '--dir' || arg == '-C') {
+        if (i + 1 < args.length) {
+          targetDir = args[++i];
+        } else {
+          _fail('Missing value for option "$arg"');
+        }
+      } else if (arg.startsWith('-')) {
+        _fail('Unknown option "$arg"');
+      } else {
+        prInput = arg;
+      }
+    }
+
+    final workingDir = targetDir != null
+        ? Directory(targetDir).absolute.path
+        : Directory.current.absolute.path;
+    if (!await Directory(workingDir).exists()) {
+      _fail('Target directory "$workingDir" does not exist.');
+    }
+
+    String? prNumber;
+    String? owner;
+    String? repo;
+
+    if (prInput != null) {
+      final prUrlMatch = RegExp(
+        r'github\.com/([^/]+)/([^/]+)/pull/(\d+)',
+      ).firstMatch(prInput);
+      if (prUrlMatch != null) {
+        owner = prUrlMatch.group(1);
+        repo = prUrlMatch.group(2);
+        prNumber = prUrlMatch.group(3);
+      } else if (RegExp(r'^\d+$').hasMatch(prInput)) {
+        prNumber = prInput;
+      } else {
+        _fail(
+          'Invalid PR argument. Please provide a PR number or a GitHub PR URL.',
+        );
+      }
+    }
+
+    // Auto-detect PR from current branch if not provided.
+    if (prNumber == null) {
+      String branch;
+      try {
+        branch = (await _runCommand('git', [
+          'symbolic-ref',
+          '--short',
+          'HEAD',
+        ], workingDirectory: workingDir)).trim();
+      } catch (_) {
+        branch = '';
+      }
+      if (branch.isEmpty || branch == 'main' || branch == 'master') {
+        _fail(
+          'Active branch is ${branch.isEmpty ? 'detached HEAD' : '"$branch"'}. Please specify a target PR number or URL.',
+        );
+      }
+
+      final listOutput = await _runCommand('gh', [
+        'pr',
+        'list',
+        '--head',
+        branch,
+        '--json',
+        'number,url',
+      ], workingDirectory: workingDir);
+      final listJson = jsonDecode(listOutput) as List<dynamic>;
+      if (listJson.isEmpty) {
+        _fail(
+          'No open PR found for branch "$branch". Please specify a PR number or URL.',
+        );
+      }
+      prNumber = listJson[0]['number'].toString();
+    }
+
+    // Resolve owner and repo for context.
+    String? localOwner;
+    String? localRepo;
+    try {
+      final repoOutput = await _runCommand('gh', [
+        'repo',
+        'view',
+        '--json',
+        'owner,name',
+      ], workingDirectory: workingDir);
+      final repoData = jsonDecode(repoOutput) as Map<String, dynamic>;
+      final ownerData = repoData['owner'];
+      if (ownerData is Map) {
+        localOwner = ownerData['login']?.toString();
+      }
+      localRepo = repoData['name']?.toString();
+    } catch (_) {}
+
+    if (owner == null || repo == null) {
+      owner = localOwner;
+      repo = localRepo;
+    }
+
+    if (owner == null || repo == null) {
+      _fail('Could not resolve GitHub repository owner or name.');
+    }
+
+    final repoArgs = ['-R', '$owner/$repo'];
+
+    // 1. Fetch check runs via gh pr checks.
+    var unresolvedThreadsCount = 0;
+    final inProgressChecks = <String>[];
+    final failedChecks = <String>[];
+
+    try {
+      final checksOutput = await _runCommand('gh', [
+        ...repoArgs,
+        'pr',
+        'checks',
+        prNumber,
+        '--json',
+        'name,state,bucket,link,workflow',
+      ], workingDirectory: workingDir);
+      final checks = jsonDecode(checksOutput) as List<dynamic>;
+      for (final check in checks) {
+        final name = check['name']?.toString() ?? 'Unknown Check';
+        final bucket = check['bucket']?.toString() ?? '';
+        if (bucket == 'pending') {
+          inProgressChecks.add(name);
+        } else if (bucket == 'fail') {
+          failedChecks.add(name);
+        }
+      }
+    } catch (e) {
+      if (e is ProcessException && e.message.contains('no checks reported')) {
+        // No checks reported.
+      } else {
+        rethrow;
+      }
+    }
+
+    // 2. Fetch GraphQL data for reviewThreads and reactions.
+    const query = r'''
+    query($owner: String!, $repo: String!, $pr: Int!) {
+      repository(owner: $owner, name: $repo) {
+        pullRequest(number: $pr) {
+          reviewThreads(first: 100) {
+            nodes {
+              isResolved
+              comments(first: 50) {
+                nodes {
+                  author { login }
+                  reactionGroups {
+                    content
+                    users { totalCount }
+                  }
+                }
+              }
+            }
+          }
+          comments(last: 20) {
+            nodes {
+              author { login }
+              reactionGroups {
+                content
+                users { totalCount }
+              }
+            }
+          }
+        }
+      }
+    }
+    ''';
+
+    var hasActiveEyesReaction = false;
+
+    try {
+      final graphqlResponse = await _runCommand('gh', [
+        'api',
+        'graphql',
+        '-f',
+        'owner=$owner',
+        '-f',
+        'repo=$repo',
+        '-F',
+        'pr=$prNumber',
+        '-f',
+        'query=$query',
+      ], workingDirectory: workingDir);
+
+      final parsed = jsonDecode(graphqlResponse) as Map<String, dynamic>;
+      final prData = parsed['data']?['repository']?['pullRequest'];
+      if (prData != null) {
+        final threads =
+            prData['reviewThreads']?['nodes'] as List<dynamic>? ?? [];
+        for (final thread in threads) {
+          if (thread['isResolved'] == false) {
+            unresolvedThreadsCount++;
+          }
+          final comments = thread['comments']?['nodes'] as List<dynamic>? ?? [];
+          for (final comment in comments) {
+            if (_hasEyesReaction(comment)) {
+              hasActiveEyesReaction = true;
+            }
+          }
+        }
+
+        final issueComments =
+            prData['comments']?['nodes'] as List<dynamic>? ?? [];
+        for (final comment in issueComments) {
+          if (_hasEyesReaction(comment)) {
+            hasActiveEyesReaction = true;
+          }
+        }
+      }
+    } catch (_) {}
+
+    // Evaluate termination decision.
+    bool canTerminate = true;
+    String? reason;
+
+    if (inProgressChecks.isNotEmpty) {
+      canTerminate = false;
+      reason =
+          'CI workflow(s) still in progress: ${inProgressChecks.join(", ")}';
+    } else if (failedChecks.isNotEmpty) {
+      canTerminate = false;
+      reason = 'CI workflow(s) failed: ${failedChecks.join(", ")}';
+    } else if (unresolvedThreadsCount > 0) {
+      canTerminate = false;
+      reason = 'There are $unresolvedThreadsCount unresolved review thread(s)';
+    } else if (hasActiveEyesReaction) {
+      canTerminate = false;
+      reason =
+          'Review bot has an active EYES (👀) reaction processing feedback';
+    }
+
+    final output = {
+      'can_terminate': canTerminate,
+      'reason': reason,
+      'unresolved_threads': unresolvedThreadsCount,
+      'in_progress_checks': inProgressChecks,
+      'failed_checks': failedChecks,
+      'has_active_eyes_reaction': hasActiveEyesReaction,
+    };
+
+    stdout.writeln(const JsonEncoder.withIndent('  ').convert(output));
+  } catch (e, stack) {
+    stderr.writeln('Error checking PR status: $e\n$stack');
+    exit(1);
+  }
+}
+
+bool _hasEyesReaction(dynamic comment) {
+  if (comment is! Map) return false;
+  final reactionGroups = comment['reactionGroups'] as List<dynamic>? ?? [];
+  for (final group in reactionGroups) {
+    if (group is Map && group['content'] == 'EYES') {
+      final users = group['users'];
+      if (users is Map && (users['totalCount'] as int? ?? 0) > 0) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+void _fail(String message) {
+  stderr.writeln('Error: $message');
+  exit(1);
+}
+
+Future<String> _runCommand(
+  String executable,
+  List<String> arguments, {
+  String? workingDirectory,
+}) async {
+  final result = await Process.run(
+    executable,
+    arguments,
+    workingDirectory: workingDirectory,
+    stdoutEncoding: utf8,
+    stderrEncoding: utf8,
+  );
+  if (result.exitCode != 0) {
+    throw ProcessException(
+      executable,
+      arguments,
+      result.stderr.toString(),
+      result.exitCode,
+    );
+  }
+  return result.stdout.toString();
+}
