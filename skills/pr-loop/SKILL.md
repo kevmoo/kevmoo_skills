@@ -82,7 +82,7 @@ which are bypassed in favor of autonomous execution):
   reviewer comments and failing CI/CD status checks.
 * **Unified Triage Engine**: Run `triage.dart` as defined in `github-pr-triage`:
   ```bash
-  dart <path-to-github-pr-triage-skill>/bin/triage.dart --dir . --pr <pr_number>
+  dart <path-to-github-pr-triage-skill>/bin/triage.dart --dir .
   ```
 * **Check Eyeball Reactions**: Inspect `reactionGroups` in the feedback output
   or PR view. If `gemini-code-assist` attached an 👀 (`EYES`) reaction, she is
@@ -108,7 +108,7 @@ which are bypassed in favor of autonomous execution):
   ```bash
   git add <files>
   git commit -m "fix(review): <concise summary of remediations>"
-  git push origin <head_branch>
+  git push
   ```
   *(Note: If no code changes were made, e.g. all comments were disagreed with,
   skip committing and pushing).*
