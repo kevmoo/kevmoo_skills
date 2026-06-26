@@ -64,35 +64,46 @@ which are bypassed in favor of autonomous execution):
 * Push feature branch to origin: `git push -u origin <head_branch>`.
 * Create the PR via GitHub CLI if not already opened:
   ```bash
-  gh pr create --title "<type>(<scope>): <summary>" --body "<walkthrough_summary>" --base main --head <head_branch>
+  gh pr create --title "<type>(<scope>): <summary>" \
+    --body "<walkthrough_summary>" --base main --head <head_branch>
   ```
 
 ### 2. [START] Schedule Polling Timer
 * Call the `schedule` tool to set a background wakeup timer:
-  * **Initial Push**: Set `DurationSeconds=180` (3 minutes) to allow initial bot
-    ingestion.
+  * **Initial Push**: Set `DurationSeconds=180` (3 minutes) to allow initial
+    bot ingestion.
   * **Subsequent Pushes**: Set `DurationSeconds=120` (2 minutes).
-  * **Prompt**: `"Poll PR #<number> via gh pr view <number> --json comments,reviews. Check if gemini-code-assist posted review feedback on commit <sha>. If feedback exists, triage and fix. If empty, check reactions or stop."`
+  * **Prompt**: `"Poll PR #<number> via gh pr view <number> --json comments."`
+    `" Check if gemini-code-assist posted review feedback on commit <sha>."`
 * **CRITICAL IDLE PROTOCOL**: Immediately after calling `schedule`, output a
-  concise visible status update to the user and **STOP calling tools**. You must
-  go idle to allow the background timer task to tick.
+  concise visible status update to the user and **STOP calling tools**. You
+  must go idle to allow the background timer task to tick.
 
 ### 3. Wakeup & Feedback Ingestion (Comments & CI/CD)
 * When reactive wakeup resumes your execution from the timer, inspect both
   reviewer comments and failing CI/CD status checks.
 * **Deterministic Status Verification Engine**:
-  Run the `pr_status.dart` helper script to evaluate whether the PR is ready for termination or requires further triage:
+  Run the `pr_status.dart` helper script to evaluate whether the PR is ready for
+  termination or requires further triage:
   ```bash
   dart <path-to-pr-loop-skill>/bin/pr_status.dart --dir .
   ```
 * **Strict Termination Rules ([STOP])**:
-  A PR is ONLY clean and ready for loop termination when `pr_status.dart` returns `"can_terminate": true`.
+  A PR is ONLY clean and ready for loop termination when `pr_status.dart`
+  returns `"can_terminate": true`.
   Specifically, termination requires:
-  1. Every check run in `gh pr checks` has completed cleanly (i.e. no check has `bucket == 'pending'` or `bucket == 'fail'`). If ANY check run is pending, running, or failed, DO NOT STOP!
+  1. Every check run in `gh pr checks` has completed cleanly (i.e. no check has
+     `bucket == 'pending'` or `bucket == 'fail'`). If ANY check run is pending,
+     running, or failed, DO NOT STOP!
   2. `reviewThreads` has 0 unresolved threads.
   3. No review bot has an active `EYES` (👀) reaction processing feedback.
-* **Action on In-Progress Activity**: If `pr_status.dart` returns `"can_terminate": false` because CI checks are in-progress or a review bot has an active `EYES` reaction, **schedule another 90s timer** and **go idle**. DO NOT start triaging or editing code until BOTH review comments and CI runs have fully completed!
-* **Unified Triage Engine**: If `pr_status.dart` indicates unresolved threads or failed CI runs exist, run `triage.dart` as defined in `github-pr-triage`:
+* **Action on In-Progress Activity**: If `pr_status.dart` returns
+  `"can_terminate": false` because CI checks are in-progress or a review bot has
+  an active `EYES` reaction, **schedule another 90s timer** and **go idle**. DO
+  NOT start triaging or editing code until BOTH review comments and CI runs
+  have fully completed!
+* **Unified Triage Engine**: If `pr_status.dart` indicates unresolved threads
+  or failed CI runs exist, run `triage.dart` as defined in `github-pr-triage`:
   ```bash
   dart <path-to-github-pr-triage-skill>/bin/triage.dart --dir .
   ```
@@ -118,7 +129,12 @@ which are bypassed in favor of autonomous execution):
     `👎 Disagree` with rationale:
     `"Deferring optional suggestion to maintain loop"`
     `"convergence; code verified."`
-  * **Beware the Micro-Refactoring Trap**: Automated bots frequently propose endless cascades of minor defensive type checks (`is Map`, `is List`, `is int`) or syntactic alternative patterns on already-verified, working code. Classify these as `🤷 Meh` / stylistic nitpicks and **reject them with `👎 Disagree` on passes 4+** to break the cycle and guarantee loop convergence.
+  * **Beware the Micro-Refactoring Trap**: Automated bots frequently propose
+    endless cascades of minor defensive type checks (`is Map`, `is List`,
+    `is int`) or syntactic alternative patterns on already-verified, working
+    code. Classify these as `🤷 Meh` / stylistic nitpicks and **reject them with
+    `👎 Disagree` on passes 4+** to break the cycle and guarantee loop
+    convergence.
   * **Max Loop Circuit-Breaker**: Cap execution at 10 iterations max.
 * Surgically apply verified fixes (including newly created test files) and
   verify clean local quality gates.
