@@ -146,8 +146,8 @@ description: |-
        1. `(Recommended) Reply to comments and resolve threads`
        2. `Do nothing`
    - **Execute Selected Actions**:
-     - If committing is selected, stage the modified files and create a
-       descriptive commit.
+     - If committing is selected, stage all modified and new files (including
+       any newly created test files) and create a descriptive commit.
      - If pushing is selected, run `git push`.
      - If replying and resolving is selected, execute the `gh api` commands
        using the patterns listed below.
