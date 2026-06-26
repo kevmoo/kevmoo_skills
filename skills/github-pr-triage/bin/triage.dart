@@ -115,14 +115,28 @@ void main(List<String> args) async {
         '--json',
         'number,url',
       ], workingDirectory: workingDir);
-      final listJson = jsonDecode(listOutput) as List<dynamic>;
+      final decodedList = jsonDecode(listOutput);
+      final listJson = decodedList is List<dynamic> ? decodedList : const [];
       if (listJson.isEmpty) {
         stderr.writeln(
-          'No open PR found for branch "$branch". Please specify a PR number or URL.',
+          'Error: Ambiguous context. No open PR found for branch "$branch". '
+          'Do not guess. Please explicitly ask the user for a PR number or URL.',
         );
         exit(1);
       }
-      prNumber = listJson[0]['number'].toString();
+      if (listJson.length > 1) {
+        stderr.writeln(
+          'Error: Ambiguous context. Multiple open PRs found for branch "$branch". '
+          'Do not guess. Please explicitly ask the user which PR number or URL to target.',
+        );
+        exit(1);
+      }
+      final firstPr = listJson[0];
+      if (firstPr is! Map || firstPr['number'] == null) {
+        stderr.writeln('Error: Unexpected PR data format from "gh pr list".');
+        exit(1);
+      }
+      prNumber = firstPr['number'].toString();
     }
 
     // 3. Resolve owner and repo for context.

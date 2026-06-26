@@ -20,6 +20,11 @@ automated AI code review bot (such as `gemini-code-assist`,
 
 ## 🔓 Upfront VCS Authorization & Safeguards
 
+- **NEVER GUESS Target PR or Branch**: Agents MUST NEVER guess the target
+  branch or pull request. If the active local branch or PR is ambiguous,
+  unclear, or not explicitly confirmed by the user, the agent MUST pause and
+  explicitly ask the user for clarification before initiating the loop or
+  executing any git pushes or gh commands.
 - **Request Blanket Upfront Consent**: When initiating `pr-loop`, the agent MUST
   first confirm the target feature branch and remote with the user in its
   opening message, requesting blanket consent for autonomous commits and pushes

@@ -35,6 +35,13 @@ description: |-
 
 ## How to use this skill (The Workflow)
 
+- **NEVER GUESS Target PR or Branch**: If the target PR number or branch is not
+  explicitly provided by the user, and the current git workspace state is on a
+  trunk branch (`main`/`master`), in detached HEAD state, or matches multiple
+  open PRs, **DO NOT GUESS**. The agent MUST pause execution and explicitly ask
+  the user (using `ask_question` or chat) to clarify which PR or branch to
+  target before taking action.
+
 1. **Run the Triage Script**:
    Execute the `triage.dart` helper script using the `run_command` tool.
    Use the `--dir` (or `-C`) option to specify the path to the target
