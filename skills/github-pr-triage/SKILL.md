@@ -182,10 +182,10 @@ Use these API patterns to reply to review comments and resolve threads:
   with upfront user consent).
 - **VCS Authorization**: Selecting an option in `ask_question` that explicitly
   mentions committing or pushing serves as the user's explicit permission to
-  perform those operations for the triage fixes. Do NOT ask for permission a
-  second time if the user selects one of those options. (Note: This prompt is
-  bypassed ONLY IF operating within an outer orchestrator skill like `pr-loop`
-  with upfront user consent).
+  perform those operations for the triage fixes. Do NOT ask for permission
+  a second time if the user selects one of those options. (Note: This
+  constraint is bypassed ONLY IF operating within an outer orchestrator skill
+  like `pr-loop` with upfront user consent).
 - **Sync Code Before Comments**: Do not post "Done" or "Fixed" comment replies
   or resolve threads on GitHub while the corresponding code fixes remain
   uncommitted or unpushed, unless the user explicitly selects an option

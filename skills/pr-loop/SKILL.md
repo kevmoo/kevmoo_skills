@@ -103,9 +103,10 @@ which are bypassed in favor of autonomous execution):
 
 ### 5. Commit, Push & Resolve Threads
 * **Commit & Push Fixes (If changes were made)**: Check `git status`. If code
-  edits or new test files were created, stage them (using `git add <files>` or
-  `git add .` if no untracked scratch files exist), then commit and push:
+  edits or new test files were created, stage, commit, and push them to origin
+  (using `git add <files>` or `git add .` if no untracked scratch files exist):
   ```bash
+  git add <files>
   git commit -m "fix(review): <concise summary of remediations>"
   git push origin <head_branch>
   ```
