@@ -121,7 +121,8 @@ description: |-
 7. **Surgical Implementation & Verification**:
    - Once approved, address the comments and failures one by one.
    - **Add tests for new behavior**: When a reviewer requests new behavior,
-     bug fixes, or edge-case handling, proactively write automated tests to
+     bug fixes, or edge-case handling, proactively write automated tests
+     (typically placed in the `test/` directory with a `_test.dart` suffix) to
      verify the changes and prevent future regressions.
    - Follow standard development workflows: run formatting, analysis, and tests
      locally to verify fixes before finishing.
