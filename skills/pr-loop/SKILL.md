@@ -18,20 +18,49 @@ automated AI code review bot (such as `gemini-code-assist`,
 - Trigger when the user asks to "loop with gemini", "run the PR loop", "iterate
   on review comments until clean", or executes `/goal pr-loop`.
 
-## 🔒 Prerequisites & Safeguards
-1. **Branch Scoping**: This loop MUST ONLY execute on an isolated feature or
-   bugfix branch. **NEVER** run this loop directly on `main`, `master`, or
-   protected trunk branches.
-2. **Push Exemption (Branch Scope)**: When initiating this flow on a feature
-   branch, the agent commits and pushes autonomously without prompting for user
-   permission on each loop iteration.
+## 🔓 Upfront VCS Authorization & Safeguards
+
+- **Request Blanket Upfront Consent**: When initiating `pr-loop`, the agent MUST
+  first confirm the target feature branch and remote with the user in its
+  opening message, requesting blanket consent for autonomous commits and pushes
+  for the duration of the loop.
+- **Autonomous Execution Scope**: Once upfront consent is established, the agent
+  is authorized to execute `git commit` and `git push` autonomously on every
+  loop iteration on that specific feature branch (`headRefName`) to `origin`.
+- **Trunk Branch Prohibition**: Committing or pushing directly to `main`,
+  `master`, or protected trunk branches remains strictly prohibited.
+- **NO `commit --amend`**: Modifying commit history via `git commit --amend` is
+  strictly prohibited. Always create new, atomic commits for each review pass.
+- **NO Force Pushes**: Force pushing (`git push -f` or `--force-with-lease`) is
+  strictly prohibited under any circumstances.
+
+## 🏗️ Architectural Relationship & Rule Inheritance
+This skill functions as an autonomous, multi-pass loop wrapper around the core
+triage capabilities defined in the `github-pr-triage` skill. 
+
+**MANDATORY RULE DELEGATION**: `pr-loop` strictly inherits and follows ALL
+rules, mindsets, and protocols defined in `github-pr-triage` to the letter
+(excluding manual triage report generation and interactive approval steps,
+which are bypassed in favor of autonomous execution):
+1. **Critical Mindset**: Follow `github-pr-triage`'s mandate that reviewer
+   feedback is NOT gospel. Empirically verify claims with compilers/analyzers
+   and freely disagree (`👎 Disagree`).
+2. **Assessment & Test Directives**: Categorize items using `github-pr-triage`'s
+   Agreement Matrix and proactively write automated tests when reviewers
+   request new behavior.
+3. **Resolution APIs**: Use `github-pr-triage`'s exact API endpoints for comment
+   replies and GraphQL thread resolutions.
 
 ---
 
 ## 🔄 The Autonomous Loop Workflow
 
-### 1. Initial Push & PR Creation
-* Ensure local working tree changes are committed (`git status`).
+### 1. Upfront Consent, Initial Push & PR Creation
+* **Request Upfront Consent**: Output a concise opening message stating the
+  active feature branch and remote, requesting blanket approval for autonomous
+  commits and pushes during this review loop session. **Wait for the user's
+  explicit chat confirmation before proceeding to any git push or PR creation.**
+* Verify local working tree state (`git status`); commit any uncommitted work.
 * Push feature branch to origin: `git push -u origin <head_branch>`.
 * Create the PR via GitHub CLI if not already opened:
   ```bash
@@ -51,65 +80,64 @@ automated AI code review bot (such as `gemini-code-assist`,
 ### 3. Wakeup & Feedback Ingestion (Comments & CI/CD)
 * When reactive wakeup resumes your execution from the timer, inspect both
   reviewer comments and failing CI/CD status checks.
-* **Recommended Method (Unified Triage)**:
-  Execute the `triage.dart` script from the `github-pr-triage` skill. It runs a
-  high-precision GraphQL query for unresolved review comments AND captures
-  failing CI workflow step logs (`gh pr checks` / `gh run view --log-failed`):
+* **Unified Triage Engine**: Run `triage.dart` as defined in `github-pr-triage`:
   ```bash
-  dart <path-to-github-pr-triage-skill>/bin/triage.dart --dir . --pr <pr_number>
+  dart <path-to-github-pr-triage-skill>/bin/triage.dart --dir .
   ```
-* **Manual CLI Queries (If executing directly via gh)**:
-  * **Unresolved Review Threads**:
-    ```bash
-    gh api graphql -F owner=<owner> -F repo=<repo> -F pr=<pr_number> -f query='query($owner: String!, $repo: String!, $pr: Int!) { repository(owner: $owner, name: $repo) { pullRequest(number: $pr) { comments(last: 10) { nodes { body author { login } reactionGroups { content users { totalCount } } } } reviewThreads(first: 100) { nodes { isResolved comments(first: 100) { nodes { databaseId author { login } body path line } } } } } } }'
-    ```
-  * **CI/CD Checks & Workflow Logs**:
-    ```bash
-    gh pr checks <pr_number> --json name,state,bucket,link,workflow
-    gh run view <run_id> --log-failed
-    ```
-* **Check Eyeball Reactions**: Inspect `reactionGroups` on your latest comment
-  or push. If `gemini-code-assist` attached an 👀 (`EYES`) reaction, she is
-  actively analyzing the push right now! Schedule another 90s timer and go idle.
-* **Empty Check ([STOP])**: If there are zero unresolved review comments AND all
-  CI checks are green/passing, **[STOP]**! The PR is 100% clean. Exit the loop
-  and report victory.
+* **Wait for BOTH Review Comments AND CI to Finish**:
+  Before starting a triage/remediation round, verify that BOTH review comments
+  and CI status checks have completed:
+  * **Review In-Progress**: Inspect `reactionGroups` in feedback output or PR
+    view. If `gemini-code-assist` attached an 👀 (`EYES`) reaction, she is
+    actively analyzing the push right now!
+  * **CI In-Progress**: Inspect CI checks (`gh pr checks`). If any checks are
+    pending, queued, or in-progress, CI is still running.
+  * **Action**: If EITHER review comments are in progress OR CI checks are
+    pending/running, **schedule another 90s timer** and **go idle**. DO NOT
+    start triaging or editing code until BOTH review comments and CI runs have
+    fully completed!
+* **Empty Check ([STOP])**: If there are zero unresolved review comments AND
+  all CI checks are green/passing, **[STOP]**! The PR is 100% clean. Exit the
+  loop and report victory.
 
-### 4. Critical Assessment & Empirical Verification
-* **Empirical Skepticism**: Do not assume any reviewer — whether an automated AI
-  bot like `gemini-code-assist` or a human engineer — is infallible or always
-  smarter than you. Reviewers frequently make mistakes, hallucinate language
-  limitations, or suggest outdated patterns.
-* **Leverage Your Execution Advantage**: You have the unique superpower to run
-  live compilers, test suites, and static analyzers (`dart analyze`, `dart
-  test`) that external reviewers cannot execute on demand. **Always empirically
-  test a reviewer's claims against real compiler/analyzer feedback** before
-  blindly accepting them.
-* **Reject Unverified Claims**: If running local quality gates proves that your
-  existing code works or that a reviewer's suggestion causes compilation,
-  analyzer, or test failures, reject the suggestion.
-* Exercise engineering judgment: eagerly accept solid/urgent defensive
-  programming suggestions, but feel free to push back on stylistic noise or
-  regressions.
-* Surgically modify target files (`replace_file_content`) to implement
-  empirically verified fixes.
-* Run local quality gates (`dart analyze`, `dart test`, linters) to guarantee
-  100% clean builds before committing.
+### 4. Critical Assessment, Empirical Verification & Loop Convergence
+* **Follow `github-pr-triage` Rules to the Letter**:
+  * Apply the **Agreement Matrix** (`🔥 Urgent`, `👍 Solid`, `🤷 Meh`,
+    `👎 Disagree`).
+  * Exercise **Empirical Skepticism** using `dart analyze` and `dart test`.
+  * **Proactively write automated tests** for reviewer-requested behavior.
+* **Loop Convergence Protocol (Progressive Criticality Ramp)**:
+  To prevent infinite spinning where new diffs generate endless feedback,
+  the agent MUST track its iteration count (e.g. by counting `fix(review):`
+  commits in `git log origin/main..HEAD`) and apply its OWN evaluation:
+  * **Passes 1–3 (Full Ingestion)**: Eagerly address `🔥 Urgent` and
+    `👍 Solid` suggestions.
+  * **Passes 4–6 (Strict Relevance Filter)**: Reject and resolve optional
+    `🤷 Meh` nitpicks or phrasing proposals using `👎 Disagree` to allow early
+    loop convergence. Only implement clear functional improvements.
+  * **Passes 7+ (Blockers Only / Force Convergence)**: Address ONLY `🔥 Urgent`
+    blockers (bugs, compiler errors, analyzer warnings, security risks). For
+    any optional refactorings or stylistic suggestions, reject them using
+    `👎 Disagree` with rationale:
+    `"Deferring optional suggestion to maintain loop"`
+    `"convergence; code verified."`
+  * **Max Loop Circuit-Breaker**: Cap execution at 10 iterations max.
+* Surgically apply verified fixes (including newly created test files) and
+  verify clean local quality gates.
 
 ### 5. Commit, Push & Resolve Threads
-* Commit review fixes atomically:
+* **Commit & Push Fixes (If changes were made)**: Check `git status`. If code
+  edits or new test files were created, stage, commit, and push them to origin
+  (using `git add <files>` or `git add .` if no untracked scratch files exist):
   ```bash
-  git commit -am "fix(review): <concise summary of remediations>"
+  git add <files>
+  git commit -m "fix(review): <concise summary of remediations>"
+  git push origin HEAD
   ```
-* Push directly to the remote feature branch:
-  ```bash
-  git push origin <head_branch>
-  ```
-* **Resolve Addressed Review Threads**: For each inline review thread that was
-  remediated, mark the conversation thread as resolved via GitHub GraphQL API:
-  ```bash
-  gh api graphql -F id="<thread_node_id>" -f query='mutation($id: ID!) { resolveReviewThread(input: {threadId: $id}) { thread { isResolved } } }'
-  ```
+  *(Note: If no code changes were made, e.g. all comments were disagreed with,
+  skip committing and pushing).*
+* **Reply & Resolve Addressed Review Threads**: Execute the exact `gh api` reply
+  and GraphQL `resolveReviewThread` endpoints defined in `github-pr-triage`.
 
 ### 6. Trigger Subsequent Review Pass
 * **CRITICAL OPERATIONAL REMINDER**: `gemini-code-assist` automatically ingests
@@ -126,6 +154,7 @@ automated AI code review bot (such as `gemini-code-assist`,
 ## 🏁 Loop Termination & Handoff
 1. When the loop stops, report the total number of review iterations executed
    and link to the final merged/approved PR.
-2. If operating in Wynette Hybrid Production mode (`.dart_tool/wynette/dolt_replica`
-   exists), present the mandatory Babysitter triage prompt
-   (`hybrid_boot.dart --push/--stop`) before terminating the conversation.
+2. If operating in Wynette Hybrid Production mode
+   (`.dart_tool/wynette/dolt_replica` exists), present the mandatory Babysitter
+   triage prompt (`hybrid_boot.dart --push/--stop`) before terminating the
+   conversation.

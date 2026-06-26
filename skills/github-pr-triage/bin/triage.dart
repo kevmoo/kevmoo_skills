@@ -264,6 +264,7 @@ void main(List<String> args) async {
     // 6. Fetch CI check runs.
     stdout.writeln('Fetching check runs...');
     var failedChecks = <dynamic>[];
+    var pendingChecks = <dynamic>[];
     try {
       final checksOutput = await _runCommand('gh', [
         ...repoArgs,
@@ -275,6 +276,7 @@ void main(List<String> args) async {
       ], workingDirectory: workingDir);
       final checks = jsonDecode(checksOutput) as List<dynamic>;
       failedChecks = checks.where((c) => c['bucket'] == 'fail').toList();
+      pendingChecks = checks.where((c) => c['bucket'] == 'pending').toList();
     } catch (e) {
       if (e is ProcessException && e.message.contains('no checks reported')) {
         stdout.writeln('No checks reported for this PR.');
@@ -384,6 +386,18 @@ ${checkLogs[name] ?? 'No logs available.'}
 
 ''');
       }
+    }
+
+    if (pendingChecks.isNotEmpty) {
+      report.write(
+        '## Active/Pending Status Checks (${pendingChecks.length}) ⏳\n\n',
+      );
+      for (final check in pendingChecks) {
+        final name = check['name'] ?? 'Unknown Check';
+        final link = check['link'] ?? '';
+        report.write('- ⏳ **$name**: [Inspect Check Run]($link)\n');
+      }
+      report.write('\n');
     }
 
     stdout.writeln('\n================== REPORT ==================\n');
