@@ -101,7 +101,7 @@ which are bypassed in favor of autonomous execution):
 * **Loop Convergence Protocol (Progressive Criticality Ramp)**:
   To prevent infinite spinning where new diffs generate endless feedback,
   the agent MUST track its iteration count (e.g. by counting `fix(review):`
-  commits in `git log`) and apply its OWN empirical evaluation:
+  commits in `git log origin/main..HEAD`) and apply its OWN evaluation:
   * **Passes 1–3 (Full Ingestion)**: Eagerly address `🔥 Urgent` and
     `👍 Solid` suggestions.
   * **Passes 4–6 (Strict Relevance Filter)**: Reject and resolve optional
@@ -111,7 +111,8 @@ which are bypassed in favor of autonomous execution):
     blockers (bugs, compiler errors, analyzer warnings, security risks). For
     any optional refactorings or stylistic suggestions, reject them using
     `👎 Disagree` with rationale:
-    `"Rejecting for loop convergence; code verified."`
+    `"Deferring optional suggestion to maintain loop"`
+    `"convergence; code verified."`
   * **Max Loop Circuit-Breaker**: Cap execution at 10 iterations max.
 * Surgically apply verified fixes (including newly created test files) and
   verify clean local quality gates.
