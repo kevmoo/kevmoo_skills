@@ -104,8 +104,9 @@ which are bypassed in favor of autonomous execution):
   commits in `git log`) and apply its OWN empirical evaluation:
   * **Passes 1–3 (Full Ingestion)**: Eagerly address `🔥 Urgent` and
     `👍 Solid` suggestions.
-  * **Passes 4–6 (Strict Relevance Filter)**: Ignore optional `🤷 Meh` nitpicks
-    or phrasing proposals. Only fix clear functional improvements.
+  * **Passes 4–6 (Strict Relevance Filter)**: Reject and resolve optional
+    `🤷 Meh` nitpicks or phrasing proposals using `👎 Disagree` to allow early
+    loop convergence. Only implement clear functional improvements.
   * **Passes 7+ (Blockers Only / Force Convergence)**: Address ONLY `🔥 Urgent`
     blockers (bugs, compiler errors, analyzer warnings, security risks). For
     any optional refactorings or stylistic suggestions, reject them using
