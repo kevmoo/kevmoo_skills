@@ -69,11 +69,18 @@ description: |-
    - Ignore comments from the PR author themselves unless they clarify a
      reviewer's comment.
 
-4. **Analyze CI Failures**:
-   - The script lists failed status checks and displays the logs of their failed
-     steps.
+4. **Analyze CI Status & Failures**:
+   - The script lists status checks (both failed and active/pending).
+   - **Active/Pending CI Handling**: If any CI status checks are currently
+     running or pending:
+     - Inform the user and call `ask_question` to ask their preference:
+       * Option 1: `(Recommended) Proceed with triaging open comments now`
+       * Option 2: `Wait for active CI status checks to complete first`
+     - *(Note: This interactive prompt is bypassed when operating within an
+       outer orchestrator skill like `pr-loop`, which handles background timers
+       automatically)*.
    - Analyze the stack traces, compile errors, or analyzer failures to
-     understand why they failed.
+     understand why any failed checks failed.
 
 5. **Generate a Triage Report (Artifact)**:
    - Create a markdown artifact named `pr_triage_report.md` in the artifacts
