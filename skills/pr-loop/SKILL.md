@@ -92,14 +92,27 @@ which are bypassed in favor of autonomous execution):
   all CI checks are green/passing, **[STOP]**! The PR is 100% clean. Exit the
   loop and report victory.
 
-### 4. Critical Assessment & Empirical Verification
+### 4. Critical Assessment, Empirical Verification & Loop Convergence
 * **Follow `github-pr-triage` Rules to the Letter**:
   * Apply the **Agreement Matrix** (`🔥 Urgent`, `👍 Solid`, `🤷 Meh`,
     `👎 Disagree`).
   * Exercise **Empirical Skepticism** using `dart analyze` and `dart test`.
   * **Proactively write automated tests** for reviewer-requested behavior.
-  * Surgically apply verified fixes, stage all modified and new files (including
-    newly created test files), and verify clean local quality gates.
+* **Loop Convergence Protocol (Progressive Criticality Ramp)**:
+  To prevent infinite spinning where new diffs generate endless feedback,
+  the agent MUST track iteration count and apply its OWN evaluation:
+  * **Passes 1–3 (Full Ingestion)**: Eagerly address `🔥 Urgent` and
+    `👍 Solid` suggestions.
+  * **Passes 4–6 (Strict Relevance Filter)**: Ignore optional `🤷 Meh` nitpicks
+    or phrasing proposals. Only fix clear functional improvements.
+  * **Passes 7+ (Blockers Only / Force Convergence)**: Address ONLY `🔥 Urgent`
+    blockers (bugs, compiler errors, analyzer warnings, security risks). For
+    any optional refactorings or stylistic suggestions, reject them using
+    `👎 Disagree` with rationale:
+    `"Rejecting for loop convergence; code verified."`
+  * **Max Loop Circuit-Breaker**: Cap execution at 10 iterations max.
+* Surgically apply verified fixes, stage all modified and new files (including
+  newly created test files), and verify clean local quality gates.
 
 ### 5. Commit, Push & Resolve Threads
 * **Commit & Push Fixes (If changes were made)**: Check `git status`. If code
