@@ -194,58 +194,70 @@ void main(List<String> args) async {
     ''';
 
     var hasActiveEyesReaction = false;
+    String? graphqlError;
 
-    final graphqlResponse = await _runCommand('gh', [
-      'api',
-      'graphql',
-      '-f',
-      'owner=$owner',
-      '-f',
-      'repo=$repo',
-      '-F',
-      'pr=$prNumber',
-      '-f',
-      'query=$query',
-    ], workingDirectory: workingDir);
+    try {
+      final graphqlResponse = await _runCommand('gh', [
+        'api',
+        'graphql',
+        '-f',
+        'owner=$owner',
+        '-f',
+        'repo=$repo',
+        '-F',
+        'pr=$prNumber',
+        '-f',
+        'query=$query',
+      ], workingDirectory: workingDir);
 
-    final parsed = jsonDecode(graphqlResponse) as Map<String, dynamic>;
-    if (parsed['errors'] != null) {
-      _fail('GraphQL errors returned from GitHub API: ${parsed['errors']}');
-    }
-
-    final prData = parsed['data']?['repository']?['pullRequest'];
-    if (prData != null) {
-      if (_hasEyesReaction(prData)) {
-        hasActiveEyesReaction = true;
-      }
-
-      final threads = prData['reviewThreads']?['nodes'] as List<dynamic>? ?? [];
-      for (final thread in threads) {
-        if (thread['isResolved'] == false) {
-          unresolvedThreadsCount++;
-        }
-        final comments = thread['comments']?['nodes'] as List<dynamic>? ?? [];
-        for (final comment in comments) {
-          if (_hasEyesReaction(comment)) {
+      final parsed = jsonDecode(graphqlResponse) as Map<String, dynamic>;
+      if (parsed['errors'] != null) {
+        graphqlError = 'GraphQL errors returned: ${parsed['errors']}';
+      } else {
+        final prData = parsed['data']?['repository']?['pullRequest'];
+        if (prData != null) {
+          if (_hasEyesReaction(prData)) {
             hasActiveEyesReaction = true;
           }
-        }
-      }
 
-      final issueComments =
-          prData['comments']?['nodes'] as List<dynamic>? ?? [];
-      for (final comment in issueComments) {
-        if (_hasEyesReaction(comment)) {
-          hasActiveEyesReaction = true;
+          final threads =
+              prData['reviewThreads']?['nodes'] as List<dynamic>? ?? [];
+          for (final thread in threads) {
+            if (thread['isResolved'] == false) {
+              unresolvedThreadsCount++;
+              final comments =
+                  thread['comments']?['nodes'] as List<dynamic>? ?? [];
+              for (final comment in comments) {
+                if (_hasEyesReaction(comment)) {
+                  hasActiveEyesReaction = true;
+                }
+              }
+            }
+          }
+
+          final issueComments =
+              prData['comments']?['nodes'] as List<dynamic>? ?? [];
+          for (final comment in issueComments) {
+            if (_hasEyesReaction(comment)) {
+              hasActiveEyesReaction = true;
+            }
+          }
+        } else {
+          graphqlError = 'Pull request data not found in GraphQL response';
         }
       }
+    } catch (e) {
+      graphqlError = e.toString();
     }
 
     // Evaluate termination decision.
     bool canTerminate = true;
     String? reason;
 
-    if (inProgressChecks.isNotEmpty) {
+    if (graphqlError != null) {
+      canTerminate = false;
+      reason = 'Failed to verify PR threads/reactions: $graphqlError';
+    } else if (inProgressChecks.isNotEmpty) {
       canTerminate = false;
       reason =
           'CI workflow(s) still in progress: ${inProgressChecks.join(", ")}';
@@ -291,7 +303,7 @@ bool _hasEyesReaction(dynamic comment) {
   return false;
 }
 
-void _fail(String message) {
+Never _fail(String message) {
   stderr.writeln('Error: $message');
   exit(1);
 }
