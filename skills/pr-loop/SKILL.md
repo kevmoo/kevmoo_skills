@@ -100,7 +100,8 @@ which are bypassed in favor of autonomous execution):
   * **Proactively write automated tests** for reviewer-requested behavior.
 * **Loop Convergence Protocol (Progressive Criticality Ramp)**:
   To prevent infinite spinning where new diffs generate endless feedback,
-  the agent MUST track iteration count and apply its OWN evaluation:
+  the agent MUST track its iteration count (e.g. by counting `fix(review):`
+  commits in `git log`) and apply its OWN empirical evaluation:
   * **Passes 1–3 (Full Ingestion)**: Eagerly address `🔥 Urgent` and
     `👍 Solid` suggestions.
   * **Passes 4–6 (Strict Relevance Filter)**: Ignore optional `🤷 Meh` nitpicks
