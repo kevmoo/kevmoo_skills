@@ -101,7 +101,7 @@ rules, mindsets, and protocols defined in `github-pr-triage` to the letter:
 ### 5. Commit, Push & Resolve Threads
 * Commit review fixes atomically:
   ```bash
-  git commit -am "fix(review): <concise summary of remediations>"
+  git commit -m "fix(review): <concise summary of remediations>"
   ```
 * Push directly to the remote feature branch:
   ```bash
