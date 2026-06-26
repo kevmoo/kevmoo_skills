@@ -217,13 +217,17 @@ void main(List<String> args) async {
             hasActiveEyesReaction = true;
           }
 
-          final threads =
-              prData['reviewThreads']?['nodes'] as List<dynamic>? ?? [];
+          final rawThreads = prData['reviewThreads']?['nodes'];
+          final threads = rawThreads is List<dynamic>
+              ? rawThreads
+              : const <dynamic>[];
           for (final thread in threads) {
             if (thread is Map && thread['isResolved'] == false) {
               unresolvedThreadsCount++;
-              final comments =
-                  thread['comments']?['nodes'] as List<dynamic>? ?? [];
+              final rawComments = thread['comments']?['nodes'];
+              final comments = rawComments is List<dynamic>
+                  ? rawComments
+                  : const <dynamic>[];
               for (final comment in comments) {
                 if (_hasEyesReaction(comment)) {
                   hasActiveEyesReaction = true;
@@ -274,7 +278,16 @@ void main(List<String> args) async {
     stdout.writeln(const JsonEncoder.withIndent('  ').convert(output));
   } catch (e, stack) {
     stderr.writeln('Error checking PR status: $e\n$stack');
-    exit(1);
+    final output = {
+      'can_terminate': false,
+      'reason': 'Error checking PR status: $e',
+      'unresolved_threads': 0,
+      'in_progress_checks': <String>[],
+      'failed_checks': <String>[],
+      'has_active_eyes_reaction': false,
+    };
+    stdout.writeln(const JsonEncoder.withIndent('  ').convert(output));
+    exit(0);
   }
 }
 
