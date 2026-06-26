@@ -176,7 +176,9 @@ Use these API patterns to reply to review comments and resolve threads:
 ## Constraints
 - **CRITICAL**: You MUST NOT modify files or make any code edits to address PR
   comments or CI failures before generating a `pr_triage_report.md` artifact
-  and obtaining explicit user approval on the plan.
+  and obtaining explicit user approval on the plan. (Note: This constraint is
+  bypassed ONLY IF operating within an outer orchestrator skill like `pr-loop`
+  with upfront user consent).
 - **VCS Authorization**: Selecting an option in `ask_question` that explicitly
   mentions committing or pushing serves as the user's explicit permission to
   perform those operations for the triage fixes. Do NOT ask for permission a

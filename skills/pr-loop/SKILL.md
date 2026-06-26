@@ -39,7 +39,9 @@ This skill functions as an autonomous, multi-pass loop wrapper around the core
 triage capabilities defined in the `github-pr-triage` skill. 
 
 **MANDATORY RULE DELEGATION**: `pr-loop` strictly inherits and follows ALL
-rules, mindsets, and protocols defined in `github-pr-triage` to the letter:
+rules, mindsets, and protocols defined in `github-pr-triage` to the letter
+(excluding manual triage report generation and interactive approval steps,
+which are bypassed in favor of autonomous execution):
 1. **Critical Mindset**: Follow `github-pr-triage`'s mandate that reviewer
    feedback is NOT gospel. Empirically verify claims with compilers/analyzers
    and freely disagree (`👎 Disagree`).
