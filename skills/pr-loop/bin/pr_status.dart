@@ -223,7 +223,7 @@ void main(List<String> args) async {
           final threads =
               prData['reviewThreads']?['nodes'] as List<dynamic>? ?? [];
           for (final thread in threads) {
-            if (thread['isResolved'] == false) {
+            if (thread is Map && thread['isResolved'] == false) {
               unresolvedThreadsCount++;
               final comments =
                   thread['comments']?['nodes'] as List<dynamic>? ?? [];
@@ -295,8 +295,11 @@ bool _hasEyesReaction(dynamic comment) {
   for (final group in reactionGroups) {
     if (group is Map && group['content'] == 'EYES') {
       final users = group['users'];
-      if (users is Map && (users['totalCount'] as int? ?? 0) > 0) {
-        return true;
+      if (users is Map) {
+        final totalCount = users['totalCount'];
+        if (totalCount is int && totalCount > 0) {
+          return true;
+        }
       }
     }
   }
