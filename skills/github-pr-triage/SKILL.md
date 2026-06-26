@@ -147,7 +147,7 @@ description: |-
        2. `Do nothing`
    - **Execute Selected Actions**:
      - If committing is selected, stage all modified and new files (using
-       `git add <files>`) and create a descriptive commit.
+       `git add <files>` or `git add .`) and create a descriptive commit.
      - If pushing is selected, run `git push`.
      - If replying and resolving is selected, execute the `gh api` commands
        using the patterns listed below.

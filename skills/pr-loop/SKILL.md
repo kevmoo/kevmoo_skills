@@ -60,7 +60,7 @@ which are bypassed in favor of autonomous execution):
   active feature branch and remote, requesting blanket approval for autonomous
   commits and pushes during this review loop session. **Wait for the user's
   explicit chat confirmation before proceeding to any git push or PR creation.**
-* Ensure local working tree changes are committed (`git status`).
+* Verify local working tree state (`git status`); commit any uncommitted work.
 * Push feature branch to origin: `git push -u origin <head_branch>`.
 * Create the PR via GitHub CLI if not already opened:
   ```bash
@@ -103,8 +103,8 @@ which are bypassed in favor of autonomous execution):
 
 ### 5. Commit, Push & Resolve Threads
 * **Commit & Push Fixes (If changes were made)**: Check `git status`. If code
-  edits or new test files were created, stage them (using `git add <files>`),
-  then commit and push to origin:
+  edits or new test files were created, stage them (using `git add <files>` or
+  `git add .` if no untracked scratch files exist), then commit and push:
   ```bash
   git commit -m "fix(review): <concise summary of remediations>"
   git push origin <head_branch>
