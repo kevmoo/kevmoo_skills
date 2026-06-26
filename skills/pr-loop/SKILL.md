@@ -84,10 +84,18 @@ which are bypassed in favor of autonomous execution):
   ```bash
   dart <path-to-github-pr-triage-skill>/bin/triage.dart --dir .
   ```
-* **Check Eyeball Reactions**: Inspect `reactionGroups` in the feedback output
-  or PR view. If `gemini-code-assist` attached an 👀 (`EYES`) reaction, she is
-  actively analyzing the push right now! Schedule another 90s timer (with a
-  prompt to re-check PR comments and reactions) and go idle.
+* **Wait for BOTH Review Comments AND CI to Finish**:
+  Before starting a triage/remediation round, verify that BOTH review comments
+  and CI status checks have completed:
+  * **Review In-Progress**: Inspect `reactionGroups` in feedback output or PR
+    view. If `gemini-code-assist` attached an 👀 (`EYES`) reaction, she is
+    actively analyzing the push right now!
+  * **CI In-Progress**: Inspect CI checks (`gh pr checks`). If any checks are
+    pending, queued, or in-progress, CI is still running.
+  * **Action**: If EITHER review comments are in progress OR CI checks are
+    pending/running, **schedule another 90s timer** and **go idle**. DO NOT
+    start triaging or editing code until BOTH review comments and CI runs have
+    fully completed!
 * **Empty Check ([STOP])**: If there are zero unresolved review comments AND
   all CI checks are green/passing, **[STOP]**! The PR is 100% clean. Exit the
   loop and report victory.
