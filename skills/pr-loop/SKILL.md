@@ -95,7 +95,8 @@ rules, mindsets, and protocols defined in `github-pr-triage` to the letter:
     `👎 Disagree`).
   * Exercise **Empirical Skepticism** using `dart analyze` and `dart test`.
   * **Proactively write automated tests** for reviewer-requested behavior.
-  * Surgically apply verified fixes and verify clean local quality gates.
+  * Surgically apply verified fixes, stage all modified and new files (including
+    newly created test files), and verify clean local quality gates.
 
 ### 5. Commit, Push & Resolve Threads
 * Commit review fixes atomically:
