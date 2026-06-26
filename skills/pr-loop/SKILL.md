@@ -56,7 +56,8 @@ rules, mindsets, and protocols defined in `github-pr-triage` to the letter:
 ### 1. Upfront Consent, Initial Push & PR Creation
 * **Request Upfront Consent**: Output a concise opening message stating the
   active feature branch and remote, requesting blanket approval for autonomous
-  commits and pushes during this review loop session.
+  commits and pushes during this review loop session. **Wait for the user's
+  explicit chat confirmation before proceeding to any git push or PR creation.**
 * Ensure local working tree changes are committed (`git status`).
 * Push feature branch to origin: `git push -u origin <head_branch>`.
 * Create the PR via GitHub CLI if not already opened:
