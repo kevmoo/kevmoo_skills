@@ -161,6 +161,10 @@ void main(List<String> args) async {
     query($owner: String!, $repo: String!, $pr: Int!) {
       repository(owner: $owner, name: $repo) {
         pullRequest(number: $pr) {
+          reactionGroups {
+            content
+            users { totalCount }
+          }
           reviewThreads(first: 100) {
             nodes {
               isResolved
@@ -191,46 +195,51 @@ void main(List<String> args) async {
 
     var hasActiveEyesReaction = false;
 
-    try {
-      final graphqlResponse = await _runCommand('gh', [
-        'api',
-        'graphql',
-        '-f',
-        'owner=$owner',
-        '-f',
-        'repo=$repo',
-        '-F',
-        'pr=$prNumber',
-        '-f',
-        'query=$query',
-      ], workingDirectory: workingDir);
+    final graphqlResponse = await _runCommand('gh', [
+      'api',
+      'graphql',
+      '-f',
+      'owner=$owner',
+      '-f',
+      'repo=$repo',
+      '-F',
+      'pr=$prNumber',
+      '-f',
+      'query=$query',
+    ], workingDirectory: workingDir);
 
-      final parsed = jsonDecode(graphqlResponse) as Map<String, dynamic>;
-      final prData = parsed['data']?['repository']?['pullRequest'];
-      if (prData != null) {
-        final threads =
-            prData['reviewThreads']?['nodes'] as List<dynamic>? ?? [];
-        for (final thread in threads) {
-          if (thread['isResolved'] == false) {
-            unresolvedThreadsCount++;
-          }
-          final comments = thread['comments']?['nodes'] as List<dynamic>? ?? [];
-          for (final comment in comments) {
-            if (_hasEyesReaction(comment)) {
-              hasActiveEyesReaction = true;
-            }
-          }
+    final parsed = jsonDecode(graphqlResponse) as Map<String, dynamic>;
+    if (parsed['errors'] != null) {
+      _fail('GraphQL errors returned from GitHub API: ${parsed['errors']}');
+    }
+
+    final prData = parsed['data']?['repository']?['pullRequest'];
+    if (prData != null) {
+      if (_hasEyesReaction(prData)) {
+        hasActiveEyesReaction = true;
+      }
+
+      final threads = prData['reviewThreads']?['nodes'] as List<dynamic>? ?? [];
+      for (final thread in threads) {
+        if (thread['isResolved'] == false) {
+          unresolvedThreadsCount++;
         }
-
-        final issueComments =
-            prData['comments']?['nodes'] as List<dynamic>? ?? [];
-        for (final comment in issueComments) {
+        final comments = thread['comments']?['nodes'] as List<dynamic>? ?? [];
+        for (final comment in comments) {
           if (_hasEyesReaction(comment)) {
             hasActiveEyesReaction = true;
           }
         }
       }
-    } catch (_) {}
+
+      final issueComments =
+          prData['comments']?['nodes'] as List<dynamic>? ?? [];
+      for (final comment in issueComments) {
+        if (_hasEyesReaction(comment)) {
+          hasActiveEyesReaction = true;
+        }
+      }
+    }
 
     // Evaluate termination decision.
     bool canTerminate = true;
