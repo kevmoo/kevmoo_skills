@@ -121,7 +121,7 @@ which are bypassed in favor of autonomous execution):
   ```bash
   git add <files>
   git commit -m "fix(review): <concise summary of remediations>"
-  git push
+  git push origin HEAD
   ```
   *(Note: If no code changes were made, e.g. all comments were disagreed with,
   skip committing and pushing).*

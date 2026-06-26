@@ -95,8 +95,8 @@ description: |-
      - **Thread & Comment Identifiers (For Comments)**: Explicitly preserve the
        `Thread ID` (e.g. `PRRT_...`) and `Comment ID` (e.g. `3438780787`) from
        the comment header in `raw_triage_output.md` under each action item so
-       Step 8 (`gh api`) has immediate access to both parameters without extra
-       API lookups.
+       the resolution step (`gh api`) has immediate access to both parameters
+       without extra API lookups.
      - **Agent Assessment (For Comments)**:
        - **Agreement Level**: A short indicator of your agreement using one of
          these categories:
