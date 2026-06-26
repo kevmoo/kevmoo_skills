@@ -127,7 +127,7 @@ description: |-
      locally to verify fixes before finishing.
 
 8. **Verify Git State and Offer Unified Resolution Menu**:
-   - **Outer Skill Exception**: Step 8 prompting is bypassed ONLY IF operating
+   - **Outer Skill Exception**: Step 8 is bypassed entirely ONLY IF operating
      within an outer orchestrator skill (such as `pr-loop`) that has already
      obtained upfront user consent for autonomous VCS commits and pushes.
    - **Check Git Status first**: Run `git status` to check whether uncommitted
