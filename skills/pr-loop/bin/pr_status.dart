@@ -95,23 +95,25 @@ void main(List<String> args) async {
       prNumber = listJson[0]['number'].toString();
     }
 
-    // Resolve owner and repo for context.
+    // Resolve owner and repo for context if not already parsed.
     String? localOwner;
     String? localRepo;
-    try {
-      final repoOutput = await _runCommand('gh', [
-        'repo',
-        'view',
-        '--json',
-        'owner,name',
-      ], workingDirectory: workingDir);
-      final repoData = jsonDecode(repoOutput) as Map<String, dynamic>;
-      final ownerData = repoData['owner'];
-      if (ownerData is Map) {
-        localOwner = ownerData['login']?.toString();
-      }
-      localRepo = repoData['name']?.toString();
-    } catch (_) {}
+    if (owner == null || repo == null) {
+      try {
+        final repoOutput = await _runCommand('gh', [
+          'repo',
+          'view',
+          '--json',
+          'owner,name',
+        ], workingDirectory: workingDir);
+        final repoData = jsonDecode(repoOutput) as Map<String, dynamic>;
+        final ownerData = repoData['owner'];
+        if (ownerData is Map) {
+          localOwner = ownerData['login']?.toString();
+        }
+        localRepo = repoData['name']?.toString();
+      } catch (_) {}
+    }
 
     if (owner == null || repo == null) {
       owner = localOwner;
@@ -138,8 +140,10 @@ void main(List<String> args) async {
         '--json',
         'name,state,bucket,link,workflow',
       ], workingDirectory: workingDir);
-      final checks = jsonDecode(checksOutput) as List<dynamic>;
+      final decodedChecks = jsonDecode(checksOutput);
+      final checks = decodedChecks is List<dynamic> ? decodedChecks : const [];
       for (final check in checks) {
+        if (check is! Map) continue;
         final name = check['name']?.toString() ?? 'Unknown Check';
         final bucket = check['bucket']?.toString() ?? '';
         if (bucket == 'pending') {
@@ -179,15 +183,6 @@ void main(List<String> args) async {
               }
             }
           }
-          comments(last: 20) {
-            nodes {
-              author { login }
-              reactionGroups {
-                content
-                users { totalCount }
-              }
-            }
-          }
         }
       }
     }
@@ -210,8 +205,10 @@ void main(List<String> args) async {
         'query=$query',
       ], workingDirectory: workingDir);
 
-      final parsed = jsonDecode(graphqlResponse) as Map<String, dynamic>;
-      if (parsed['errors'] != null) {
+      final parsed = jsonDecode(graphqlResponse);
+      if (parsed is! Map<String, dynamic>) {
+        graphqlError = 'Invalid GraphQL response format';
+      } else if (parsed['errors'] != null) {
         graphqlError = 'GraphQL errors returned: ${parsed['errors']}';
       } else {
         final prData = parsed['data']?['repository']?['pullRequest'];
@@ -232,14 +229,6 @@ void main(List<String> args) async {
                   hasActiveEyesReaction = true;
                 }
               }
-            }
-          }
-
-          final issueComments =
-              prData['comments']?['nodes'] as List<dynamic>? ?? [];
-          for (final comment in issueComments) {
-            if (_hasEyesReaction(comment)) {
-              hasActiveEyesReaction = true;
             }
           }
         } else {
