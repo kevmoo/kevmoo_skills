@@ -111,8 +111,8 @@ which are bypassed in favor of autonomous execution):
     `👎 Disagree` with rationale:
     `"Rejecting for loop convergence; code verified."`
   * **Max Loop Circuit-Breaker**: Cap execution at 10 iterations max.
-* Surgically apply verified fixes, stage all modified and new files (including
-  newly created test files), and verify clean local quality gates.
+* Surgically apply verified fixes (including newly created test files) and
+  verify clean local quality gates.
 
 ### 5. Commit, Push & Resolve Threads
 * **Commit & Push Fixes (If changes were made)**: Check `git status`. If code
