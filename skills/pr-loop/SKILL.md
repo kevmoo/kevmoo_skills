@@ -102,14 +102,14 @@ which are bypassed in favor of autonomous execution):
     newly created test files), and verify clean local quality gates.
 
 ### 5. Commit, Push & Resolve Threads
-* Commit review fixes atomically:
+* **Commit & Push Fixes (If changes were made)**: Check `git status`. If code
+  edits or new test files were created, stage, commit, and push them to origin:
   ```bash
   git add . && git commit -m "fix(review): <concise summary of remediations>"
-  ```
-* Push directly to the remote feature branch:
-  ```bash
   git push origin <head_branch>
   ```
+  *(Note: If no code changes were made, e.g. all comments were disagreed with,
+  skip committing and pushing).*
 * **Reply & Resolve Addressed Review Threads**: Execute the exact `gh api` reply
   and GraphQL `resolveReviewThread` endpoints defined in `github-pr-triage`.
 
