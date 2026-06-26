@@ -118,6 +118,7 @@ which are bypassed in favor of autonomous execution):
     `👎 Disagree` with rationale:
     `"Deferring optional suggestion to maintain loop"`
     `"convergence; code verified."`
+  * **Beware the Micro-Refactoring Trap**: Automated bots frequently propose endless cascades of minor defensive type checks (`is Map`, `is List`, `is int`) or syntactic alternative patterns on already-verified, working code. Classify these as `🤷 Meh` / stylistic nitpicks and **reject them with `👎 Disagree` on passes 4+** to break the cycle and guarantee loop convergence.
   * **Max Loop Circuit-Breaker**: Cap execution at 10 iterations max.
 * Surgically apply verified fixes (including newly created test files) and
   verify clean local quality gates.
