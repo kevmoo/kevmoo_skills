@@ -78,7 +78,9 @@ description: |-
 5. **Generate a Triage Report (Artifact)**:
    - Create a markdown artifact named `pr_triage_report.md` in the artifacts
      directory (using `write_to_file` with `RequestFeedback: true` in
-     `ArtifactMetadata` to render an interactive 'Proceed' button).
+     `ArtifactMetadata` to render an interactive 'Proceed' button). (Note: This
+     step is bypassed ONLY IF operating within an outer orchestrator skill like
+     `pr-loop` with upfront user consent).
    - **Link to Raw Output**: Include a markdown link to the
      `raw_triage_output.md` artifact at the top of the report.
    - The report MUST group associated comments and CI failures into cohesive
@@ -116,7 +118,8 @@ description: |-
 6. **Wait for Approval**:
    - DO NOT edit files or make changes until the user explicitly approves the
      proposed plan via the interactive 'Proceed' button (or explicit chat
-     confirmation).
+     confirmation). (Note: This step is bypassed ONLY IF operating within an
+     outer orchestrator skill like `pr-loop` with upfront user consent).
 
 7. **Surgical Implementation & Verification**:
    - Once approved, address the comments and failures one by one.
