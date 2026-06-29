@@ -16,7 +16,7 @@ repository.
 - **Exceptions ("Within Reason")**: Do NOT wrap lines where breaking them would
   corrupt syntax or structure:
   - YAML frontmatter / metadata blocks
-  - Fenced code blocks (` ``` `)
+  - Fenced code blocks (`` ``` ``)
   - Long URLs or Markdown link destinations
   - Markdown tables
 
