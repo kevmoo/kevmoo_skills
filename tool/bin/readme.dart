@@ -109,7 +109,9 @@ void main(List<String> arguments) async {
   );
 
   if (validateMode) {
-    if (readmeContent == updatedReadme) {
+    final normalizedReadme = readmeContent.replaceAll('\r\n', '\n');
+    final normalizedUpdated = updatedReadme.replaceAll('\r\n', '\n');
+    if (normalizedReadme == normalizedUpdated) {
       print('README.md is up-to-date!');
       exit(0);
     } else {

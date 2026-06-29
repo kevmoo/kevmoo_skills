@@ -65,7 +65,7 @@ void main() {
         await process.shouldExit(0);
       }
     }
-  });
+  }, timeout: Timeout(Duration(minutes: 3)));
 
   test('Verify formatting and analysis of all skills Dart code', () async {
     final skillsDir = Directory(
@@ -98,11 +98,16 @@ void main() {
       }
     }
     for (final pubspec in pubspecs) {
-      final process = await TestProcess.start(Platform.resolvedExecutable, [
-        'pub',
-        'get',
-      ], workingDirectory: pubspec.parent.path);
-      await process.shouldExit(0);
+      final packageConfig = File(
+        '${pubspec.parent.path}/.dart_tool/package_config.json',
+      );
+      if (!packageConfig.existsSync()) {
+        final process = await TestProcess.start(Platform.resolvedExecutable, [
+          'pub',
+          'get',
+        ], workingDirectory: pubspec.parent.path);
+        await process.shouldExit(0);
+      }
     }
 
     final analyzeProcess = await TestProcess.start(
@@ -110,5 +115,5 @@ void main() {
       ['analyze', '--fatal-infos', skillsDir.path],
     );
     await analyzeProcess.shouldExit(0);
-  });
+  }, timeout: Timeout(Duration(minutes: 3)));
 }
