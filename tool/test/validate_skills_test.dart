@@ -86,10 +86,17 @@ void main() {
     await formatProcess.shouldExit(0);
 
     // Ensure pub get has been run for all nested packages to prevent analysis failures
-    final pubspecs = skillsDir
-        .listSync(recursive: true)
-        .whereType<File>()
-        .where((file) => file.path.endsWith('pubspec.yaml'));
+    final pubspecs = <File>[];
+    for (final dir in skillsDir.listSync().whereType<Directory>()) {
+      final pubspec = File('${dir.path}/pubspec.yaml');
+      if (pubspec.existsSync()) {
+        pubspecs.add(pubspec);
+      }
+      final scriptsPubspec = File('${dir.path}/scripts/pubspec.yaml');
+      if (scriptsPubspec.existsSync()) {
+        pubspecs.add(scriptsPubspec);
+      }
+    }
     for (final pubspec in pubspecs) {
       final process = await TestProcess.start(Platform.resolvedExecutable, [
         'pub',

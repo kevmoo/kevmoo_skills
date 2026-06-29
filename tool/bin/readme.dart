@@ -148,9 +148,11 @@ Directory? _findRepoRoot(Directory startDir) {
 Map<dynamic, dynamic> _parseFrontMatter(String content) {
   final trimmed = content.trimLeft();
   if (!trimmed.startsWith('---')) return {};
-  final secondTripleDash = trimmed.indexOf('---', 3);
-  if (secondTripleDash == -1) return {};
-  final yamlText = trimmed.substring(3, secondTripleDash);
+  final regExp = RegExp(r'^---\s*$', multiLine: true);
+  final matches = regExp.allMatches(trimmed).toList();
+  if (matches.length < 2) return {};
+  final secondTripleDash = matches[1].start;
+  final yamlText = trimmed.substring(matches[0].end, secondTripleDash);
   try {
     final yamlMap = loadYaml(yamlText);
     if (yamlMap is Map) return yamlMap;
