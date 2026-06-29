@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:dart_skills_lint/dart_skills_lint.dart';
 import 'package:logging/logging.dart';
 import 'package:test/test.dart';
+import 'package:test_process/test_process.dart';
 
 final String _configFilePath = Directory.current.path.endsWith('tool')
     ? 'dart_skills_lint.yaml'
@@ -29,7 +30,7 @@ void main() {
     }
   });
 
-  test('Run skill/scripts/test', () {
+  test('Run skill/scripts/test', () async {
     final skillsDir = Directory(
       Directory.current.path.endsWith('tool') ? '../skills' : 'skills',
     );
@@ -50,7 +51,7 @@ void main() {
           '${scriptsDir.path}/.dart_tool/package_config.json',
         );
         if (!packageConfig.existsSync()) {
-          final pubGetResult = Process.runSync('dart', [
+          final pubGetResult = Process.runSync(Platform.resolvedExecutable, [
             'pub',
             'get',
           ], workingDirectory: scriptsDir.path);
@@ -62,16 +63,10 @@ void main() {
           );
         }
 
-        final result = Process.runSync('dart', [
+        final process = await TestProcess.start(Platform.resolvedExecutable, [
           'test',
         ], workingDirectory: scriptsDir.path);
-        print(result.stdout);
-        print(result.stderr);
-        expect(
-          result.exitCode,
-          0,
-          reason: 'Tests failed in ${scriptsDir.path}',
-        );
+        await process.shouldExit(0);
       }
     }
   });
@@ -86,7 +81,7 @@ void main() {
       reason: 'Skills directory not found at ${skillsDir.path}',
     );
 
-    final formatResult = Process.runSync('dart', [
+    final formatResult = Process.runSync(Platform.resolvedExecutable, [
       'format',
       '--output=none',
       '--set-exit-if-changed',
@@ -99,7 +94,24 @@ void main() {
           'Skills Dart formatting check failed:\n${formatResult.stderr}\n${formatResult.stdout}',
     );
 
-    final analyzeResult = Process.runSync('dart', [
+    // Ensure pub get has been run for all nested packages to prevent analysis failures
+    final pubspecs = skillsDir
+        .listSync(recursive: true)
+        .whereType<File>()
+        .where((file) => file.path.endsWith('pubspec.yaml'));
+    for (final pubspec in pubspecs) {
+      final result = Process.runSync(Platform.resolvedExecutable, [
+        'pub',
+        'get',
+      ], workingDirectory: pubspec.parent.path);
+      expect(
+        result.exitCode,
+        0,
+        reason: 'pub get failed in ${pubspec.parent.path}:\n${result.stderr}',
+      );
+    }
+
+    final analyzeResult = Process.runSync(Platform.resolvedExecutable, [
       'analyze',
       '--fatal-infos',
       skillsDir.path,
