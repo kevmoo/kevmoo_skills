@@ -29,6 +29,9 @@ void main(List<String> arguments) async {
     exit(1);
   }
 
+  final repoName = p.basename(repoRoot.path);
+  final repoSlug = 'kevmoo/$repoName';
+
   final skillsDir = Directory(p.join(repoRoot.path, 'skills'));
   if (!skillsDir.existsSync()) {
     print('Error: Skills directory does not exist at ${skillsDir.path}');
@@ -51,6 +54,10 @@ void main(List<String> arguments) async {
 
   final listBuffer = StringBuffer();
   listBuffer.writeln('<!-- SKILLS_LIST_START -->');
+  listBuffer.writeln('To install any skill individually:');
+  listBuffer.writeln('```bash');
+  listBuffer.writeln('npx skills add $repoSlug --skill <skill-name>');
+  listBuffer.writeln('```\n');
   listBuffer.writeln('| Skill | Description | Key Features |');
   listBuffer.writeln('|-------|-------------|--------------|');
   for (final dir in skillDirs) {
@@ -59,7 +66,8 @@ void main(List<String> arguments) async {
     final content = skillFile.readAsStringSync();
 
     final frontMatter = _parseFrontMatter(content);
-    final title = frontMatter['name'] as String? ?? skillName;
+    final title =
+        frontMatter['name'] as String? ?? _getSkillTitle(content, skillName);
     final description = frontMatter['description'] as String? ?? '';
     final keyFeaturesRaw = frontMatter['key_features'];
     final List<String> keyFeatures = [];
@@ -160,4 +168,20 @@ Map<dynamic, dynamic> _parseFrontMatter(String content) {
     if (yamlMap is Map) return yamlMap;
   } catch (_) {}
   return {};
+}
+
+String _getSkillTitle(String content, String fallback) {
+  final lines = LineSplitter.split(content);
+  for (final line in lines) {
+    if (line.startsWith('# ')) {
+      return line.substring(2).trim();
+    }
+  }
+  return fallback
+      .split('-')
+      .map(
+        (word) =>
+            word.isEmpty ? '' : '${word[0].toUpperCase()}${word.substring(1)}',
+      )
+      .join(' ');
 }
