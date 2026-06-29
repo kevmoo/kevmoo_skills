@@ -43,6 +43,9 @@ Examples of trigger phrases:
   well-defined, proceed directly to analysis without prompting the user.
 
 ### 2. Scenario Walking & Analysis
+- **Direct Chat Output**: Deliver the analysis inline directly to the user in
+  your chat response. Do NOT create artifacts unless the analysis is
+  exceptionally long or explicitly requested.
 - Outline the step-by-step impact if the change were actually executed.
 - Identify potential breaking changes, migration friction, and ripple effects
   across dependent packages or modules.

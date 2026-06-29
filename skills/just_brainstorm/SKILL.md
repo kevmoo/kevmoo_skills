@@ -19,9 +19,10 @@ Examples of trigger phrases:
 
 ## Critical Rule: Zero Code Changes Allowed
 
-- **NO FILE EDITS OR CREATION**: Under no circumstances should you edit
+- **NO CODEBASE FILE EDITS OR CREATION**: Under no circumstances should you edit
   existing project files, write new implementation code, or modify repository
-  state.
+  state. (Note: Writing the mandatory design artifact using `write_to_file` as
+  described in the workflow below is the only permitted file creation).
 - **READ-ONLY INSPECTION IS ALLOWED**: You are fully authorized and encouraged
   to inspect the codebase using read-only tools (`grep_search`, `view_file`,
   `list_dir`) to understand the current architecture and ground your
