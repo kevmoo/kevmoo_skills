@@ -7,6 +7,11 @@ procedural, actionable instructions to AI assistants for specific domains or tas
 ## Skills Inventory
 
 <!-- SKILLS_LIST_START -->
+To install any skill individually:
+```bash
+npx skills add kevmoo/kevmoo_skills --skill <skill-name>
+```
+
 | Skill | Description | Key Features |
 |-------|-------------|--------------|
 | **[encapsulated-method-object](skills/encapsulated-method-object/SKILL.md)** | Apply the "Encapsulated Method Object" refactoring pattern to simplify functions with deeply nested scopes, bloated closures, and heavy shared local state. | Method Object extraction, class-based encapsulation, Closure refactoring |

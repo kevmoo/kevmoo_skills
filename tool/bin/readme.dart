@@ -29,6 +29,10 @@ void main(List<String> arguments) async {
     exit(1);
   }
 
+  final repoName = p.basename(repoRoot.path);
+  final repoSlug =
+      Platform.environment['GITHUB_REPOSITORY'] ?? 'kevmoo/$repoName';
+
   final skillsDir = Directory(p.join(repoRoot.path, 'skills'));
   if (!skillsDir.existsSync()) {
     print('Error: Skills directory does not exist at ${skillsDir.path}');
@@ -51,6 +55,10 @@ void main(List<String> arguments) async {
 
   final listBuffer = StringBuffer();
   listBuffer.writeln('<!-- SKILLS_LIST_START -->');
+  listBuffer.writeln('To install any skill individually:');
+  listBuffer.writeln('```bash');
+  listBuffer.writeln('npx skills add $repoSlug --skill <skill-name>');
+  listBuffer.writeln('```\n');
   listBuffer.writeln('| Skill | Description | Key Features |');
   listBuffer.writeln('|-------|-------------|--------------|');
   for (final dir in skillDirs) {
@@ -59,8 +67,9 @@ void main(List<String> arguments) async {
     final content = skillFile.readAsStringSync();
 
     final frontMatter = _parseFrontMatter(content);
-    final title = frontMatter['name'] as String? ?? skillName;
-    final description = frontMatter['description'] as String? ?? '';
+    final title =
+        frontMatter['name']?.toString() ?? _getSkillTitle(content, skillName);
+    final description = frontMatter['description']?.toString() ?? '';
     final keyFeaturesRaw = frontMatter['key_features'];
     final List<String> keyFeatures = [];
     if (keyFeaturesRaw is List) {
@@ -78,7 +87,10 @@ void main(List<String> arguments) async {
       description.trim(),
     ).map((line) => line.trim()).join(' ').replaceAll('|', '\\|');
 
-    final cleanFeatures = keyFeatures.join(', ').replaceAll('|', '\\|');
+    final cleanFeatures = keyFeatures
+        .map((f) => LineSplitter.split(f.trim()).map((l) => l.trim()).join(' '))
+        .join(', ')
+        .replaceAll('|', '\\|');
 
     listBuffer.writeln(
       '| **[$title](skills/$skillName/SKILL.md)** | $cleanDescription | $cleanFeatures |',
@@ -93,9 +105,11 @@ void main(List<String> arguments) async {
   final endTag = '<!-- SKILLS_LIST_END -->';
 
   final startIndex = readmeContent.indexOf(startTag);
-  final endIndex = readmeContent.indexOf(endTag);
+  final endIndex = startIndex == -1
+      ? -1
+      : readmeContent.indexOf(endTag, startIndex);
 
-  if (startIndex == -1 || endIndex == -1 || endIndex < startIndex) {
+  if (startIndex == -1 || endIndex == -1) {
     print(
       'Error: Could not find comments <!-- SKILLS_LIST_START --> and <!-- SKILLS_LIST_END --> in correct order in README.md',
     );
@@ -150,9 +164,9 @@ Directory? _findRepoRoot(Directory startDir) {
 Map<dynamic, dynamic> _parseFrontMatter(String content) {
   final trimmed = content.trimLeft();
   if (!trimmed.startsWith('---')) return {};
-  final regExp = RegExp(r'^---\s*$', multiLine: true);
+  final regExp = RegExp(r'^---[ \t]*\r?$', multiLine: true);
   final matches = regExp.allMatches(trimmed).toList();
-  if (matches.length < 2) return {};
+  if (matches.length < 2 || matches[0].start != 0) return {};
   final secondTripleDash = matches[1].start;
   final yamlText = trimmed.substring(matches[0].end, secondTripleDash);
   try {
@@ -160,4 +174,27 @@ Map<dynamic, dynamic> _parseFrontMatter(String content) {
     if (yamlMap is Map) return yamlMap;
   } catch (_) {}
   return {};
+}
+
+String _getSkillTitle(String content, String fallback) {
+  var searchContent = content.trimLeft();
+  if (searchContent.startsWith('---')) {
+    final regExp = RegExp(r'^---[ \t]*\r?$', multiLine: true);
+    final matches = regExp.allMatches(searchContent).toList();
+    if (matches.length >= 2 && matches[0].start == 0) {
+      searchContent = searchContent.substring(matches[1].end);
+    }
+  }
+
+  final lines = LineSplitter.split(searchContent);
+  for (final line in lines) {
+    if (line.startsWith('# ')) {
+      return line.substring(2).trim();
+    }
+  }
+  return fallback
+      .split('-')
+      .where((word) => word.isNotEmpty)
+      .map((word) => '${word[0].toUpperCase()}${word.substring(1)}')
+      .join(' ');
 }
