@@ -51,16 +51,12 @@ void main() {
           '${scriptsDir.path}/.dart_tool/package_config.json',
         );
         if (!packageConfig.existsSync()) {
-          final pubGetResult = Process.runSync(Platform.resolvedExecutable, [
-            'pub',
-            'get',
-          ], workingDirectory: scriptsDir.path);
-          expect(
-            pubGetResult.exitCode,
-            0,
-            reason:
-                'dart pub get failed in ${scriptsDir.path}:\n${pubGetResult.stderr}',
+          final pubGetProcess = await TestProcess.start(
+            Platform.resolvedExecutable,
+            ['pub', 'get'],
+            workingDirectory: scriptsDir.path,
           );
+          await pubGetProcess.shouldExit(0);
         }
 
         final process = await TestProcess.start(Platform.resolvedExecutable, [
@@ -71,7 +67,7 @@ void main() {
     }
   });
 
-  test('Verify formatting and analysis of all skills Dart code', () {
+  test('Verify formatting and analysis of all skills Dart code', () async {
     final skillsDir = Directory(
       Directory.current.path.endsWith('tool') ? '../skills' : 'skills',
     );
@@ -81,18 +77,13 @@ void main() {
       reason: 'Skills directory not found at ${skillsDir.path}',
     );
 
-    final formatResult = Process.runSync(Platform.resolvedExecutable, [
+    final formatProcess = await TestProcess.start(Platform.resolvedExecutable, [
       'format',
       '--output=none',
       '--set-exit-if-changed',
       skillsDir.path,
     ]);
-    expect(
-      formatResult.exitCode,
-      0,
-      reason:
-          'Skills Dart formatting check failed:\n${formatResult.stderr}\n${formatResult.stdout}',
-    );
+    await formatProcess.shouldExit(0);
 
     // Ensure pub get has been run for all nested packages to prevent analysis failures
     final pubspecs = skillsDir
@@ -100,27 +91,17 @@ void main() {
         .whereType<File>()
         .where((file) => file.path.endsWith('pubspec.yaml'));
     for (final pubspec in pubspecs) {
-      final result = Process.runSync(Platform.resolvedExecutable, [
+      final process = await TestProcess.start(Platform.resolvedExecutable, [
         'pub',
         'get',
       ], workingDirectory: pubspec.parent.path);
-      expect(
-        result.exitCode,
-        0,
-        reason: 'pub get failed in ${pubspec.parent.path}:\n${result.stderr}',
-      );
+      await process.shouldExit(0);
     }
 
-    final analyzeResult = Process.runSync(Platform.resolvedExecutable, [
-      'analyze',
-      '--fatal-infos',
-      skillsDir.path,
-    ]);
-    expect(
-      analyzeResult.exitCode,
-      0,
-      reason:
-          'Skills Dart analysis check failed:\n${analyzeResult.stderr}\n${analyzeResult.stdout}',
+    final analyzeProcess = await TestProcess.start(
+      Platform.resolvedExecutable,
+      ['analyze', '--fatal-infos', skillsDir.path],
     );
+    await analyzeProcess.shouldExit(0);
   });
 }
