@@ -48,7 +48,7 @@ void main(List<String> args) async {
     // 4. Fetch PR details.
     stdout.writeln('Fetching details for PR #$prNumber from $owner/$repo...');
     stdout.writeln('Target directory: $workingDir');
-    final viewOutput = await _runCommand('gh', [
+    final viewOutput = await runCommand('gh', [
       ...repoArgs,
       'pr',
       'view',
@@ -62,7 +62,7 @@ void main(List<String> args) async {
     final prHeadBranch = prData['headRefName']?.toString();
     String activeBranch;
     try {
-      activeBranch = (await _runCommand('git', [
+      activeBranch = (await runCommand('git', [
         'symbolic-ref',
         '--short',
         'HEAD',
@@ -81,91 +81,24 @@ void main(List<String> args) async {
       );
     }
 
-    // 5. Fetch unresolved review comments.
+    // 5. Fetch unresolved review comments using unified GraphQL helper.
     stdout.writeln('Fetching unresolved review comments...');
-    const query = r'''
-    query($owner: String!, $repo: String!, $pr: Int!) {
-      repository(owner: $owner, name: $repo) {
-        pullRequest(number: $pr) {
-          reviewThreads(first: 100) {
-            nodes {
-              id
-              isResolved
-              comments(first: 100) {
-                nodes {
-                  databaseId
-                  author { login }
-                  body
-                  path
-                  line
-                  originalLine
-                  createdAt
-                  url
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-    ''';
-
-    final graphqlResponse = await _runCommand('gh', [
-      'api',
-      'graphql',
-      '-f',
-      'owner=$owner',
-      '-f',
-      'repo=$repo',
-      '-F',
-      'pr=$prNumber',
-      '-f',
-      'query=$query',
-    ], workingDirectory: workingDir);
-
-    final parsedGraphql = jsonDecode(graphqlResponse) as Map<String, dynamic>;
-    if (parsedGraphql['errors'] != null) {
-      stderr.writeln('GraphQL errors returned from GitHub API:');
-      stderr.writeln(jsonEncode(parsedGraphql['errors']));
-      exit(1);
-    }
-    final threads =
-        parsedGraphql['data']?['repository']?['pullRequest']?['reviewThreads']?['nodes']
-            as List<dynamic>? ??
-        [];
-    final unresolvedThreads = threads
-        .where((t) => t['isResolved'] == false)
+    final graphData = await fetchPrGraphQLData(context);
+    final unresolvedThreads = graphData.reviewThreads
+        .where((t) => !t.isResolved)
         .toList();
 
-    // 6. Fetch CI check runs.
+    // 6. Fetch CI check runs using unified checks helper.
     stdout.writeln('Fetching check runs...');
-    var failedChecks = <dynamic>[];
-    var pendingChecks = <dynamic>[];
-    try {
-      final checksOutput = await _runCommand('gh', [
-        ...repoArgs,
-        'pr',
-        'checks',
-        prNumber,
-        '--json',
-        'name,state,bucket,link,workflow',
-      ], workingDirectory: workingDir);
-      final checks = jsonDecode(checksOutput) as List<dynamic>;
-      failedChecks = checks.where((c) => c['bucket'] == 'fail').toList();
-      pendingChecks = checks.where((c) => c['bucket'] == 'pending').toList();
-    } catch (e) {
-      if (e is ProcessException && e.message.contains('no checks reported')) {
-        stdout.writeln('No checks reported for this PR.');
-      } else {
-        rethrow;
-      }
-    }
+    final checks = await fetchPrChecks(context);
+    final failedChecks = checks.where((c) => c.isFail).toList();
+    final pendingChecks = checks.where((c) => c.isPending).toList();
 
     // 7. Fetch logs for failed check runs (if they are GitHub Actions).
     final checkLogs = <String, String>{};
     for (final check in failedChecks) {
-      final link = check['link']?.toString() ?? '';
-      final checkName = check['name']?.toString() ?? 'Unknown Check';
+      final link = check.link;
+      final checkName = check.name;
       final match = RegExp(r'/actions/runs/(\d+)').firstMatch(link);
       if (match != null) {
         final runId = match.group(1)!;
@@ -173,7 +106,7 @@ void main(List<String> args) async {
           'Fetching failed logs for check "$checkName" (Run ID: $runId)...',
         );
         try {
-          final logOutput = await _runCommand('gh', [
+          final logOutput = await runCommand('gh', [
             ...repoArgs,
             'run',
             'view',
@@ -190,7 +123,7 @@ void main(List<String> args) async {
       }
     }
 
-    // 7. Generate and output the markdown report.
+    // 8. Generate and output the markdown report.
     final report = StringBuffer('''
 # PR Triage Report: #${prData['number']} - ${prData['title']}
 
@@ -209,24 +142,21 @@ void main(List<String> args) async {
     } else {
       for (var i = 0; i < unresolvedThreads.length; i++) {
         final thread = unresolvedThreads[i];
-        final commentsList =
-            thread['comments']?['nodes'] as List<dynamic>? ?? [];
+        final commentsList = thread.comments;
         if (commentsList.isEmpty) continue;
 
-        final threadId = thread['id']?.toString() ?? 'Unknown Thread';
+        final threadId = thread.id;
         final firstComment = commentsList.first;
-        final commentDbId =
-            firstComment['databaseId']?.toString() ?? 'Unknown Comment';
-        final path = firstComment['path'] ?? 'Unknown File';
-        final line =
-            firstComment['line'] ?? firstComment['originalLine'] ?? 'N/A';
-        final url = firstComment['url']?.toString() ?? '';
+        final commentDbId = firstComment.databaseId;
+        final path = firstComment.path;
+        final line = firstComment.line;
+        final url = firstComment.url;
 
         final commentsMarkdown = commentsList
             .map((comment) {
-              final author = comment['author']?['login']?.toString() ?? 'ghost';
-              final body = comment['body']?.toString() ?? '';
-              final date = comment['createdAt']?.toString() ?? '';
+              final author = comment.author;
+              final body = comment.body;
+              final date = comment.createdAt;
               return '''
 **@$author** ($date):
 > ${body.replaceAll('\n', '\n> ')}''';
@@ -250,8 +180,8 @@ $commentsMarkdown
       report.write('All checks passing! ✅\n\n');
     } else {
       for (final check in failedChecks) {
-        final name = check['name'] ?? 'Unknown Check';
-        final link = check['link'] ?? '';
+        final name = check.name;
+        final link = check.link;
         report.write('''
 ### ❌ $name
 Link: $link
@@ -269,8 +199,8 @@ ${checkLogs[name] ?? 'No logs available.'}
         '## Active/Pending Status Checks (${pendingChecks.length}) ⏳\n\n',
       );
       for (final check in pendingChecks) {
-        final name = check['name'] ?? 'Unknown Check';
-        final link = check['link'] ?? '';
+        final name = check.name;
+        final link = check.link;
         report.write('- ⏳ **$name**: [Inspect Check Run]($link)\n');
       }
       report.write('\n');
@@ -283,29 +213,6 @@ ${checkLogs[name] ?? 'No logs available.'}
     stderr.writeln(stack);
     exit(1);
   }
-}
-
-Future<String> _runCommand(
-  String executable,
-  List<String> arguments, {
-  String? workingDirectory,
-}) async {
-  final result = await Process.run(
-    executable,
-    arguments,
-    workingDirectory: workingDirectory,
-    stdoutEncoding: utf8,
-    stderrEncoding: utf8,
-  );
-  if (result.exitCode != 0) {
-    throw ProcessException(
-      executable,
-      arguments,
-      result.stderr.toString(),
-      result.exitCode,
-    );
-  }
-  return result.stdout.toString();
 }
 
 String _truncateLog(String log) {
