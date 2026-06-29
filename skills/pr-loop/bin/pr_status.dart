@@ -58,13 +58,13 @@ void main(List<String> args) async {
     query($owner: String!, $repo: String!, $pr: Int!) {
       repository(owner: $owner, name: $repo) {
         pullRequest(number: $pr) {
-          comments(last: 10) {
+          comments(last: 100) {
             nodes {
               body
               createdAt
             }
           }
-          reviews(last: 10) {
+          reviews(last: 100) {
             nodes {
               author { login }
               submittedAt
@@ -154,11 +154,11 @@ void main(List<String> args) async {
             }
           }
 
-          if (lastReviewRequestTime != null) {
-            if (lastBotReviewTime == null ||
-                lastReviewRequestTime.isAfter(lastBotReviewTime)) {
-              hasActiveEyesReaction = true;
-            }
+          if (lastBotReviewTime == null) {
+            hasActiveEyesReaction = true;
+          } else if (lastReviewRequestTime != null &&
+              lastReviewRequestTime.isAfter(lastBotReviewTime)) {
+            hasActiveEyesReaction = true;
           }
 
           final reviewThreads = prData['reviewThreads'];
