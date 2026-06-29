@@ -41,8 +41,8 @@ Examples of trigger phrases:
 
 ### 2. Direct Chat Output (NO Artifacts)
 - **Put the answer in the answer box**: Do NOT create artifacts (`.md` files in
-  the brain directory) for quick questions. Deliver the response inline
-  directly to the user.
+  the conversation artifacts directory) for quick questions. Deliver the
+  response inline directly to the user.
 
 ### 3. Conciseness & Structure
 - **Brief TL;DR**: Always lead with a very brief TL;DR or direct answer.

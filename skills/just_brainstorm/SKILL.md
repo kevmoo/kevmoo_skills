@@ -39,8 +39,8 @@ Examples of trigger phrases:
 
 ### 2. Mandatory Artifact Generation
 - The output of this skill **MUST be saved as an artifact** (`.md` file in the
-  conversation artifacts directory) so the user can easily review, share, and
-  comment on specific sections.
+  conversation artifacts directory using the `write_to_file` tool) so the user
+  can easily review, share, and comment on specific sections.
 - Format the artifact clearly with headers, options tables, and pros/cons
   breakdowns.
 
