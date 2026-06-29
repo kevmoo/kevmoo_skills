@@ -1,6 +1,10 @@
 ---
 name: sem-semantic-diff
 description: Use the `sem` CLI to view semantic codebase diffs, evaluate dependency graphs, perform impact analysis, and investigate code history without formatting noise. Use instead of standard git diff/log when analyzing structural code changes.
+key_features:
+  - Semantic diffs
+  - impact analysis
+  - dependency graphs
 ---
 
 # `sem` Semantic Diff Skill
@@ -27,7 +31,7 @@ Many `sem` commands require an `<entity_name>`. You can discover the exact names
    Use `sem entities [PATH]` to see all parsed functions, classes, and types in a specific file or directory.
    ```bash
    sem entities src/utils.ts
-   
+
    # For agentic/programmatic parsing:
    sem entities src/utils.ts --format json
    ```

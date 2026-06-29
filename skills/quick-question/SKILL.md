@@ -1,9 +1,14 @@
 ---
-name: quick_question
+name: quick-question
 description: |-
   Provide ultra-concise, direct technical answers and rapid clarifications
   without heavy overhead, deep research loops, or artifact generation. (Triggers
   on "quick question" or "qq")
+key_features:
+  - Concise Q&A
+  - rapid clarification
+  - Inline answers (no artifacts)
+  - Read-only guidance
 ---
 
 ## When to use this skill

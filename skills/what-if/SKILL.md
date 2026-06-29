@@ -1,8 +1,13 @@
 ---
-name: what_if
+name: what-if
 description: |-
   Perform "what-if" scenario analysis and impact evaluations for proposed
   codebase changes, migrations, or architectural shifts.
+key_features:
+  - What-if analysis
+  - Codebase metric gathering
+  - impact evaluation
+  - risk assessment
 ---
 
 ## When to use this skill

@@ -3,6 +3,10 @@ name: encapsulated-method-object
 description: |-
   Apply the "Encapsulated Method Object" refactoring pattern to simplify functions with deeply nested scopes, bloated closures, and heavy shared local state.
 license: Apache-2.0
+key_features:
+  - Method Object extraction
+  - class-based encapsulation
+  - Closure refactoring
 ---
 
 ## 1. When to use this skill
@@ -121,7 +125,7 @@ Result processOrder(Order order, User user, PaymentDetails payment) {
 **After: Encapsulated Method Object (Facade + Private Runner)**
 ```dart
 // The Facade (Original API signature preserved)
-Result processOrder(Order order, User user, PaymentDetails payment) => 
+Result processOrder(Order order, User user, PaymentDetails payment) =>
     _ProcessOrderRunner(order, user, payment).run();
 
 // The Method Object (Private to the file/library)

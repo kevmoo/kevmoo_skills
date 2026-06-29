@@ -2,6 +2,11 @@
 name: gerrit-stacked-cls
 description: |-
   Best practices for managing stacked changelists (CLs) in Gerrit using depot_tools, avoiding common pitfalls with Change-Ids.
+key_features:
+  - Stacked CLs
+  - Gerrit
+  - depot_tools
+  - Change-Ids
 ---
 
 ## 1. When to use this skill
