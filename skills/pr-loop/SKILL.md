@@ -4,6 +4,7 @@ description: >-
   Autonomous pull request review loop that pushes code, polls for AI/bot review
   comments (e.g., Gemini Code Assist), surgically remediates feedback, commits,
   pushes, comments `/gemini review`, and loops until zero feedback remains.
+  Requires the `github-pr-triage` skill.
 ---
 
 # Autonomous PR Review Loop (`pr-loop`)
@@ -11,6 +12,11 @@ description: >-
 This skill defines the autonomous loop pattern for pair programming with an
 automated AI code review bot (such as `gemini-code-assist`,
 `gemini-code-review`, or similar PR review agents).
+
+## 📦 Prerequisites & Skill Dependencies
+- **REQUIRED SKILL**: `github-pr-triage` MUST be installed alongside `pr-loop`.
+- `pr-loop` directly depends on binaries, scripts, and rule definitions provided
+  by `github-pr-triage` (including `triage.dart` and `github_cli.dart`).
 
 ## When to use this skill
 - Use this skill when asked to get into a review loop with an AI review agent on
