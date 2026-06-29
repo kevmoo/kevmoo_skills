@@ -1,8 +1,8 @@
 ---
 name: markdown-long-lines
 description: |-
-  Ensure markdown prose lines wrap within 80 columns, excluding code blocks
-  and URLs.
+  Ensure markdown prose lines wrap within 80 columns, excluding code blocks,
+  URLs, and tables.
 license: Apache-2.0
 ---
 
