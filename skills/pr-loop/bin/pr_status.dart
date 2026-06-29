@@ -50,8 +50,8 @@ void main(List<String> args) async {
 
       DateTime? lastBotReviewTime;
       for (final review in graphData.reviews) {
-        if (review.author == 'gemini-code-assist' ||
-            review.author == 'gemini-code-review') {
+        if (review.author.startsWith('gemini-code-assist') ||
+            review.author.startsWith('gemini-code-review')) {
           final dt = DateTime.tryParse(review.submittedAt);
           if (dt != null &&
               (lastBotReviewTime == null || dt.isAfter(lastBotReviewTime))) {
