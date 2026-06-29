@@ -108,16 +108,15 @@ which are bypassed in favor of autonomous execution):
     `👎 Disagree`).
   * Exercise **Empirical Skepticism** using `dart analyze` and `dart test`.
   * **Proactively write automated tests** for reviewer-requested behavior.
+* **Pragmatic Complexity & Anti-Overengineering Guardrail**:
+  Before implementing structural refactorings suggested by automated bots (e.g. creating new classes/structs, adding caching maps, or rearranging working data flows), evaluate the file's scope and scale. If a suggestion adds boilerplate ceremony or premature optimization for small-scale scripts or internal build utilities, classify it as `🤷 Meh` / overengineering. Reject it using `👎 Disagree` with technical rationale: `"Deferring structural refactoring; existing implementation is pragmatically optimal for script scope."`
 * **Loop Convergence Protocol (Progressive Criticality Ramp)**:
   To prevent infinite spinning where new diffs generate endless feedback,
   the agent MUST track its iteration count (e.g. by counting `fix(review):`
   commits in `git log origin/main..HEAD`) and apply its OWN evaluation:
-  * **Passes 1–3 (Full Ingestion)**: Eagerly address `🔥 Urgent` and
-    `👍 Solid` suggestions.
-  * **Passes 4–6 (Strict Relevance Filter)**: Reject and resolve optional
-    `🤷 Meh` nitpicks or phrasing proposals using `👎 Disagree` to allow early
-    loop convergence. Only implement clear functional improvements.
-  * **Passes 7+ (Blockers Only / Force Convergence)**: Address ONLY `🔥 Urgent`
+  * **Pass 1 (Full Ingestion)**: Address `🔥 Urgent` bugs and `👍 Solid` functional improvements.
+  * **Passes 2–5 (Strict Relevance Filter)**: Reject optional `🤷 Meh` nitpicks, micro-optimizations, or syntactic alternative cascades (such as switching `!= null` checks to `isNotEmpty` or minor variable renamings) using `👎 Disagree`. Only implement clear, essential bug fixes or safety improvements.
+  * **Passes 6+ (Blockers Only / Force Convergence)**: Address ONLY `🔥 Urgent`
     blockers (bugs, compiler errors, analyzer warnings, security risks). For
     any optional refactorings or stylistic suggestions, reject them using
     `👎 Disagree` with rationale:
