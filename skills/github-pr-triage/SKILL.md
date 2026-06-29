@@ -3,6 +3,10 @@ name: github-pr-triage
 description: |-
   Triage open PR comments/reviews and associated CI/CD workflow failures using
   the `triage.dart` helper script and formulate an actionable plan.
+key_features:
+  - Review feedback triaging
+  - CI log extraction
+  - Action plan generation
 ---
 
 ## When to use this skill
@@ -105,7 +109,7 @@ description: |-
        comment(s) or CI failure(s), including direct markdown links back to the
        comments/checks on GitHub. When linking to comments, use a descriptive
        link that includes both the comment number and the GitHub username of the
-       reviewer (e.g. `[Comment #1 by @reviewer_username](url)`).
+       reviewer (e.g. `[Comment #1 by @reviewer_username](#)`).
      - **Thread & Comment Identifiers (For Comments)**: Explicitly preserve the
        `Thread ID` (e.g. `PRRT_...`) and `Comment ID` (e.g. `3438780787`) from
        the comment header in `raw_triage_output.md` under each action item so

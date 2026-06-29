@@ -5,6 +5,11 @@ description: >-
   comments (e.g., Gemini Code Assist), surgically remediates feedback, commits,
   pushes, comments `/gemini review`, and loops until zero feedback remains.
   Requires the `github-pr-triage` skill.
+key_features:
+  - PR review loop
+  - autonomous iteration
+  - Review comment polling
+  - Automated feedback remediation
 ---
 
 # Autonomous PR Review Loop (`pr-loop`)
@@ -47,7 +52,7 @@ automated AI code review bot (such as `gemini-code-assist`,
 
 ## 🏗️ Architectural Relationship & Rule Inheritance
 This skill functions as an autonomous, multi-pass loop wrapper around the core
-triage capabilities defined in the `github-pr-triage` skill. 
+triage capabilities defined in the `github-pr-triage` skill.
 
 **MANDATORY RULE DELEGATION**: `pr-loop` strictly inherits and follows ALL
 rules, mindsets, and protocols defined in `github-pr-triage` to the letter

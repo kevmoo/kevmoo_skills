@@ -4,6 +4,10 @@ description: |-
   Ensure markdown prose lines wrap within 80 columns, excluding code blocks,
   URLs, and tables.
 license: Apache-2.0
+key_features:
+  - Markdown formatting
+  - 80-column line wrapping
+  - Formatting exclusions
 ---
 
 ## 1. When to use this skill

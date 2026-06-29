@@ -1,7 +1,10 @@
 ---
 name: gob-curl
 description: |-
-  Use gob-curl to inspect the status of a changelist (CL) on Gerrit.
+  Use gob-curl and Buildbucket tools to inspect the status, tryjobs, and CI results of a Gerrit CL.
+key_features:
+  - Gerrit CL inspection
+  - Buildbucket tryjob inspection
 ---
 
 ## When to use this skill
@@ -16,7 +19,7 @@ Use the `run_command` tool to execute `gob-curl` against the Gerrit REST API
 endpoints.
 
 **CRITICAL RULE:**
-*   You MUST ONLY do `GET` requests. 
+*   You MUST ONLY do `GET` requests.
 *   Do NOT attempt to `POST`, `PUT`, or `DELETE` anything.
 
 ### Forming the URL
@@ -126,6 +129,6 @@ Check the `messages` array for the most recent status updates from CI bots
     avoid zsh issues with query parameters and special characters.
 *   The output format starts with a magic string `)]}'\n`. Be prepared to handle
     or strip this when parsing the JSON output if you are scripting it (though
-    `gob-curl` often prints it as is, and you can just read past it). 
+    `gob-curl` often prints it as is, and you can just read past it).
 *   Review the `messages` array in the change detail or the output of `comments`
     to identify specific feedback you need to address in the code.

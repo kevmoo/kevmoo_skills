@@ -1,25 +1,23 @@
-<p align="center">
-  <img src="https://raw.githubusercontent.com/dart-lang/site-shared/master/src/_assets/image/flutter/icon/64.png" alt="Banner" width="100">
-  <br>
-  <a href="https://dart.dev"><img src="https://img.shields.io/badge/Language-Dart-0175C2.svg" alt="Dart"></a>
-  <a href="https://flutter.dev"><img src="https://img.shields.io/badge/Framework-Flutter-02569B.svg" alt="Flutter"></a>
-  <a href="https://agentskills.io"><img src="https://img.shields.io/badge/Compliance-Standard%20Agent%20Skills-brightgreen.svg" alt="Standard Agent Skills"></a>
-</p>
+<a href="https://agentskills.io"><img src="https://img.shields.io/badge/Compliance-Standard%20Agent%20Skills-brightgreen.svg" alt="Standard Agent Skills"></a>
 
-# kevmoo_skills
 
 This is my personal repository for specialized **Agent Skills**. These skills provide
 procedural, actionable instructions to AI assistants for specific domains or tasks.
 
 ## Skills Inventory
 
+<!-- SKILLS_LIST_START -->
 | Skill | Description | Key Features |
 |-------|-------------|--------------|
-| **[markdown-long-lines](skills/markdown-long-lines/SKILL.md)** | Ensure markdown prose lines wrap within 80 columns, excluding code blocks, URLs, and tables. | Markdown formatting, 80-column line wrapping, exception handling |
-| **[encapsulated-method-object](skills/encapsulated-method-object/SKILL.md)** | Simplify functions with bloated closures, nested scopes, and shared state using the Encapsulated Method Object pattern. | Refactoring, class-based encapsulation, bloated closures |
-| **[gerrit-stacked-cls](skills/gerrit-stacked-cls/SKILL.md)** | Manage stacked changelists (CLs) in Gerrit. | Stacked CLs, Gerrit, depot_tools, Change-Ids |
-| **[gob-curl](skills/gob-curl/SKILL.md)** | Inspect the status of a Gerrit CL. | Gerrit CL inspection, CI results |
-| **[github-pr-triage](skills/github-pr-triage/SKILL.md)** | Triage PR comments and CI failures. | Unresolved comments, CI log extraction, triage plan |
-| **[sem-semantic-diff](skills/sem-semantic-diff/SKILL.md)** | Use the `sem` CLI to view semantic codebase diffs. | Semantic diffs, impact analysis, dependency graphs |
-| **[pr-loop](skills/pr-loop/SKILL.md)** | Autonomous pull request review loop that polls for reviews and remediates feedback. | PR review loop, autonomous iteration, polling, feedback remediation |
+| **[encapsulated-method-object](skills/encapsulated-method-object/SKILL.md)** | Apply the "Encapsulated Method Object" refactoring pattern to simplify functions with deeply nested scopes, bloated closures, and heavy shared local state. | Method Object extraction, class-based encapsulation, Closure refactoring |
+| **[gerrit-stacked-cls](skills/gerrit-stacked-cls/SKILL.md)** | Best practices for managing stacked changelists (CLs) in Gerrit using depot_tools, avoiding common pitfalls with Change-Ids. | Stacked CLs, Gerrit, depot_tools, Change-Ids |
+| **[github-pr-triage](skills/github-pr-triage/SKILL.md)** | Triage open PR comments/reviews and associated CI/CD workflow failures using the `triage.dart` helper script and formulate an actionable plan. | Review feedback triaging, CI log extraction, Action plan generation |
+| **[gob-curl](skills/gob-curl/SKILL.md)** | Use gob-curl and Buildbucket tools to inspect the status, tryjobs, and CI results of a Gerrit CL. | Gerrit CL inspection, Buildbucket tryjob inspection |
+| **[just-brainstorm](skills/just-brainstorm/SKILL.md)** | Brainstorm architectural designs, explore potential solutions, and weigh implementation tradeoffs collaboratively without making code changes. | Architectural design, trade-off evaluation, Design requirement clarification, Non-destructive exploration |
+| **[markdown-long-lines](skills/markdown-long-lines/SKILL.md)** | Ensure markdown prose lines wrap within 80 columns, excluding code blocks, URLs, and tables. | Markdown formatting, 80-column line wrapping, Formatting exclusions |
+| **[pr-loop](skills/pr-loop/SKILL.md)** | Autonomous pull request review loop that pushes code, polls for AI/bot review comments (e.g., Gemini Code Assist), surgically remediates feedback, commits, pushes, comments `/gemini review`, and loops until zero feedback remains. Requires the `github-pr-triage` skill. | PR review loop, autonomous iteration, Review comment polling, Automated feedback remediation |
+| **[quick-question](skills/quick-question/SKILL.md)** | Provide ultra-concise, direct technical answers and rapid clarifications without heavy overhead, deep research loops, or artifact generation. (Triggers on "quick question" or "qq") | Concise Q&A, rapid clarification, Inline answers (no artifacts), Read-only guidance |
+| **[sem-semantic-diff](skills/sem-semantic-diff/SKILL.md)** | Use the `sem` CLI to view semantic codebase diffs, evaluate dependency graphs, perform impact analysis, and investigate code history without formatting noise. Use instead of standard git diff/log when analyzing structural code changes. | Semantic diffs, impact analysis, dependency graphs |
+| **[what-if](skills/what-if/SKILL.md)** | Perform "what-if" scenario analysis and impact evaluations for proposed codebase changes, migrations, or architectural shifts. | What-if analysis, Codebase metric gathering, impact evaluation, risk assessment |
+<!-- SKILLS_LIST_END -->
 

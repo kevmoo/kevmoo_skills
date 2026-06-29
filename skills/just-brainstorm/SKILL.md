@@ -1,8 +1,13 @@
 ---
-name: just_brainstorm
+name: just-brainstorm
 description: |-
   Brainstorm architectural designs, explore potential solutions, and weigh
   implementation tradeoffs collaboratively without making code changes.
+key_features:
+  - Architectural design
+  - trade-off evaluation
+  - Design requirement clarification
+  - Non-destructive exploration
 ---
 
 ## When to use this skill
