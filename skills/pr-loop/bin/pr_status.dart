@@ -58,22 +58,21 @@ void main(List<String> args) async {
     query($owner: String!, $repo: String!, $pr: Int!) {
       repository(owner: $owner, name: $repo) {
         pullRequest(number: $pr) {
-          reactionGroups {
-            content
-            users { totalCount }
+          comments(last: 10) {
+            nodes {
+              body
+              createdAt
+            }
+          }
+          reviews(last: 10) {
+            nodes {
+              author { login }
+              submittedAt
+            }
           }
           reviewThreads(first: 100) {
             nodes {
               isResolved
-              comments(first: 50) {
-                nodes {
-                  author { login }
-                  reactionGroups {
-                    content
-                    users { totalCount }
-                  }
-                }
-              }
             }
           }
         }
@@ -108,8 +107,58 @@ void main(List<String> args) async {
         final repository = data is Map ? data['repository'] : null;
         final prData = repository is Map ? repository['pullRequest'] : null;
         if (prData is Map) {
-          if (_hasEyesReaction(prData)) {
-            hasActiveEyesReaction = true;
+          // Determine if a review pass is currently in progress.
+          DateTime? lastReviewRequestTime;
+          final commentsObj = prData['comments'];
+          final rawComments = commentsObj is Map ? commentsObj['nodes'] : null;
+          final comments = rawComments is List<dynamic>
+              ? rawComments
+              : const [];
+          for (final comment in comments) {
+            if (comment is Map) {
+              final body = comment['body']?.toString() ?? '';
+              if (body.contains('/gemini review')) {
+                final createdAtStr = comment['createdAt']?.toString();
+                if (createdAtStr != null) {
+                  final dt = DateTime.tryParse(createdAtStr);
+                  if (dt != null &&
+                      (lastReviewRequestTime == null ||
+                          dt.isAfter(lastReviewRequestTime))) {
+                    lastReviewRequestTime = dt;
+                  }
+                }
+              }
+            }
+          }
+
+          DateTime? lastBotReviewTime;
+          final reviewsObj = prData['reviews'];
+          final rawReviews = reviewsObj is Map ? reviewsObj['nodes'] : null;
+          final reviews = rawReviews is List<dynamic> ? rawReviews : const [];
+          for (final review in reviews) {
+            if (review is Map) {
+              final author = review['author'];
+              final login = author is Map ? author['login']?.toString() : '';
+              if (login == 'gemini-code-assist' ||
+                  login == 'gemini-code-review') {
+                final submittedAtStr = review['submittedAt']?.toString();
+                if (submittedAtStr != null) {
+                  final dt = DateTime.tryParse(submittedAtStr);
+                  if (dt != null &&
+                      (lastBotReviewTime == null ||
+                          dt.isAfter(lastBotReviewTime))) {
+                    lastBotReviewTime = dt;
+                  }
+                }
+              }
+            }
+          }
+
+          if (lastReviewRequestTime != null) {
+            if (lastBotReviewTime == null ||
+                lastReviewRequestTime.isAfter(lastBotReviewTime)) {
+              hasActiveEyesReaction = true;
+            }
           }
 
           final reviewThreads = prData['reviewThreads'];
@@ -122,18 +171,6 @@ void main(List<String> args) async {
           for (final thread in threads) {
             if (thread is Map && thread['isResolved'] == false) {
               unresolvedThreadsCount++;
-              final commentsObj = thread['comments'];
-              final rawComments = commentsObj is Map
-                  ? commentsObj['nodes']
-                  : null;
-              final comments = rawComments is List<dynamic>
-                  ? rawComments
-                  : const <dynamic>[];
-              for (final comment in comments) {
-                if (_hasEyesReaction(comment)) {
-                  hasActiveEyesReaction = true;
-                }
-              }
             }
           }
         } else {
@@ -190,24 +227,6 @@ void main(List<String> args) async {
     stdout.writeln(const JsonEncoder.withIndent('  ').convert(output));
     exit(1);
   }
-}
-
-bool _hasEyesReaction(dynamic comment) {
-  if (comment is! Map) return false;
-  final reactionGroups = comment['reactionGroups'];
-  if (reactionGroups is! List) return false;
-  for (final group in reactionGroups) {
-    if (group is Map && group['content'] == 'EYES') {
-      final users = group['users'];
-      if (users is Map) {
-        final totalCount = users['totalCount'];
-        if (totalCount is int && totalCount > 0) {
-          return true;
-        }
-      }
-    }
-  }
-  return false;
 }
 
 Never _fail(String message) {

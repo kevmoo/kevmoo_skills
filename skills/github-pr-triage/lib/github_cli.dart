@@ -28,6 +28,8 @@ Future<String> runCommand(
     command,
     args,
     workingDirectory: workingDirectory,
+    stdoutEncoding: utf8,
+    stderrEncoding: utf8,
   );
   if (result.exitCode != 0) {
     throw ProcessException(

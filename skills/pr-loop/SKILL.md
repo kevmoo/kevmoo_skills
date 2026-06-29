@@ -159,8 +159,7 @@ which are bypassed in favor of autonomous execution):
   1. **Post Reply Comment**: Call the REST API reply endpoint using the numeric
      comment `databaseId`:
      ```bash
-     gh api repos/<owner>/<repo>/pulls/<pr_number>/comments/<comment_id>/replies \
-       -f body="<your concise explanation>"
+     gh api repos/<owner>/<repo>/pulls/<pr_number>/comments/<comment_id>/replies -f body="<your concise explanation>"
      ```
   2. **Resolve Thread**: Call the GraphQL mutation using the thread `id`
      (`PRRT_...`):
