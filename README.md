@@ -15,7 +15,7 @@ procedural, actionable instructions to AI assistants for specific domains or tas
 
 | Skill | Description | Key Features |
 |-------|-------------|--------------|
-| **[kevmoo-skills](skills/kevmoo-skills/SKILL.md)** | Personal preferences and common workflows. | Workflow automation, personal preferences |
+| **[markdown-long-lines](skills/markdown-long-lines/SKILL.md)** | Ensure markdown prose lines wrap within 80 columns, excluding code blocks, URLs, and tables. | Markdown formatting, 80-column line wrapping, exception handling |
 | **[encapsulated-method-object](skills/encapsulated-method-object/SKILL.md)** | Simplify functions with bloated closures, nested scopes, and shared state using the Encapsulated Method Object pattern. | Refactoring, class-based encapsulation, bloated closures |
 | **[gerrit-stacked-cls](skills/gerrit-stacked-cls/SKILL.md)** | Manage stacked changelists (CLs) in Gerrit. | Stacked CLs, Gerrit, depot_tools, Change-Ids |
 | **[gob-curl](skills/gob-curl/SKILL.md)** | Inspect the status of a Gerrit CL. | Gerrit CL inspection, CI results |
