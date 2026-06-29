@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import '../../github-pr-triage/lib/github_cli.dart';
+
 /// Main entry point for the PR status verification tool (`pr_status.dart`).
 ///
 /// Deterministically checks whether a PR is clean and ready for loop termination by verifying:
@@ -9,124 +11,11 @@ import 'dart:io';
 /// 3. No review bot has an active `EYES` (👀) reaction on recent review comments or threads.
 void main(List<String> args) async {
   try {
-    String? prInput;
-    String? targetDir;
-    for (var i = 0; i < args.length; i++) {
-      final arg = args[i];
-      if (arg == '--pr' || arg == '-p') {
-        if (i + 1 < args.length) {
-          prInput = args[++i];
-        } else {
-          _fail('Missing value for option "$arg"');
-        }
-      } else if (arg == '--dir' || arg == '-C') {
-        if (i + 1 < args.length) {
-          targetDir = args[++i];
-        } else {
-          _fail('Missing value for option "$arg"');
-        }
-      } else if (arg.startsWith('-')) {
-        _fail('Unknown option "$arg"');
-      } else {
-        prInput = arg;
-      }
-    }
-
-    final workingDir = targetDir != null
-        ? Directory(targetDir).absolute.path
-        : Directory.current.absolute.path;
-    if (!await Directory(workingDir).exists()) {
-      _fail('Target directory "$workingDir" does not exist.');
-    }
-
-    String? prNumber;
-    String? owner;
-    String? repo;
-
-    if (prInput != null) {
-      final prUrlMatch = RegExp(
-        r'github\.com/([^/]+)/([^/]+)/pull/(\d+)',
-      ).firstMatch(prInput);
-      if (prUrlMatch != null) {
-        owner = prUrlMatch.group(1);
-        repo = prUrlMatch.group(2);
-        prNumber = prUrlMatch.group(3);
-      } else if (RegExp(r'^\d+$').hasMatch(prInput)) {
-        prNumber = prInput;
-      } else {
-        _fail(
-          'Invalid PR argument. Please provide a PR number or a GitHub PR URL.',
-        );
-      }
-    }
-
-    // Auto-detect PR from current branch if not provided.
-    if (prNumber == null) {
-      String branch;
-      try {
-        branch = (await _runCommand('git', [
-          'symbolic-ref',
-          '--short',
-          'HEAD',
-        ], workingDirectory: workingDir)).trim();
-      } catch (_) {
-        branch = '';
-      }
-      if (branch.isEmpty || branch == 'main' || branch == 'master') {
-        _fail(
-          'Active branch is ${branch.isEmpty ? 'detached HEAD' : '"$branch"'}. Please specify a target PR number or URL.',
-        );
-      }
-
-      final listOutput = await _runCommand('gh', [
-        'pr',
-        'list',
-        '--head',
-        branch,
-        '--json',
-        'number,url',
-      ], workingDirectory: workingDir);
-      final decoded = jsonDecode(listOutput);
-      if (decoded is! List || decoded.isEmpty) {
-        _fail(
-          'No open PR found for branch "$branch". Please specify a PR number or URL.',
-        );
-      }
-      final firstPr = decoded[0];
-      if (firstPr is! Map || firstPr['number'] == null) {
-        _fail('Unexpected PR data format from "gh pr list".');
-      }
-      prNumber = firstPr['number'].toString();
-    }
-
-    // Resolve owner and repo for context if not already parsed.
-    String? localOwner;
-    String? localRepo;
-    if (owner == null || repo == null) {
-      try {
-        final repoOutput = await _runCommand('gh', [
-          'repo',
-          'view',
-          '--json',
-          'owner,name',
-        ], workingDirectory: workingDir);
-        final repoData = jsonDecode(repoOutput) as Map<String, dynamic>;
-        final ownerData = repoData['owner'];
-        if (ownerData is Map) {
-          localOwner = ownerData['login']?.toString();
-        }
-        localRepo = repoData['name']?.toString();
-      } catch (_) {}
-    }
-
-    if (owner == null || repo == null) {
-      owner = localOwner;
-      repo = localRepo;
-    }
-
-    if (owner == null || repo == null) {
-      _fail('Could not resolve GitHub repository owner or name.');
-    }
+    final context = await resolvePrContext(args, onFail: _fail);
+    final workingDir = context.workingDir;
+    final prNumber = context.prNumber;
+    final owner = context.owner;
+    final repo = context.repo;
 
     final repoArgs = ['-R', '$owner/$repo'];
 

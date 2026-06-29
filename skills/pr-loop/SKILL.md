@@ -78,8 +78,7 @@ which are bypassed in favor of autonomous execution):
   * **Initial Push**: Set `DurationSeconds=180` (3 minutes) to allow initial bot
     ingestion.
   * **Subsequent Pushes**: Set `DurationSeconds=120` (2 minutes).
-  * **Prompt**: `"Poll PR #<number> via gh pr view <number> --json comments."`
-    `" Check if gemini-code-assist posted review feedback on commit <sha>."`
+  * **Prompt**: `"Poll PR #<number> via gh pr view <number> --json comments. Check if gemini-code-assist posted review feedback on commit <sha>."`
 * **CRITICAL IDLE PROTOCOL**: Immediately after calling `schedule`, output a
   concise visible status update to the user and **STOP calling tools**. You must
   go idle to allow the background timer task to tick.
@@ -123,8 +122,7 @@ which are bypassed in favor of autonomous execution):
   data flows), evaluate the file's scope and scale. If a suggestion adds
   boilerplate ceremony or premature optimization for small-scale scripts or
   internal build utilities, classify it as `🤷 Meh` / overengineering. Reject
-  it using `👎 Disagree` with technical rationale: `"Deferring structural"`
-  `"refactoring; existing implementation is pragmatically optimal."`
+  it using `👎 Disagree` with technical rationale: `"Deferring structural refactoring; existing implementation is pragmatically optimal."`
 * **Loop Convergence Protocol (Progressive Criticality Ramp)**:
   To prevent infinite spinning where new diffs generate endless feedback,
   the agent MUST track its iteration count (e.g. by counting `fix(review):`
@@ -140,8 +138,7 @@ which are bypassed in favor of autonomous execution):
     Address ONLY `🔥 Urgent` blockers (bugs, compiler errors, analyzer
     warnings, security risks). For any optional refactorings or stylistic
     suggestions, reject them using `👎 Disagree` with rationale:
-    `"Deferring optional suggestion to maintain loop"`
-    `"convergence; code verified."`
+    `"Deferring optional suggestion to maintain loop convergence; code verified."`
   * **Max Loop Circuit-Breaker**: Cap execution at 10 iterations max.
 * Surgically apply verified fixes (including newly created test files) and
   verify clean local quality gates.
@@ -162,14 +159,19 @@ which are bypassed in favor of autonomous execution):
   1. **Post Reply Comment**: Call the REST API reply endpoint using the numeric
      comment `databaseId`:
      ```bash
-     gh api repos/<owner>/<repo>/pulls/<pr_number>/comments/\
-       <comment_id>/replies -f body="<your concise explanation>"
+     gh api repos/<owner>/<repo>/pulls/<pr_number>/comments/<comment_id>/replies \
+       -f body="<your concise explanation>"
      ```
   2. **Resolve Thread**: Call the GraphQL mutation using the thread `id`
      (`PRRT_...`):
      ```bash
-     gh api graphql -f query='mutation { resolveReviewThread(input: '\
-       '{threadId: "<thread_id>"}) { thread { isResolved } } }'
+     gh api graphql -f query='
+       mutation {
+         resolveReviewThread(input: {threadId: "<thread_id>"}) {
+           thread { isResolved }
+         }
+       }
+     '
      ```
 
 ### 6. Trigger Subsequent Review Pass

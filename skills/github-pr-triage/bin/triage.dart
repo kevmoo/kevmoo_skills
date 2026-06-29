@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import '../lib/github_cli.dart';
+
 /// Main entry point for the PR triage tool.
 ///
 /// This script retrieves the status, unresolved review comments, and CI check
@@ -29,157 +31,17 @@ import 'dart:io';
 /// 8. **Report Generation**: Consolidates the results into a markdown format printed to stdout.
 void main(List<String> args) async {
   try {
-    // 1. Parse CLI arguments.
-    String? prInput;
-    String? targetDir;
-    for (var i = 0; i < args.length; i++) {
-      final arg = args[i];
-      if (arg == '--pr' || arg == '-p') {
-        if (i + 1 < args.length) {
-          prInput = args[i + 1];
-          i++;
-        } else {
-          stderr.writeln('Error: Missing value for option "$arg"');
-          exit(1);
-        }
-      } else if (arg == '--dir' || arg == '-C') {
-        if (i + 1 < args.length) {
-          targetDir = args[i + 1];
-          i++;
-        } else {
-          stderr.writeln('Error: Missing value for option "$arg"');
-          exit(1);
-        }
-      } else if (arg.startsWith('-')) {
-        stderr.writeln('Error: Unknown option "$arg"');
+    final context = await resolvePrContext(
+      args,
+      onFail: (msg) {
+        stderr.writeln('Error: $msg');
         exit(1);
-      } else {
-        prInput = arg;
-      }
-    }
-
-    final workingDir = targetDir != null
-        ? Directory(targetDir).absolute.path
-        : Directory.current.absolute.path;
-    if (!await Directory(workingDir).exists()) {
-      stderr.writeln('Error: Target directory "$workingDir" does not exist.');
-      exit(1);
-    }
-
-    String? prNumber;
-    String? owner;
-    String? repo;
-
-    if (prInput != null) {
-      final prUrlMatch = RegExp(
-        r'github\.com/([^/]+)/([^/]+)/pull/(\d+)',
-      ).firstMatch(prInput);
-      if (prUrlMatch != null) {
-        owner = prUrlMatch.group(1);
-        repo = prUrlMatch.group(2);
-        prNumber = prUrlMatch.group(3);
-      } else if (RegExp(r'^\d+$').hasMatch(prInput)) {
-        prNumber = prInput;
-      } else {
-        stderr.writeln(
-          'Invalid PR argument. Please provide a PR number or a GitHub PR URL.',
-        );
-        exit(1);
-      }
-    }
-
-    // 2. Auto-detect PR from current branch if not provided.
-    if (prNumber == null) {
-      String branch;
-      try {
-        branch = (await _runCommand('git', [
-          'symbolic-ref',
-          '--short',
-          'HEAD',
-        ], workingDirectory: workingDir)).trim();
-      } catch (_) {
-        branch = '';
-      }
-      if (branch.isEmpty || branch == 'main' || branch == 'master') {
-        stderr.writeln(
-          'Active branch is ${branch.isEmpty ? 'detached HEAD' : '"$branch"'}. Please specify a target PR number or URL.',
-        );
-        exit(1);
-      }
-
-      final listOutput = await _runCommand('gh', [
-        'pr',
-        'list',
-        '--head',
-        branch,
-        '--json',
-        'number,url',
-      ], workingDirectory: workingDir);
-      final decodedList = jsonDecode(listOutput);
-      final listJson = decodedList is List<dynamic> ? decodedList : const [];
-      if (listJson.isEmpty) {
-        stderr.writeln(
-          'Error: Ambiguous context. No open PR found for branch "$branch". '
-          'Do not guess. Please explicitly ask the user for a PR number or URL.',
-        );
-        exit(1);
-      }
-      if (listJson.length > 1) {
-        stderr.writeln(
-          'Error: Ambiguous context. Multiple open PRs found for branch "$branch". '
-          'Do not guess. Please explicitly ask the user which PR number or URL to target.',
-        );
-        exit(1);
-      }
-      final firstPr = listJson[0];
-      if (firstPr is! Map || firstPr['number'] == null) {
-        stderr.writeln('Error: Unexpected PR data format from "gh pr list".');
-        exit(1);
-      }
-      prNumber = firstPr['number'].toString();
-    }
-
-    // 3. Resolve owner and repo for context.
-    // 3. Resolve owner and repo for context.
-    String? localOwner;
-    String? localRepo;
-    try {
-      final repoOutput = await _runCommand('gh', [
-        'repo',
-        'view',
-        '--json',
-        'owner,name',
-      ], workingDirectory: workingDir);
-      final repoData = jsonDecode(repoOutput) as Map<String, dynamic>;
-      final ownerData = repoData['owner'];
-      if (ownerData is Map) {
-        localOwner = ownerData['login']?.toString();
-      }
-      localRepo = repoData['name']?.toString();
-    } catch (_) {
-      // Not a valid git repository or gh configuration not found.
-    }
-
-    if (owner == null || repo == null) {
-      owner = localOwner;
-      repo = localRepo;
-    } else if (localOwner != null && localRepo != null) {
-      if (localOwner.toLowerCase() != owner.toLowerCase() ||
-          localRepo.toLowerCase() != repo.toLowerCase()) {
-        stderr.writeln(
-          'Error: The target directory "$workingDir" is for repository "$localOwner/$localRepo", '
-          'but the specified PR is for repository "$owner/$repo".',
-        );
-        exit(1);
-      }
-    }
-
-    if (owner == null || repo == null) {
-      stderr.writeln(
-        'Error: Could not resolve GitHub repository owner or name.',
-      );
-      exit(1);
-    }
+      },
+    );
+    final workingDir = context.workingDir;
+    final prNumber = context.prNumber;
+    final owner = context.owner;
+    final repo = context.repo;
 
     final repoArgs = ['-R', '$owner/$repo'];
 
