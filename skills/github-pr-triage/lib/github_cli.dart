@@ -147,27 +147,48 @@ Future<PrContext> resolvePrContext(
     prNumber = firstPr['number'].toString();
   }
 
-  // Resolve owner and repo for context if not already set via URL.
-  if (owner == null || repo == null) {
-    try {
-      final repoOutput = await runCommand('gh', [
-        'repo',
-        'view',
-        '--json',
-        'owner,name',
-      ], workingDirectory: workingDir);
-      final repoJson = jsonDecode(repoOutput) as Map<String, dynamic>;
-      owner = (repoJson['owner'] as Map<String, dynamic>)['login'] as String;
-      repo = repoJson['name'] as String;
-    } catch (e) {
+  String? localOwner;
+  String? localRepo;
+  try {
+    final repoOutput = await runCommand('gh', [
+      'repo',
+      'view',
+      '--json',
+      'owner,name',
+    ], workingDirectory: workingDir);
+    final repoJson = jsonDecode(repoOutput) as Map<String, dynamic>;
+    localOwner = (repoJson['owner'] as Map<String, dynamic>)['login'] as String;
+    localRepo = repoJson['name'] as String;
+  } catch (e) {
+    if (owner == null || repo == null) {
       onFail('Failed to resolve repository owner and name: $e');
+    }
+  }
+
+  final resolvedOwner = owner ?? localOwner;
+  final resolvedRepo = repo ?? localRepo;
+
+  if (resolvedOwner == null || resolvedRepo == null) {
+    onFail('Failed to resolve repository owner and name.');
+  }
+
+  if (localOwner != null &&
+      localRepo != null &&
+      owner != null &&
+      repo != null) {
+    if (localOwner.toLowerCase() != owner.toLowerCase() ||
+        localRepo.toLowerCase() != repo.toLowerCase()) {
+      onFail(
+        'The target directory "$workingDir" is for repository "$localOwner/$localRepo", '
+        'but the specified PR is for repository "$owner/$repo".',
+      );
     }
   }
 
   return PrContext(
     workingDir: workingDir,
     prNumber: prNumber,
-    owner: owner,
-    repo: repo,
+    owner: resolvedOwner,
+    repo: resolvedRepo,
   );
 }
