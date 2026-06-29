@@ -50,10 +50,16 @@ void main() {
           '${scriptsDir.path}/.dart_tool/package_config.json',
         );
         if (!packageConfig.existsSync()) {
-          Process.runSync('dart', [
+          final pubGetResult = Process.runSync('dart', [
             'pub',
             'get',
           ], workingDirectory: scriptsDir.path);
+          expect(
+            pubGetResult.exitCode,
+            0,
+            reason:
+                'dart pub get failed in ${scriptsDir.path}:\n${pubGetResult.stderr}',
+          );
         }
 
         final result = Process.runSync('dart', [

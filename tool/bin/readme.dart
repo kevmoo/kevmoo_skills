@@ -76,9 +76,9 @@ void main(List<String> arguments) async {
 
     final cleanDescription = LineSplitter.split(
       description.trim(),
-    ).map((line) => line.trim()).join(' ');
+    ).map((line) => line.trim()).join(' ').replaceAll('|', '\\|');
 
-    final cleanFeatures = keyFeatures.join(', ');
+    final cleanFeatures = keyFeatures.join(', ').replaceAll('|', '\\|');
 
     listBuffer.writeln(
       '| **[$title](skills/$skillName/SKILL.md)** | $cleanDescription | $cleanFeatures |',
@@ -95,9 +95,9 @@ void main(List<String> arguments) async {
   final startIndex = readmeContent.indexOf(startTag);
   final endIndex = readmeContent.indexOf(endTag);
 
-  if (startIndex == -1 || endIndex == -1) {
+  if (startIndex == -1 || endIndex == -1 || endIndex < startIndex) {
     print(
-      'Error: Could not find comments <!-- SKILLS_LIST_START --> and <!-- SKILLS_LIST_END --> in README.md',
+      'Error: Could not find comments <!-- SKILLS_LIST_START --> and <!-- SKILLS_LIST_END --> in correct order in README.md',
     );
     exit(1);
   }
