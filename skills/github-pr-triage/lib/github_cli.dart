@@ -401,7 +401,7 @@ Future<void> resolveReviewThread(
     'graphql',
     '-f',
     'query=$mutation',
-    '-F',
+    '-f',
     'threadId=$threadId',
   ], workingDirectory: context.workingDir);
 
