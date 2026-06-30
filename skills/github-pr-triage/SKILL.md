@@ -177,26 +177,18 @@ key_features:
 
 ## Replying and Resolving Comments
 
-For every addressed review thread, you MUST execute both steps in sequence (thread resolution is explicit, mandatory, and un-skippable):
+For every addressed review thread, you MUST execute thread resolution (thread resolution is explicit, mandatory, and un-skippable).
 
-1. **Step 1 (Reply)**: Post REST reply comment using numeric comment
-   `databaseId`:
-   ```bash
-   gh api repos/<owner>/<repo>/pulls/<pr_number>/comments/<comment_database_id>/replies -f body="<your reply>"
-   ```
-2. **Step 2 (Resolve - MANDATORY)**: Immediately resolve thread via GraphQL
-   mutation using thread ID (`PRRT_...`):
-   ```bash
-   gh api graphql -f query='
-     mutation($threadId: ID!) {
-       resolveReviewThread(input: {threadId: $threadId}) {
-         thread {
-           isResolved
-         }
-       }
-     }
-   ' -F threadId='<thread_graphql_id>'
-   ```
+Use the `resolve` subcommand in `triage.dart` to programmatically reply to comments and resolve threads without shell-escaping issues:
+
+```bash
+# Reply to a comment and resolve its thread:
+dart <path-to-github-pr-triage-skill>/bin/triage.dart resolve <thread_graphql_id> <comment_database_id> "<your reply body>"
+
+# Or resolve a thread without posting a reply:
+dart <path-to-github-pr-triage-skill>/bin/triage.dart resolve <thread_graphql_id>
+```
+
 
 ## Constraints
 - **CRITICAL**: You MUST NOT modify files or make any code edits to address PR

@@ -166,25 +166,13 @@ which are bypassed in favor of autonomous execution):
   ```
   *(Note: If no code changes were made, e.g. all comments were disagreed with,
   skip committing and pushing).*
-* **Two-Step Reply & Resolve Protocol (MANDATORY)**:
-  For every addressed review thread, you MUST execute both steps in order
-  (thread resolution is explicit, mandatory, and un-skippable):
-  1. **Post Reply Comment**: Call the REST API reply endpoint using the numeric
-     comment `databaseId`:
-     ```bash
-     gh api repos/<owner>/<repo>/pulls/<pr_number>/comments/<comment_id>/replies -f body="<your concise explanation>"
-     ```
-  2. **Resolve Thread**: Call the GraphQL mutation using the thread `id`
-     (`PRRT_...`):
-     ```bash
-     gh api graphql -f query='
-       mutation {
-         resolveReviewThread(input: {threadId: "<thread_id>"}) {
-           thread { isResolved }
-         }
-       }
-     '
-     ```
+* **Reply & Resolve Protocol (MANDATORY)**:
+  For every addressed review thread, you MUST execute thread resolution (thread resolution is explicit, mandatory, and un-skippable).
+  Use the `resolve` subcommand in `triage.dart`:
+  ```bash
+  dart <path-to-github-pr-triage-skill>/bin/triage.dart resolve <thread_id> <comment_id> "<your concise explanation>"
+  ```
+
 * **Pre-Timer Verification Gate (MANDATORY)**:
   Before calling `schedule` or going idle, query GraphQL (or run `pr_status.dart`)
   to verify that all addressed review threads report `isResolved: true`. If any

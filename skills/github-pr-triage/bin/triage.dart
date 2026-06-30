@@ -31,6 +31,47 @@ import '../lib/github_cli.dart';
 /// 8. **Report Generation**: Consolidates the results into a markdown format printed to stdout.
 void main(List<String> args) async {
   try {
+    if (args.isNotEmpty && args.first == 'resolve') {
+      final subArgs = args.sublist(1);
+      if (subArgs.length != 1 && subArgs.length != 3) {
+        stderr.writeln(
+          'Error: Invalid arguments for resolve subcommand.\n'
+          'Usage:\n'
+          '  dart triage.dart resolve <thread_id>\n'
+          '  dart triage.dart resolve <thread_id> <comment_id> "<body_text>"',
+        );
+        exit(1);
+      }
+      final threadId = subArgs[0];
+      final commentId = subArgs.length == 3 ? subArgs[1] : null;
+      final bodyText = subArgs.length == 3 ? subArgs[2] : null;
+
+      final context = await resolvePrContext(
+        const [],
+        onFail: (msg) {
+          stderr.writeln('Error: $msg');
+          exit(1);
+        },
+      );
+
+      if (commentId != null && bodyText != null) {
+        stdout.writeln(
+          'Replying to comment $commentId and resolving thread $threadId...',
+        );
+      } else {
+        stdout.writeln('Resolving thread $threadId...');
+      }
+
+      await replyAndResolveThread(
+        context,
+        threadId: threadId,
+        commentId: commentId,
+        body: bodyText,
+      );
+      stdout.writeln('Successfully resolved thread $threadId.');
+      return;
+    }
+
     final context = await resolvePrContext(
       args,
       onFail: (msg) {
@@ -38,6 +79,7 @@ void main(List<String> args) async {
         exit(1);
       },
     );
+
     final workingDir = context.workingDir;
     final prNumber = context.prNumber;
     final owner = context.owner;

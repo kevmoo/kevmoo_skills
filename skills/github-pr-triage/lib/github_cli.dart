@@ -355,6 +355,65 @@ Future<PrGraphData> fetchPrGraphQLData(PrContext context) async {
   return (comments: comments, reviews: reviews, reviewThreads: threads);
 }
 
+/// Posts a reply to a PR review comment using its numeric [commentId].
+Future<void> replyToComment(
+  PrContext context, {
+  required String commentId,
+  required String body,
+}) async {
+  final endpoint =
+      'repos/${context.owner}/${context.repo}/pulls/${context.prNumber}/comments/$commentId/replies';
+  await runCommand('gh', [
+    'api',
+    endpoint,
+    '-f',
+    'body=$body',
+  ], workingDirectory: context.workingDir);
+}
+
+/// Resolves a review thread via GraphQL using its [threadId] (e.g. `PRRT_...`).
+Future<void> resolveReviewThread(
+  PrContext context, {
+  required String threadId,
+}) async {
+  const mutation = r'''
+  mutation($threadId: ID!) {
+    resolveReviewThread(input: {threadId: $threadId}) {
+      thread {
+        isResolved
+      }
+    }
+  }
+  ''';
+
+  final response = await runCommand('gh', [
+    'api',
+    'graphql',
+    '-f',
+    'query=$mutation',
+    '-F',
+    'threadId=$threadId',
+  ], workingDirectory: context.workingDir);
+
+  final parsed = jsonDecode(response) as Map<String, dynamic>;
+  if (parsed['errors'] != null) {
+    throw Exception('GraphQL errors resolving thread: ${parsed['errors']}');
+  }
+}
+
+/// Replies to a comment (if [commentId] and [body] are provided) and resolves the [threadId].
+Future<void> replyAndResolveThread(
+  PrContext context, {
+  required String threadId,
+  String? commentId,
+  String? body,
+}) async {
+  if (commentId != null && body != null && body.isNotEmpty) {
+    await replyToComment(context, commentId: commentId, body: body);
+  }
+  await resolveReviewThread(context, threadId: threadId);
+}
+
 PrCheckRun _parsePrCheckRun(Map json) {
   return (
     name: json['name']?.toString() ?? 'Unknown Check',
