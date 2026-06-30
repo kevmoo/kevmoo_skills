@@ -417,10 +417,14 @@ Future<void> replyAndResolveThread(
   String? commentId,
   String? body,
 }) async {
-  if (commentId != null &&
-      commentId.trim().isNotEmpty &&
-      body != null &&
-      body.trim().isNotEmpty) {
+  final hasCommentId = commentId != null && commentId.trim().isNotEmpty;
+  final hasBody = body != null && body.trim().isNotEmpty;
+  if (hasCommentId != hasBody) {
+    throw ArgumentError(
+      'Both commentId and body must be provided and non-empty, or both must be null/empty.',
+    );
+  }
+  if (hasCommentId && hasBody) {
     await replyToComment(context, commentId: commentId, body: body);
   }
   await resolveReviewThread(context, threadId: threadId);

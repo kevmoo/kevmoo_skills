@@ -54,6 +54,7 @@ void main() {
   test(
     'triage.dart resolve with invalid target directory outputs error and exits with code 1',
     () async {
+      final expectedPath = Directory('/non_existent_path_xyz').absolute.path;
       final process = await TestProcess.start(Platform.resolvedExecutable, [
         triageScript,
         'resolve',
@@ -65,7 +66,7 @@ void main() {
       await expectLater(
         process.stderr,
         emitsThrough(
-          contains('Target directory "/non_existent_path_xyz" does not exist.'),
+          contains('Target directory "$expectedPath" does not exist.'),
         ),
       );
       await process.shouldExit(1);
