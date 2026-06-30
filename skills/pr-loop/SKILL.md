@@ -167,7 +167,8 @@ which are bypassed in favor of autonomous execution):
   *(Note: If no code changes were made, e.g. all comments were disagreed with,
   skip committing and pushing).*
 * **Two-Step Reply & Resolve Protocol (MANDATORY)**:
-  For every addressed review thread, you MUST execute both steps in order:
+  For every addressed review thread, you MUST execute both steps in order
+  (thread resolution is explicit, mandatory, and un-skippable):
   1. **Post Reply Comment**: Call the REST API reply endpoint using the numeric
      comment `databaseId`:
      ```bash
@@ -184,6 +185,12 @@ which are bypassed in favor of autonomous execution):
        }
      '
      ```
+* **Pre-Timer Verification Gate (MANDATORY)**:
+  Before calling `schedule` or going idle, query GraphQL (or run `pr_status.dart`)
+  to verify that all addressed review threads report `isResolved: true`. If any
+  addressed thread reports `isResolved: false`, immediately execute the
+  `resolveReviewThread` mutation for that thread BEFORE setting the background
+  wakeup timer.
 
 ### 6. Trigger Subsequent Review Pass
 * **CRITICAL OPERATIONAL REMINDER**: `gemini-code-assist` automatically ingests
@@ -192,8 +199,9 @@ which are bypassed in favor of autonomous execution):
   ```bash
   gh pr comment <pr_number> --body "/gemini review"
   ```
-* Once `/gemini review` is posted, loop back immediately to **Step 2 [START]**
-  to schedule your 120s timer and go idle!
+* Once `/gemini review` is posted and all threads are verified as resolved, loop
+  back immediately to **Step 2 [START]** to schedule your 120s timer and go
+  idle!
 
 ---
 
