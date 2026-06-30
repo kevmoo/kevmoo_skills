@@ -31,6 +31,96 @@ import '../lib/github_cli.dart';
 /// 8. **Report Generation**: Consolidates the results into a markdown format printed to stdout.
 void main(List<String> args) async {
   try {
+    final contextArgs = <String>[];
+    final remainingArgs = <String>[];
+    for (var i = 0; i < args.length; i++) {
+      final arg = args[i];
+      if (arg == '--pr' || arg == '-p' || arg == '--dir' || arg == '-C') {
+        if (i + 1 < args.length) {
+          contextArgs.add(arg);
+          contextArgs.add(args[++i]);
+        } else {
+          stderr.writeln('Error: Missing value for option "$arg"');
+          exit(1);
+        }
+      } else {
+        remainingArgs.add(arg);
+      }
+    }
+
+    final resolveIndex = remainingArgs.indexOf('resolve');
+    if (resolveIndex != -1) {
+      contextArgs.addAll(remainingArgs.sublist(0, resolveIndex));
+      final subArgs = remainingArgs.sublist(resolveIndex + 1);
+      final resolvePositional = <String>[];
+
+      for (var i = 0; i < subArgs.length; i++) {
+        final arg = subArgs[i];
+        if (arg == '--pr' || arg == '-p' || arg == '--dir' || arg == '-C') {
+          if (i + 1 < subArgs.length) {
+            contextArgs.add(arg);
+            contextArgs.add(subArgs[++i]);
+          } else {
+            stderr.writeln('Error: Missing value for option "$arg"');
+            exit(1);
+          }
+        } else {
+          resolvePositional.add(arg);
+        }
+      }
+
+      if (resolvePositional.length != 1 && resolvePositional.length != 3) {
+        stderr.writeln(
+          'Error: Invalid arguments for resolve subcommand.\n'
+          'Usage:\n'
+          '  dart triage.dart resolve <thread_id>\n'
+          '  dart triage.dart resolve <thread_id> <comment_id> "<body_text>"',
+        );
+        exit(1);
+      }
+      final threadId = resolvePositional[0];
+      final commentId = resolvePositional.length == 3
+          ? resolvePositional[1]
+          : null;
+      final bodyText = resolvePositional.length == 3
+          ? resolvePositional[2]
+          : null;
+
+      if (commentId != null && !RegExp(r'^\d+$').hasMatch(commentId)) {
+        stderr.writeln('Error: <comment_id> must be a numeric database ID.');
+        exit(1);
+      }
+      if (bodyText != null && bodyText.trim().isEmpty) {
+        stderr.writeln('Error: <body_text> cannot be empty.');
+        exit(1);
+      }
+
+      final context = await resolvePrContext(
+        contextArgs,
+        onFail: (msg) {
+          stderr.writeln('Error: $msg');
+          exit(1);
+        },
+      );
+
+      if (commentId != null && bodyText != null) {
+        stdout.writeln(
+          'Replying to comment $commentId and resolving thread $threadId...',
+        );
+      } else {
+        stdout.writeln('Resolving thread $threadId...');
+      }
+
+      await replyAndResolveThread(
+        context,
+        threadId: threadId,
+        commentId: commentId,
+        body: bodyText,
+      );
+      stdout.writeln('Successfully resolved thread $threadId.');
+      return;
+    }
+
     final context = await resolvePrContext(
       args,
       onFail: (msg) {
@@ -38,6 +128,7 @@ void main(List<String> args) async {
         exit(1);
       },
     );
+
     final workingDir = context.workingDir;
     final prNumber = context.prNumber;
     final owner = context.owner;

@@ -355,6 +355,82 @@ Future<PrGraphData> fetchPrGraphQLData(PrContext context) async {
   return (comments: comments, reviews: reviews, reviewThreads: threads);
 }
 
+/// Posts a reply to a PR review comment using its numeric [commentId].
+Future<void> replyToComment(
+  PrContext context, {
+  required String commentId,
+  required String body,
+}) async {
+  if (!RegExp(r'^\d+$').hasMatch(commentId)) {
+    throw ArgumentError('Comment ID must be a numeric database ID.');
+  }
+  if (body.trim().isEmpty) {
+    throw ArgumentError('Comment body cannot be empty.');
+  }
+
+  final endpoint =
+      'repos/${context.owner}/${context.repo}/pulls/${context.prNumber}/comments/$commentId/replies';
+  await runCommand('gh', [
+    'api',
+    endpoint,
+    '-f',
+    'body=$body',
+  ], workingDirectory: context.workingDir);
+}
+
+/// Resolves a review thread via GraphQL using its [threadId] (e.g. `PRRT_...`).
+Future<void> resolveReviewThread(
+  PrContext context, {
+  required String threadId,
+}) async {
+  if (threadId.trim().isEmpty) {
+    throw ArgumentError('Thread ID cannot be empty.');
+  }
+  const mutation = r'''
+  mutation($threadId: ID!) {
+    resolveReviewThread(input: {threadId: $threadId}) {
+      thread {
+        isResolved
+      }
+    }
+  }
+  ''';
+
+  final response = await runCommand('gh', [
+    'api',
+    'graphql',
+    '-f',
+    'query=$mutation',
+    '-f',
+    'threadId=$threadId',
+  ], workingDirectory: context.workingDir);
+
+  final parsed = jsonDecode(response) as Map<String, dynamic>;
+  if (parsed['errors'] != null) {
+    throw Exception('GraphQL errors resolving thread: ${parsed['errors']}');
+  }
+}
+
+/// Replies to a comment (if [commentId] and [body] are provided) and resolves the [threadId].
+Future<void> replyAndResolveThread(
+  PrContext context, {
+  required String threadId,
+  String? commentId,
+  String? body,
+}) async {
+  final hasCommentId = commentId != null && commentId.trim().isNotEmpty;
+  final hasBody = body != null && body.trim().isNotEmpty;
+  if (hasCommentId != hasBody) {
+    throw ArgumentError(
+      'Both commentId and body must be provided and non-empty, or both must be null/empty.',
+    );
+  }
+  if (hasCommentId && hasBody) {
+    await replyToComment(context, commentId: commentId, body: body);
+  }
+  await resolveReviewThread(context, threadId: threadId);
+}
+
 PrCheckRun _parsePrCheckRun(Map json) {
   return (
     name: json['name']?.toString() ?? 'Unknown Check',
