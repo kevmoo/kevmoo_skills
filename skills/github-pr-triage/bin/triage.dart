@@ -31,8 +31,25 @@ import '../lib/github_cli.dart';
 /// 8. **Report Generation**: Consolidates the results into a markdown format printed to stdout.
 void main(List<String> args) async {
   try {
-    if (args.isNotEmpty && args.first == 'resolve') {
-      final subArgs = args.sublist(1);
+    final contextArgs = <String>[];
+    final remainingArgs = <String>[];
+    for (var i = 0; i < args.length; i++) {
+      final arg = args[i];
+      if (arg == '--pr' || arg == '-p' || arg == '--dir' || arg == '-C') {
+        if (i + 1 < args.length) {
+          contextArgs.add(arg);
+          contextArgs.add(args[++i]);
+        } else {
+          stderr.writeln('Error: Missing value for option "$arg"');
+          exit(1);
+        }
+      } else {
+        remainingArgs.add(arg);
+      }
+    }
+
+    if (remainingArgs.isNotEmpty && remainingArgs.first == 'resolve') {
+      final subArgs = remainingArgs.sublist(1);
       if (subArgs.length != 1 && subArgs.length != 3) {
         stderr.writeln(
           'Error: Invalid arguments for resolve subcommand.\n'
@@ -47,7 +64,7 @@ void main(List<String> args) async {
       final bodyText = subArgs.length == 3 ? subArgs[2] : null;
 
       final context = await resolvePrContext(
-        const [],
+        contextArgs,
         onFail: (msg) {
           stderr.writeln('Error: $msg');
           exit(1);
