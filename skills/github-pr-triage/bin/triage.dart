@@ -48,8 +48,11 @@ void main(List<String> args) async {
       }
     }
 
-    if (remainingArgs.isNotEmpty && remainingArgs.first == 'resolve') {
-      final subArgs = remainingArgs.sublist(1);
+    final resolveIndex = remainingArgs.indexOf('resolve');
+    if (resolveIndex != -1) {
+      contextArgs.addAll(remainingArgs.sublist(0, resolveIndex));
+      final subArgs = remainingArgs.sublist(resolveIndex + 1);
+
       if (subArgs.length != 1 && subArgs.length != 3) {
         stderr.writeln(
           'Error: Invalid arguments for resolve subcommand.\n'
