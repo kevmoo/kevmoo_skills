@@ -361,12 +361,13 @@ Future<void> replyToComment(
   required String commentId,
   required String body,
 }) async {
-  if (commentId.trim().isEmpty) {
-    throw ArgumentError('Comment ID cannot be empty.');
+  if (!RegExp(r'^\d+$').hasMatch(commentId)) {
+    throw ArgumentError('Comment ID must be a numeric database ID.');
   }
   if (body.trim().isEmpty) {
     throw ArgumentError('Comment body cannot be empty.');
   }
+
   final endpoint =
       'repos/${context.owner}/${context.repo}/pulls/${context.prNumber}/comments/$commentId/replies';
   await runCommand('gh', [

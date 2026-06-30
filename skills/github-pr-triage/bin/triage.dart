@@ -52,8 +52,24 @@ void main(List<String> args) async {
     if (resolveIndex != -1) {
       contextArgs.addAll(remainingArgs.sublist(0, resolveIndex));
       final subArgs = remainingArgs.sublist(resolveIndex + 1);
+      final resolvePositional = <String>[];
 
-      if (subArgs.length != 1 && subArgs.length != 3) {
+      for (var i = 0; i < subArgs.length; i++) {
+        final arg = subArgs[i];
+        if (arg == '--pr' || arg == '-p' || arg == '--dir' || arg == '-C') {
+          if (i + 1 < subArgs.length) {
+            contextArgs.add(arg);
+            contextArgs.add(subArgs[++i]);
+          } else {
+            stderr.writeln('Error: Missing value for option "$arg"');
+            exit(1);
+          }
+        } else {
+          resolvePositional.add(arg);
+        }
+      }
+
+      if (resolvePositional.length != 1 && resolvePositional.length != 3) {
         stderr.writeln(
           'Error: Invalid arguments for resolve subcommand.\n'
           'Usage:\n'
@@ -62,9 +78,13 @@ void main(List<String> args) async {
         );
         exit(1);
       }
-      final threadId = subArgs[0];
-      final commentId = subArgs.length == 3 ? subArgs[1] : null;
-      final bodyText = subArgs.length == 3 ? subArgs[2] : null;
+      final threadId = resolvePositional[0];
+      final commentId = resolvePositional.length == 3
+          ? resolvePositional[1]
+          : null;
+      final bodyText = resolvePositional.length == 3
+          ? resolvePositional[2]
+          : null;
 
       if (commentId != null && !RegExp(r'^\d+$').hasMatch(commentId)) {
         stderr.writeln('Error: <comment_id> must be a numeric database ID.');
