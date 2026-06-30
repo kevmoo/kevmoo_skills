@@ -177,24 +177,26 @@ key_features:
 
 ## Replying and Resolving Comments
 
-Use these API patterns to reply to review comments and resolve threads:
+For every addressed review thread, you MUST execute both steps in sequence (thread resolution is explicit, mandatory, and un-skippable):
 
-- **Reply to comment**:
-  ```bash
-  gh api repos/<owner>/<repo>/pulls/<pr_number>/comments/<comment_database_id>/replies -f body="<your reply>"
-  ```
-- **Resolve thread**:
-  ```bash
-  gh api graphql -f query='
-    mutation($threadId: ID!) {
-      resolveReviewThread(input: {threadId: $threadId}) {
-        thread {
-          isResolved
-        }
-      }
-    }
-  ' -F threadId='<thread_graphql_id>'
-  ```
+1. **Step 1 (Reply)**: Post REST reply comment using numeric comment
+   `databaseId`:
+   ```bash
+   gh api repos/<owner>/<repo>/pulls/<pr_number>/comments/<comment_database_id>/replies -f body="<your reply>"
+   ```
+2. **Step 2 (Resolve - MANDATORY)**: Immediately resolve thread via GraphQL
+   mutation using thread ID (`PRRT_...`):
+   ```bash
+   gh api graphql -f query='
+     mutation($threadId: ID!) {
+       resolveReviewThread(input: {threadId: $threadId}) {
+         thread {
+           isResolved
+         }
+       }
+     }
+   ' -F threadId='<thread_graphql_id>'
+   ```
 
 ## Constraints
 - **CRITICAL**: You MUST NOT modify files or make any code edits to address PR
