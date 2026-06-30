@@ -408,7 +408,7 @@ Future<void> replyAndResolveThread(
   String? commentId,
   String? body,
 }) async {
-  if (commentId != null && body != null && body.isNotEmpty) {
+  if (commentId != null && body != null && body.trim().isNotEmpty) {
     await replyToComment(context, commentId: commentId, body: body);
   }
   await resolveReviewThread(context, threadId: threadId);

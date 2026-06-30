@@ -6,7 +6,7 @@ import 'package:test_process/test_process.dart';
 
 void main() {
   final triageScript = p.join(
-    Directory.current.path.endsWith('tool') ? '..' : '.',
+    p.basename(Directory.current.path) == 'tool' ? '..' : '.',
     'skills',
     'github-pr-triage',
     'bin',
