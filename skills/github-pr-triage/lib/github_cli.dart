@@ -361,6 +361,12 @@ Future<void> replyToComment(
   required String commentId,
   required String body,
 }) async {
+  if (commentId.trim().isEmpty) {
+    throw ArgumentError('Comment ID cannot be empty.');
+  }
+  if (body.trim().isEmpty) {
+    throw ArgumentError('Comment body cannot be empty.');
+  }
   final endpoint =
       'repos/${context.owner}/${context.repo}/pulls/${context.prNumber}/comments/$commentId/replies';
   await runCommand('gh', [
@@ -376,6 +382,9 @@ Future<void> resolveReviewThread(
   PrContext context, {
   required String threadId,
 }) async {
+  if (threadId.trim().isEmpty) {
+    throw ArgumentError('Thread ID cannot be empty.');
+  }
   const mutation = r'''
   mutation($threadId: ID!) {
     resolveReviewThread(input: {threadId: $threadId}) {
@@ -408,7 +417,10 @@ Future<void> replyAndResolveThread(
   String? commentId,
   String? body,
 }) async {
-  if (commentId != null && body != null && body.trim().isNotEmpty) {
+  if (commentId != null &&
+      commentId.trim().isNotEmpty &&
+      body != null &&
+      body.trim().isNotEmpty) {
     await replyToComment(context, commentId: commentId, body: body);
   }
   await resolveReviewThread(context, threadId: threadId);

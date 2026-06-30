@@ -71,4 +71,44 @@ void main() {
       await process.shouldExit(1);
     },
   );
+
+  test(
+    'triage.dart resolve with non-numeric comment_id outputs error and exits with code 1',
+    () async {
+      final process = await TestProcess.start(Platform.resolvedExecutable, [
+        triageScript,
+        'resolve',
+        'thread_123',
+        'not_a_number',
+        'some reply',
+      ]);
+
+      await expectLater(
+        process.stderr,
+        emitsThrough(
+          contains('Error: <comment_id> must be a numeric database ID.'),
+        ),
+      );
+      await process.shouldExit(1);
+    },
+  );
+
+  test(
+    'triage.dart resolve with empty body_text outputs error and exits with code 1',
+    () async {
+      final process = await TestProcess.start(Platform.resolvedExecutable, [
+        triageScript,
+        'resolve',
+        'thread_123',
+        '456',
+        '   ',
+      ]);
+
+      await expectLater(
+        process.stderr,
+        emitsThrough(contains('Error: <body_text> cannot be empty.')),
+      );
+      await process.shouldExit(1);
+    },
+  );
 }

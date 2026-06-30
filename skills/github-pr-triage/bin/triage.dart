@@ -63,6 +63,15 @@ void main(List<String> args) async {
       final commentId = subArgs.length == 3 ? subArgs[1] : null;
       final bodyText = subArgs.length == 3 ? subArgs[2] : null;
 
+      if (commentId != null && !RegExp(r'^\d+$').hasMatch(commentId)) {
+        stderr.writeln('Error: <comment_id> must be a numeric database ID.');
+        exit(1);
+      }
+      if (bodyText != null && bodyText.trim().isEmpty) {
+        stderr.writeln('Error: <body_text> cannot be empty.');
+        exit(1);
+      }
+
       final context = await resolvePrContext(
         contextArgs,
         onFail: (msg) {
