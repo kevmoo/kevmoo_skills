@@ -64,12 +64,13 @@ key_features:
    tool).
 
 2. **Verify Workspace State**:
-   - The script output will show the PR URL, title, branch, and commit SHA.
-   - Verify that your current git branch matches the PR source branch
-     (`headRefName`).
-   - Run `git status` and ensure the working tree matches the PR branch.
-   - Verify you are at the correct commit. If not, inform the user or checkout
-     the correct branch/commit.
+   - The script output will show the PR URL, title, branch, Remote Commit SHA,
+     Local Commit SHA, and Sync Status (`in_sync`, `behind_remote`, `ahead_of_remote`, `diverged`, or `branch_mismatch`).
+   - Verify that your current git branch matches the PR source branch (`headRefName`).
+   - Check the **Sync Status**:
+     - If `Sync Status` is `behind_remote`, pull the latest remote commits (`git pull`) before making changes.
+     - If `Sync Status` is `ahead_of_remote` or `diverged`, push or sync local commits (`git push`).
+     - Do not start making code edits while the local workspace is out of sync with the remote PR.
 
 3. **Analyze Open Comments**:
    - The script lists all unresolved comment threads.

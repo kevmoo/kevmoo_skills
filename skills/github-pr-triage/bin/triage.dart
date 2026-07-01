@@ -149,27 +149,15 @@ void main(List<String> args) async {
     ], workingDirectory: workingDir);
     final prData = jsonDecode(viewOutput) as Map<String, dynamic>;
 
-    // Validate active local branch matches PR head branch.
-    final prHeadBranch = prData['headRefName']?.toString();
-    String activeBranch;
-    try {
-      activeBranch = (await runCommand('git', [
-        'symbolic-ref',
-        '--short',
-        'HEAD',
-      ], workingDirectory: workingDir)).trim();
-    } catch (_) {
-      activeBranch = '';
-    }
+    // Validate local vs remote sync status using shared helper.
+    final syncStatus = await fetchPrSyncStatus(
+      context,
+      remoteBranch: prData['headRefName']?.toString(),
+      remoteHeadSha: prData['headRefOid']?.toString(),
+    );
 
-    if (activeBranch.isNotEmpty &&
-        prHeadBranch != null &&
-        activeBranch != prHeadBranch) {
-      stdout.writeln(
-        '\nWARNING: Active local branch is "$activeBranch", but the PR branch is "$prHeadBranch".\n'
-        'Please ensure you are on the correct branch before making edits. You can checkout this PR by running:\n'
-        '  gh pr checkout $prNumber\n',
-      );
+    if (syncStatus.warning != null) {
+      stdout.writeln('\nWARNING: ${syncStatus.warning}\n');
     }
 
     // 5. Fetch unresolved review comments using unified GraphQL helper.
@@ -215,16 +203,22 @@ void main(List<String> args) async {
     }
 
     // 8. Generate and output the markdown report.
+    final syncWarningBlock = syncStatus.warning != null
+        ? '> [!WARNING]\n> ${syncStatus.warning}\n\n'
+        : '';
+
     final report = StringBuffer('''
 # PR Triage Report: #${prData['number']} - ${prData['title']}
 
 **URL**: [PR #${prData['number']}](${prData['url']})
 **Branch**: `${prData['headRefName']}`
-**Commit**: `${prData['headRefOid']}`
+**Remote Commit**: `${prData['headRefOid']}`
+**Local Commit**: `${syncStatus.localHeadSha.isEmpty ? 'N/A' : syncStatus.localHeadSha}`
+**Sync Status**: `${syncStatus.syncState}`${syncStatus.isSynced ? ' ✅' : ' ⚠️'}
 **Review Decision**: `${prData['reviewDecision']}`
 **Mergeable**: `${prData['mergeable']}`
 
-## Unresolved Review Comments (${unresolvedThreads.length})
+$syncWarningBlock## Unresolved Review Comments (${unresolvedThreads.length})
 
 ''');
 
