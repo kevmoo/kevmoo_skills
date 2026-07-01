@@ -150,7 +150,7 @@ Please answer the following questions to help narrow down the path forward:
 quiz.)*
 
 Evaluate the competing paths through the lens of the user's quiz responses.
-Synthesize these into a clean Markdown table comparing the top 2 or 3 viable
+Synthesize these into a clean Markdown table comparing the top 2 viable
 options.
 
 Use this exact schema:
