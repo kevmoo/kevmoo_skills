@@ -286,6 +286,20 @@ void main() {
         'test@example.com',
       ], workingDirectory: tempDir.path);
 
+      File(p.join(tempDir.path, 'file.txt')).writeAsStringSync('hello');
+      await runCommand('git', ['add', '.'], workingDirectory: tempDir.path);
+      await runCommand('git', [
+        'commit',
+        '-m',
+        'initial commit',
+      ], workingDirectory: tempDir.path);
+
+      final currentBranch = (await runCommand('git', [
+        'symbolic-ref',
+        '--short',
+        'HEAD',
+      ], workingDirectory: tempDir.path)).trim();
+
       final context = PrContext(
         workingDir: tempDir.path,
         prNumber: '1',
@@ -295,7 +309,7 @@ void main() {
 
       final status = await fetchPrSyncStatus(
         context,
-        remoteBranch: 'main',
+        remoteBranch: currentBranch,
         remoteHeadSha: '',
       );
 
