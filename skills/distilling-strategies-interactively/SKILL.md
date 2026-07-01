@@ -157,18 +157,18 @@ Use this exact schema:
 
 Dimension                                                              | Option A: {Name}                                       | Option B: {Name}
 :--------------------------------------------------------------------- | :----------------------------------------------------- | :--------
-**Core Concept**                                                       | *Brief description of this path.*                      | *Brief description of this path.*                                             |                                                        |
-**Alignment with Your Goals**                                          | *Explain how this path satisfies or violates the specific preferences expressed in the quiz.*                       | *Explain how this path satisfies or violates the specific preferences expressed in the quiz.* |                                                        |
-**The Catch / Tax**                                                    | *What you explicitly sacrifice if you choose this path (e.g., developer speed, infrastructure cost, migration time).*         | *What you explicitly sacrifice if you choose this path.*                         |                                                        |
-**Execution Friction**                                                 | *Low / Medium / High, with a 1-sentence justification based on the artifacts.*                                 | *Low / Medium / High, with a 1-sentence justification based on the artifacts.*                      |                                                        |
+**Core Concept**                                                       | *Brief description of this path.*                      | *Brief description of this path.*
+**Alignment with Your Goals**                                          | *Explain how this path satisfies or violates the specific preferences expressed in the quiz.*                       | *Explain how this path satisfies or violates the specific preferences expressed in the quiz.*
+**The Catch / Tax**                                                    | *What you explicitly sacrifice if you choose this path (e.g., developer speed, infrastructure cost, migration time).*         | *What you explicitly sacrifice if you choose this path.*
+**Execution Friction**                                                 | *Low / Medium / High, with a 1-sentence justification based on the artifacts.*                                 | *Low / Medium / High, with a 1-sentence justification based on the artifacts.*
 
 ---
 
 ### Phase 4: Final Synthesis & Action Plan
 
-Create a definitive document named `DISTILLED_STRATEGY.md` in the target
-directory (or `{output_directory}`). This document serves as the source of truth
-for execution.
+Create a definitive document named `DISTILLED_STRATEGY.md` in the conversation
+artifacts directory (`<appDataDir>/brain/<conversation-id>`) using the
+`write_to_file` tool. This document serves as the source of truth for execution.
 
 Structure the document as follows:
 
