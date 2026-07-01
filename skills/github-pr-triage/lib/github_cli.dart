@@ -321,9 +321,11 @@ Future<PrSyncStatus> fetchPrSyncStatus(
       remoteBranch: rBranch,
       localHeadSha: localHeadSha,
       remoteHeadSha: rHeadSha,
-      isSynced: true,
+      isSynced: false,
       syncState: 'unknown',
-      warning: null,
+      warning: localHeadSha.isEmpty
+          ? 'Could not determine local HEAD commit SHA. Please ensure you are in a valid git repository.'
+          : 'Could not determine remote PR head commit SHA. Please check network connection or GitHub CLI status.',
     );
   }
 
@@ -336,6 +338,30 @@ Future<PrSyncStatus> fetchPrSyncStatus(
       isSynced: true,
       syncState: 'in_sync',
       warning: null,
+    );
+  }
+
+  bool remoteCommitExists = false;
+  try {
+    await runCommand('git', [
+      'rev-parse',
+      '--verify',
+      '$rHeadSha^{commit}',
+    ], workingDirectory: context.workingDir);
+    remoteCommitExists = true;
+  } catch (_) {}
+
+  if (!remoteCommitExists) {
+    return (
+      localBranch: localBranch,
+      remoteBranch: rBranch,
+      localHeadSha: localHeadSha,
+      remoteHeadSha: rHeadSha,
+      isSynced: false,
+      syncState: 'behind_remote',
+      warning:
+          'Remote PR commit ($rHeadSha) was not found locally. '
+          'Please run "git fetch" or "git pull" to update your local repository.',
     );
   }
 

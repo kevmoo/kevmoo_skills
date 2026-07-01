@@ -272,5 +272,87 @@ void main() {
         expect(status.warning, contains('is behind remote PR commit'));
       },
     );
+
+    test('returns isSynced false when local or remote SHA is empty', () async {
+      await runCommand('git', ['init'], workingDirectory: tempDir.path);
+      await runCommand('git', [
+        'config',
+        'user.name',
+        'Test User',
+      ], workingDirectory: tempDir.path);
+      await runCommand('git', [
+        'config',
+        'user.email',
+        'test@example.com',
+      ], workingDirectory: tempDir.path);
+
+      final context = PrContext(
+        workingDir: tempDir.path,
+        prNumber: '1',
+        owner: 'testowner',
+        repo: 'testrepo',
+      );
+
+      final status = await fetchPrSyncStatus(
+        context,
+        remoteBranch: 'main',
+        remoteHeadSha: '',
+      );
+
+      expect(status.isSynced, isFalse);
+      expect(status.syncState, equals('unknown'));
+      expect(status.warning, contains('Could not determine'));
+    });
+
+    test(
+      'returns behind_remote when remote commit is not found in local repo',
+      () async {
+        await runCommand('git', ['init'], workingDirectory: tempDir.path);
+        await runCommand('git', [
+          'config',
+          'user.name',
+          'Test User',
+        ], workingDirectory: tempDir.path);
+        await runCommand('git', [
+          'config',
+          'user.email',
+          'test@example.com',
+        ], workingDirectory: tempDir.path);
+
+        File(p.join(tempDir.path, 'file1.txt')).writeAsStringSync('first');
+        await runCommand('git', ['add', '.'], workingDirectory: tempDir.path);
+        await runCommand('git', [
+          'commit',
+          '-m',
+          'commit 1',
+        ], workingDirectory: tempDir.path);
+
+        final currentBranch = (await runCommand('git', [
+          'symbolic-ref',
+          '--short',
+          'HEAD',
+        ], workingDirectory: tempDir.path)).trim();
+
+        final context = PrContext(
+          workingDir: tempDir.path,
+          prNumber: '1',
+          owner: 'testowner',
+          repo: 'testrepo',
+        );
+
+        // Simulated remote commit SHA that does not exist in local repo object store
+        const nonExistentSha = '0123456789abcdef0123456789abcdef01234567';
+
+        final status = await fetchPrSyncStatus(
+          context,
+          remoteBranch: currentBranch,
+          remoteHeadSha: nonExistentSha,
+        );
+
+        expect(status.isSynced, isFalse);
+        expect(status.syncState, equals('behind_remote'));
+        expect(status.warning, contains('was not found locally'));
+      },
+    );
   });
 }
