@@ -76,11 +76,18 @@ void main(List<String> args) async {
       graphqlError = e.toString();
     }
 
+    // Evaluate local vs remote sync status using shared helper.
+    final syncStatus = await fetchPrSyncStatus(context);
+
     // Evaluate termination decision.
     bool canTerminate = true;
     String? reason;
 
-    if (graphqlError != null) {
+    if (!syncStatus.isSynced) {
+      canTerminate = false;
+      reason =
+          syncStatus.warning ?? 'Local branch is out of sync with remote PR';
+    } else if (graphqlError != null) {
       canTerminate = false;
       reason = 'Failed to verify PR threads/reactions: $graphqlError';
     } else if (inProgressChecks.isNotEmpty) {
@@ -106,6 +113,10 @@ void main(List<String> args) async {
       'in_progress_checks': inProgressChecks,
       'failed_checks': failedChecks,
       'has_active_eyes_reaction': hasActiveEyesReaction,
+      'local_head_sha': syncStatus.localHeadSha,
+      'remote_head_sha': syncStatus.remoteHeadSha,
+      'is_synced': syncStatus.isSynced,
+      'sync_state': syncStatus.syncState,
     };
 
     stdout.writeln(const JsonEncoder.withIndent('  ').convert(output));
@@ -118,6 +129,10 @@ void main(List<String> args) async {
       'in_progress_checks': <String>[],
       'failed_checks': <String>[],
       'has_active_eyes_reaction': false,
+      'local_head_sha': '',
+      'remote_head_sha': '',
+      'is_synced': false,
+      'sync_state': 'error',
     };
     stdout.writeln(const JsonEncoder.withIndent('  ').convert(output));
     exit(1);

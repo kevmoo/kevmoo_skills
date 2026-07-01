@@ -236,6 +236,198 @@ typedef PrGraphData = ({
   List<PrReviewThread> reviewThreads,
 });
 
+/// Sync status information comparing local repository state to remote PR state.
+typedef PrSyncStatus = ({
+  String localBranch,
+  String remoteBranch,
+  String localHeadSha,
+  String remoteHeadSha,
+  bool isSynced,
+  String syncState,
+  String? warning,
+});
+
+/// Evaluates local git repository branch and commit SHA against the remote PR head branch and commit SHA.
+Future<PrSyncStatus> fetchPrSyncStatus(
+  PrContext context, {
+  String? remoteBranch,
+  String? remoteHeadSha,
+}) async {
+  var rBranch = remoteBranch;
+  var rHeadSha = remoteHeadSha;
+
+  if (rBranch == null || rHeadSha == null) {
+    try {
+      final repoArgs = ['-R', '${context.owner}/${context.repo}'];
+      final viewOutput = await runCommand('gh', [
+        ...repoArgs,
+        'pr',
+        'view',
+        context.prNumber,
+        '--json',
+        'headRefName,headRefOid',
+      ], workingDirectory: context.workingDir);
+      final prData = jsonDecode(viewOutput) as Map<String, dynamic>;
+      rBranch ??= prData['headRefName']?.toString() ?? '';
+      rHeadSha ??= prData['headRefOid']?.toString() ?? '';
+    } catch (_) {
+      rBranch ??= '';
+      rHeadSha ??= '';
+    }
+  }
+
+  String localBranch = '';
+  try {
+    localBranch = (await runCommand('git', [
+      'symbolic-ref',
+      '--short',
+      'HEAD',
+    ], workingDirectory: context.workingDir)).trim();
+  } catch (_) {
+    try {
+      localBranch = (await runCommand('git', [
+        'rev-parse',
+        '--abbrev-ref',
+        'HEAD',
+      ], workingDirectory: context.workingDir)).trim();
+    } catch (_) {}
+  }
+
+  String localHeadSha = '';
+  try {
+    localHeadSha = (await runCommand('git', [
+      'rev-parse',
+      'HEAD',
+    ], workingDirectory: context.workingDir)).trim();
+  } catch (_) {}
+
+  if (localBranch.isNotEmpty && rBranch.isNotEmpty && localBranch != rBranch) {
+    return (
+      localBranch: localBranch,
+      remoteBranch: rBranch,
+      localHeadSha: localHeadSha,
+      remoteHeadSha: rHeadSha,
+      isSynced: false,
+      syncState: 'branch_mismatch',
+      warning:
+          'Active local branch is "$localBranch", but the PR branch is "$rBranch". '
+          'Please checkout the correct branch using: gh pr checkout ${context.prNumber}',
+    );
+  }
+
+  if (localHeadSha.isEmpty || rHeadSha.isEmpty) {
+    return (
+      localBranch: localBranch,
+      remoteBranch: rBranch,
+      localHeadSha: localHeadSha,
+      remoteHeadSha: rHeadSha,
+      isSynced: false,
+      syncState: 'unknown',
+      warning: localHeadSha.isEmpty
+          ? 'Could not determine local HEAD commit SHA. Please ensure you are in a valid git repository.'
+          : 'Could not determine remote PR head commit SHA. Please check network connection or GitHub CLI status.',
+    );
+  }
+
+  if (localHeadSha == rHeadSha) {
+    return (
+      localBranch: localBranch,
+      remoteBranch: rBranch,
+      localHeadSha: localHeadSha,
+      remoteHeadSha: rHeadSha,
+      isSynced: true,
+      syncState: 'in_sync',
+      warning: null,
+    );
+  }
+
+  bool remoteCommitExists = false;
+  try {
+    await runCommand('git', [
+      'cat-file',
+      '-e',
+      '$rHeadSha^{commit}',
+    ], workingDirectory: context.workingDir);
+    remoteCommitExists = true;
+  } catch (_) {}
+
+  if (!remoteCommitExists) {
+    return (
+      localBranch: localBranch,
+      remoteBranch: rBranch,
+      localHeadSha: localHeadSha,
+      remoteHeadSha: rHeadSha,
+      isSynced: false,
+      syncState: 'not_fetched',
+      warning:
+          'Remote PR commit ($rHeadSha) is not present in your local repository. '
+          'Please run "git fetch" to update your local repository.',
+    );
+  }
+
+  bool isLocalAncestor = false;
+  try {
+    await runCommand('git', [
+      'merge-base',
+      '--is-ancestor',
+      localHeadSha,
+      rHeadSha,
+    ], workingDirectory: context.workingDir);
+    isLocalAncestor = true;
+  } catch (_) {}
+
+  if (isLocalAncestor) {
+    return (
+      localBranch: localBranch,
+      remoteBranch: rBranch,
+      localHeadSha: localHeadSha,
+      remoteHeadSha: rHeadSha,
+      isSynced: false,
+      syncState: 'behind_remote',
+      warning:
+          'Local commit ($localHeadSha) is behind remote PR commit ($rHeadSha). '
+          'Please pull remote changes before making edits.',
+    );
+  }
+
+  bool isRemoteAncestor = false;
+  try {
+    await runCommand('git', [
+      'merge-base',
+      '--is-ancestor',
+      rHeadSha,
+      localHeadSha,
+    ], workingDirectory: context.workingDir);
+    isRemoteAncestor = true;
+  } catch (_) {}
+
+  if (isRemoteAncestor) {
+    return (
+      localBranch: localBranch,
+      remoteBranch: rBranch,
+      localHeadSha: localHeadSha,
+      remoteHeadSha: rHeadSha,
+      isSynced: false,
+      syncState: 'ahead_of_remote',
+      warning:
+          'Local commit ($localHeadSha) is ahead of remote PR commit ($rHeadSha). '
+          'Please push local commits to sync remote PR.',
+    );
+  }
+
+  return (
+    localBranch: localBranch,
+    remoteBranch: rBranch,
+    localHeadSha: localHeadSha,
+    remoteHeadSha: rHeadSha,
+    isSynced: false,
+    syncState: 'diverged',
+    warning:
+        'Local commit ($localHeadSha) and remote PR commit ($rHeadSha) have diverged. '
+        'Please sync local and remote branches.',
+  );
+}
+
 /// Fetches status check runs for the specified [PrContext].
 Future<List<PrCheckRun>> fetchPrChecks(PrContext context) async {
   final repoArgs = ['-R', '${context.owner}/${context.repo}'];

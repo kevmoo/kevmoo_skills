@@ -110,6 +110,7 @@ which are bypassed in favor of autonomous execution):
   2. `reviewThreads` has 0 unresolved threads.
   3. No review pass is currently in progress (i.e., no new review request has
      been submitted since the last bot review).
+  4. The local git branch commit SHA is fully in sync with the remote PR head commit (`is_synced: true`).
 * **Action on In-Progress Activity**: If `pr_status.dart` returns
   `"can_terminate": false` because CI checks are in-progress or a review pass is
   currently in progress, **schedule another 90s timer** and **go idle**. DO
