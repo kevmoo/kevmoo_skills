@@ -344,8 +344,8 @@ Future<PrSyncStatus> fetchPrSyncStatus(
   bool remoteCommitExists = false;
   try {
     await runCommand('git', [
-      'rev-parse',
-      '--verify',
+      'cat-file',
+      '-e',
       '$rHeadSha^{commit}',
     ], workingDirectory: context.workingDir);
     remoteCommitExists = true;
@@ -358,10 +358,10 @@ Future<PrSyncStatus> fetchPrSyncStatus(
       localHeadSha: localHeadSha,
       remoteHeadSha: rHeadSha,
       isSynced: false,
-      syncState: 'behind_remote',
+      syncState: 'not_fetched',
       warning:
-          'Remote PR commit ($rHeadSha) was not found locally. '
-          'Please run "git fetch" or "git pull" to update your local repository.',
+          'Remote PR commit ($rHeadSha) is not present in your local repository. '
+          'Please run "git fetch" to update your local repository.',
     );
   }
 

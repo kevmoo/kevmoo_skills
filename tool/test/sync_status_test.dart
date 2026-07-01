@@ -364,8 +364,11 @@ void main() {
         );
 
         expect(status.isSynced, isFalse);
-        expect(status.syncState, equals('behind_remote'));
-        expect(status.warning, contains('was not found locally'));
+        expect(status.syncState, equals('not_fetched'));
+        expect(
+          status.warning,
+          contains('is not present in your local repository'),
+        );
       },
     );
   });
