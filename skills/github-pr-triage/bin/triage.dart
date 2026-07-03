@@ -176,29 +176,13 @@ void main(List<String> args) async {
     // 7. Fetch logs for failed check runs (if they are GitHub Actions).
     final checkLogs = <String, String>{};
     for (final check in failedChecks) {
-      final link = check.link;
       final checkName = check.name;
-      final match = RegExp(r'/actions/runs/(\d+)').firstMatch(link);
-      if (match != null) {
-        final runId = match.group(1)!;
-        stdout.writeln(
-          'Fetching failed logs for check "$checkName" (Run ID: $runId)...',
-        );
-        try {
-          final logOutput = await runCommand('gh', [
-            ...repoArgs,
-            'run',
-            'view',
-            runId,
-            '--log-failed',
-          ], workingDirectory: workingDir);
-          checkLogs[checkName] = _truncateLog(logOutput);
-        } catch (e) {
-          checkLogs[checkName] = 'Failed to fetch logs: $e';
-        }
-      } else {
-        checkLogs[checkName] =
-            'Non-GitHub Actions run. Inspect details at: $link';
+      stdout.writeln('Fetching failed logs for check "$checkName"...');
+      try {
+        final logOutput = await fetchFailedCheckLog(context, check);
+        checkLogs[checkName] = _truncateLog(logOutput);
+      } catch (e) {
+        checkLogs[checkName] = 'Failed to fetch logs: $e';
       }
     }
 

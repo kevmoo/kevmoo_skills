@@ -450,6 +450,122 @@ Future<List<PrCheckRun>> fetchPrChecks(PrContext context) async {
   }
 }
 
+/// Fetches logs and annotations for a failed status check.
+///
+/// Attempts to fetch job-level logs via `/actions/jobs/{job_id}/logs` and
+/// check run annotations via `/check-runs/{check_run_id}/annotations` to
+/// avoid failures when sibling workflow jobs are still in progress.
+/// Falls back to `gh run view --log-failed` if job-level API calls fail.
+Future<String> fetchFailedCheckLog(PrContext context, PrCheckRun check) async {
+  final link = check.link;
+  final runIdMatch = RegExp(r'/actions/runs/(\d+)').firstMatch(link);
+  final checkRunIdMatch = RegExp(r'/check-runs/(\d+)').firstMatch(link);
+  final repoArgs = ['-R', '${context.owner}/${context.repo}'];
+
+  final annotations = <String>[];
+
+  if (checkRunIdMatch != null) {
+    final checkRunId = checkRunIdMatch.group(1)!;
+    try {
+      final annOutput = await runCommand('gh', [
+        ...repoArgs,
+        'api',
+        'repos/${context.owner}/${context.repo}/check-runs/$checkRunId/annotations',
+      ], workingDirectory: context.workingDir);
+      final annList = jsonDecode(annOutput) as List<dynamic>;
+      for (final ann in annList.whereType<Map>()) {
+        final path = ann['path']?.toString() ?? '';
+        final startLine = ann['start_line'];
+        final message = ann['message']?.toString() ?? '';
+        final level = ann['annotation_level']?.toString() ?? '';
+        final title = ann['title']?.toString() ?? '';
+        if (message.isNotEmpty) {
+          annotations.add(
+            'Annotation [$level] ${path.isNotEmpty ? "$path:$startLine " : ""}'
+            '${title.isNotEmpty ? "($title): " : ""}$message',
+          );
+        }
+      }
+    } catch (_) {
+      // Annotations fetch is best-effort.
+    }
+  }
+
+  if (runIdMatch != null) {
+    final runId = runIdMatch.group(1)!;
+    try {
+      final jobsOutput = await runCommand('gh', [
+        ...repoArgs,
+        'api',
+        'repos/${context.owner}/${context.repo}/actions/runs/$runId/jobs',
+      ], workingDirectory: context.workingDir);
+      final jobsJson = jsonDecode(jobsOutput) as Map<String, dynamic>;
+      final jobsList = (jobsJson['jobs'] as List<dynamic>? ?? [])
+          .whereType<Map>()
+          .toList();
+      final failedJobs = jobsList.where((j) {
+        final conc = j['conclusion']?.toString();
+        return conc == 'failure' ||
+            conc == 'timed_out' ||
+            conc == 'action_required';
+      }).toList();
+
+      if (failedJobs.isNotEmpty) {
+        final logBuffers = <String>[];
+        for (final job in failedJobs) {
+          final jobId = job['id']?.toString();
+          final jobName = job['name']?.toString() ?? 'Job';
+          if (jobId != null && jobId.isNotEmpty) {
+            try {
+              final jobLog = await runCommand('gh', [
+                ...repoArgs,
+                'api',
+                'repos/${context.owner}/${context.repo}/actions/jobs/$jobId/logs',
+              ], workingDirectory: context.workingDir);
+              if (jobLog.trim().isNotEmpty) {
+                logBuffers.add('--- Job: $jobName (ID: $jobId) ---\n$jobLog');
+              }
+            } catch (_) {}
+          }
+        }
+
+        if (logBuffers.isNotEmpty) {
+          final combinedLog = logBuffers.join('\n\n');
+          if (annotations.isNotEmpty) {
+            return 'Check Annotations:\n${annotations.join("\n")}\n\n$combinedLog';
+          }
+          return combinedLog;
+        }
+      }
+    } catch (_) {}
+
+    try {
+      final fallbackLog = await runCommand('gh', [
+        ...repoArgs,
+        'run',
+        'view',
+        runId,
+        '--log-failed',
+      ], workingDirectory: context.workingDir);
+      if (annotations.isNotEmpty) {
+        return 'Check Annotations:\n${annotations.join("\n")}\n\n$fallbackLog';
+      }
+      return fallbackLog;
+    } catch (e) {
+      if (annotations.isNotEmpty) {
+        return 'Check Annotations:\n${annotations.join("\n")}\n\nFailed to fetch logs: $e';
+      }
+      return 'Failed to fetch logs: $e';
+    }
+  }
+
+  if (annotations.isNotEmpty) {
+    return 'Check Annotations:\n${annotations.join("\n")}\n\nNon-GitHub Actions run. Inspect details at: $link';
+  }
+
+  return 'Non-GitHub Actions run. Inspect details at: $link';
+}
+
 /// Fetches comments, reviews, and review threads for the specified [PrContext] using GraphQL.
 Future<PrGraphData> fetchPrGraphQLData(PrContext context) async {
   const query = r'''

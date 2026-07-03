@@ -84,7 +84,11 @@ which are bypassed in favor of autonomous execution):
     --body "<walkthrough_summary>" --base main --head <head_branch>
   ```
 
-### 2. [START] Schedule Polling Timer
+### 2. [START] Immediate Status Check & Polling Timer
+* **Immediate Initial Check**: Before scheduling a background timer, execute an
+  immediate check of PR status (`dart <path-to-pr-loop-skill>/bin/pr_status.dart --dir .` or `gh pr view`).
+  * If actionable review comments or failed CI checks already exist, **bypass the initial timer** and proceed directly to Step 3/4.
+  * If review feedback or CI checks are still in progress, proceed to schedule the background wakeup timer.
 * Call the `schedule` tool to set a background wakeup timer:
   * **Initial Push**: Set `DurationSeconds=180` (3 minutes) to allow initial bot
     ingestion.
@@ -111,6 +115,12 @@ which are bypassed in favor of autonomous execution):
   3. No review pass is currently in progress (i.e., no new review request has
      been submitted since the last bot review).
   4. The local git branch commit SHA is fully in sync with the remote PR head commit (`is_synced: true`).
+
+  > [!IMPORTANT]
+  > **NO LOCAL OVERRIDES / RATIONALIZATIONS**:
+  > Passing local tests (`dart analyze`, `dart test`) are NEVER a substitute for remote CI status.
+  > If `pr_status.dart` returns `"can_terminate": false`, the agent MUST NOT exit the loop
+  > or declare victory early under any circumstances, regardless of local test results.
 * **Action on In-Progress Activity**: If `pr_status.dart` returns
   `"can_terminate": false` because CI checks are in-progress or a review pass is
   currently in progress, **schedule another 90s timer** and **go idle**. DO
@@ -181,10 +191,13 @@ which are bypassed in favor of autonomous execution):
   `resolveReviewThread` mutation for that thread BEFORE setting the background
   wakeup timer.
 
-### 6. Trigger Subsequent Review Pass
-* **CRITICAL OPERATIONAL REMINDER**: `gemini-code-assist` automatically ingests
-  the *first* PR push. However, for **every subsequent push**, you MUST
-  explicitly prompt the bot again by posting a comment on the main PR thread:
+### 6. Trigger Subsequent Review Pass (Or Terminate Zero-Change Loop)
+* **Zero-Code-Change Loop Termination Rule**:
+  If **0 code changes** were made in an iteration because all review comments were evaluated via the empirical verification gate (`dart analyze` returned 0 issues) and classified as `👎 Disagree`:
+  * **DO NOT** comment `/gemini review` on the PR. Re-triggering the review bot on the exact same commit causes an infinite review loop.
+  * **DO** post empirical disagreement replies on all review threads, resolve all threads via GraphQL (`triage.dart resolve`), and **terminate the loop immediately** with a final status summary.
+* **Subsequent Push Review Trigger**:
+  If code changes or new test files **were** committed and pushed to `origin`, you MUST explicitly prompt the bot again by posting a comment on the main PR thread:
   ```bash
   gh pr comment <pr_number> --body "/gemini review"
   ```
