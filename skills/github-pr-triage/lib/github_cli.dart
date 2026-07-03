@@ -1,6 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
 
+final _digitsOnly = RegExp(r'^\d+$');
+final _prUrlRegExp = RegExp(r'github\.com/([^/]+)/([^/]+)/pull/(\d+)');
+
 /// Encapsulates context for a target Pull Request and workspace directory.
 class PrContext {
   final String workingDir;
@@ -83,14 +86,12 @@ Future<PrContext> resolvePrContext(
   String? repo;
 
   if (prInput != null) {
-    final prUrlMatch = RegExp(
-      r'github\.com/([^/]+)/([^/]+)/pull/(\d+)',
-    ).firstMatch(prInput);
+    final prUrlMatch = _prUrlRegExp.firstMatch(prInput);
     if (prUrlMatch != null) {
       owner = prUrlMatch.group(1);
       repo = prUrlMatch.group(2);
       prNumber = prUrlMatch.group(3);
-    } else if (RegExp(r'^\d+$').hasMatch(prInput)) {
+    } else if (_digitsOnly.hasMatch(prInput)) {
       prNumber = prInput;
     } else {
       onFail(
@@ -456,7 +457,7 @@ String? parseRunIdFromLink(String link) {
   final idx = segments.indexOf('runs');
   if (idx > 0 && segments[idx - 1] == 'actions' && idx + 1 < segments.length) {
     final candidate = segments[idx + 1];
-    if (RegExp(r'^\d+$').hasMatch(candidate)) return candidate;
+    if (_digitsOnly.hasMatch(candidate)) return candidate;
   }
   return null;
 }
@@ -467,7 +468,7 @@ String? parseCheckRunIdFromLink(String link) {
   if (segments.isEmpty) return null;
 
   final last = segments.last;
-  if (!RegExp(r'^\d+$').hasMatch(last)) return null;
+  if (!_digitsOnly.hasMatch(last)) return null;
 
   final length = segments.length;
   if (length >= 2 && segments[length - 2] == 'check-runs') {
@@ -707,7 +708,7 @@ Future<void> replyToComment(
   required String commentId,
   required String body,
 }) async {
-  if (!RegExp(r'^\d+$').hasMatch(commentId)) {
+  if (!_digitsOnly.hasMatch(commentId)) {
     throw ArgumentError('Comment ID must be a numeric database ID.');
   }
   if (body.trim().isEmpty) {
