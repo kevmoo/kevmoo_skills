@@ -27,6 +27,16 @@ key_features:
   AI bot like Gemini Code Assist or a human engineer — is infallible. AI review
   bots frequently hallucinate syntax limitations, suggest outdated patterns, or
   misunderstand broader repository architecture.
+- **Treat Severity Badges as Unverified External Claims**: Bot-generated severity
+  tags (such as `![critical]` or `![security-high]`) are unverified external claims,
+  NOT confirmed system diagnostics or compiler errors. Never blindly trust badges.
+- **Mandatory Pre-Edit Empirical Verification Gate**:
+  Before editing code for any reviewer comment claiming a syntax error, compilation
+  failure, or type issue, the agent MUST run static analysis (`dart analyze`) on
+  the **unmodified existing codebase** first.
+  - If `dart analyze` returns **0 issues**, the reviewer's claim is empirically false.
+    The item MUST be classified as `👎 Disagree (Hallucinated Syntax/Compile Error)` and
+    NO code changes may be made for that item.
 - **You have the execution advantage**: External reviewers inspect static code,
   whereas you can execute live compilers, static analyzers (`dart analyze`),
   and test suites (`dart test`). Always empirically test claims before accepting
@@ -126,7 +136,9 @@ key_features:
            it, but it's low priority)
          * `👎 Disagree` (Incorrect or counter-productive suggestion; we should
            explain why and propose no action)
-       - **Rationale**: Your technical explanation of why you agree,
+        - **Empirical Verification**: Output of `dart analyze` or `dart test` run on
+          the unmodified codebase before accepting any fix or classifying a claim.
+        - **Rationale**: Your technical explanation of why you agree,
          disagree, or recommend a specific direction.
      - **Planned Action**:
        - The target file name(s) and specific line ranges.
