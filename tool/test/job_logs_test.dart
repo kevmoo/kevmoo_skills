@@ -37,5 +37,16 @@ void main() {
       expect(result, contains('Non-GitHub Actions run'));
       expect(result, contains('https://example.com/build/123'));
     });
+
+    test('checkRunIdMatch matches both /check-runs/ and /runs/', () {
+      final regex = RegExp(r'/(?:check-runs|runs)/(\d+)');
+      final match1 = regex.firstMatch(
+        'https://github.com/foo/bar/check-runs/12345',
+      );
+      final match2 = regex.firstMatch('https://github.com/foo/bar/runs/67890');
+
+      expect(match1?.group(1), equals('12345'));
+      expect(match2?.group(1), equals('67890'));
+    });
   });
 }

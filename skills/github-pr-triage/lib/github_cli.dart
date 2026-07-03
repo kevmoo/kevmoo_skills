@@ -459,7 +459,9 @@ Future<List<PrCheckRun>> fetchPrChecks(PrContext context) async {
 Future<String> fetchFailedCheckLog(PrContext context, PrCheckRun check) async {
   final link = check.link;
   final runIdMatch = RegExp(r'/actions/runs/(\d+)').firstMatch(link);
-  final checkRunIdMatch = RegExp(r'/check-runs/(\d+)').firstMatch(link);
+  final checkRunIdMatch = RegExp(
+    r'/(?:check-runs|runs)/(\d+)',
+  ).firstMatch(link);
   final repoArgs = ['-R', '${context.owner}/${context.repo}'];
 
   final annotations = <String>[];
