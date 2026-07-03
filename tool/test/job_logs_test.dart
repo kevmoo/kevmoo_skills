@@ -38,35 +38,53 @@ void main() {
       expect(result, contains('https://example.com/build/123'));
     });
 
+    test('parseRunIdFromLink extracts run ID from GitHub Actions URLs', () {
+      expect(
+        parseRunIdFromLink(
+          'https://github.com/owner/repo/actions/runs/123456789',
+        ),
+        equals('123456789'),
+      );
+      expect(
+        parseRunIdFromLink(
+          'https://github.com/owner/repo/actions/runs/123456789/job/987654321',
+        ),
+        equals('123456789'),
+      );
+      expect(parseRunIdFromLink('https://example.com/build/123456789'), isNull);
+    });
+
     test(
-      'checkRunIdMatch matches /check-runs/, /runs/, and job-level URLs but excludes plain /actions/runs/',
+      'parseCheckRunIdFromLink extracts check run IDs and job IDs correctly',
       () {
-        RegExpMatch? parseCheckRunId(String link) =>
-            RegExp(r'/check-runs/(\d+)').firstMatch(link) ??
-            RegExp(r'/actions/runs/\d+/jobs?/(\d+)').firstMatch(link) ??
-            (link.contains('/actions/runs/')
-                ? null
-                : RegExp(r'/runs/(\d+)').firstMatch(link));
-
-        final match1 = parseCheckRunId(
-          'https://github.com/foo/bar/check-runs/12345',
+        expect(
+          parseCheckRunIdFromLink(
+            'https://github.com/foo/bar/check-runs/12345',
+          ),
+          equals('12345'),
         );
-        final match2 = parseCheckRunId('https://github.com/foo/bar/runs/67890');
-        final match3 = parseCheckRunId(
-          'https://github.com/foo/bar/actions/runs/67890',
+        expect(
+          parseCheckRunIdFromLink('https://github.com/foo/bar/runs/67890'),
+          equals('67890'),
         );
-        final match4 = parseCheckRunId(
-          'https://github.com/foo/bar/actions/runs/12345/job/67890',
+        expect(
+          parseCheckRunIdFromLink(
+            'https://github.com/foo/bar/actions/runs/67890',
+          ),
+          isNull,
         );
-        final match5 = parseCheckRunId(
-          'https://github.com/foo/bar/actions/runs/12345/jobs/67890',
+        expect(
+          parseCheckRunIdFromLink(
+            'https://github.com/foo/bar/actions/runs/12345/job/67890',
+          ),
+          equals('67890'),
         );
-
-        expect(match1?.group(1), equals('12345'));
-        expect(match2?.group(1), equals('67890'));
-        expect(match3, isNull);
-        expect(match4?.group(1), equals('67890'));
-        expect(match5?.group(1), equals('67890'));
+        expect(
+          parseCheckRunIdFromLink(
+            'https://github.com/foo/bar/actions/runs/12345/jobs/67890',
+          ),
+          equals('67890'),
+        );
       },
     );
   });

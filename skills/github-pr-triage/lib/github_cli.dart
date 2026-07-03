@@ -450,6 +450,46 @@ Future<List<PrCheckRun>> fetchPrChecks(PrContext context) async {
   }
 }
 
+/// Extracts the workflow run ID from a GitHub Actions URL (e.g. `.../actions/runs/12345`).
+String? parseRunIdFromLink(String link) {
+  final segments = Uri.tryParse(link)?.pathSegments ?? const [];
+  final idx = segments.indexOf('runs');
+  if (idx > 0 && segments[idx - 1] == 'actions' && idx + 1 < segments.length) {
+    final candidate = segments[idx + 1];
+    if (RegExp(r'^\d+$').hasMatch(candidate)) return candidate;
+  }
+  return null;
+}
+
+/// Extracts the check run ID from a GitHub check run or job URL.
+String? parseCheckRunIdFromLink(String link) {
+  final segments = Uri.tryParse(link)?.pathSegments ?? const [];
+  if (segments.isEmpty) return null;
+
+  final last = segments.last;
+  if (!RegExp(r'^\d+$').hasMatch(last)) return null;
+
+  final length = segments.length;
+  if (length >= 2 && segments[length - 2] == 'check-runs') {
+    return last;
+  }
+
+  if (length >= 3 &&
+      (segments[length - 2] == 'job' || segments[length - 2] == 'jobs') &&
+      segments.contains('actions') &&
+      segments.contains('runs')) {
+    return last;
+  }
+
+  if (length >= 2 &&
+      segments[length - 2] == 'runs' &&
+      !segments.contains('actions')) {
+    return last;
+  }
+
+  return null;
+}
+
 /// Fetches logs and annotations for a failed status check.
 ///
 /// Attempts to fetch job-level logs via `/actions/jobs/{job_id}/logs` and
@@ -458,19 +498,13 @@ Future<List<PrCheckRun>> fetchPrChecks(PrContext context) async {
 /// Falls back to `gh run view --log-failed` if job-level API calls fail.
 Future<String> fetchFailedCheckLog(PrContext context, PrCheckRun check) async {
   final link = check.link;
-  final runIdMatch = RegExp(r'/actions/runs/(\d+)').firstMatch(link);
-  final checkRunIdMatch =
-      RegExp(r'/check-runs/(\d+)').firstMatch(link) ??
-      RegExp(r'/actions/runs/\d+/jobs?/(\d+)').firstMatch(link) ??
-      (link.contains('/actions/runs/')
-          ? null
-          : RegExp(r'/runs/(\d+)').firstMatch(link));
+  final runId = parseRunIdFromLink(link);
+  final checkRunId = parseCheckRunIdFromLink(link);
   final repoArgs = ['-R', '${context.owner}/${context.repo}'];
 
   final annotations = <String>[];
 
-  if (checkRunIdMatch != null) {
-    final checkRunId = checkRunIdMatch.group(1)!;
+  if (checkRunId != null) {
     try {
       final annOutput = await runCommand('gh', [
         ...repoArgs,
@@ -496,8 +530,7 @@ Future<String> fetchFailedCheckLog(PrContext context, PrCheckRun check) async {
     }
   }
 
-  if (runIdMatch != null) {
-    final runId = runIdMatch.group(1)!;
+  if (runId != null) {
     try {
       final jobsOutput = await runCommand('gh', [
         ...repoArgs,
