@@ -38,15 +38,27 @@ void main() {
       expect(result, contains('https://example.com/build/123'));
     });
 
-    test('checkRunIdMatch matches both /check-runs/ and /runs/', () {
-      final regex = RegExp(r'/(?:check-runs|runs)/(\d+)');
-      final match1 = regex.firstMatch(
-        'https://github.com/foo/bar/check-runs/12345',
-      );
-      final match2 = regex.firstMatch('https://github.com/foo/bar/runs/67890');
+    test(
+      'checkRunIdMatch matches both /check-runs/ and /runs/ but excludes /actions/runs/',
+      () {
+        RegExpMatch? parseCheckRunId(String link) =>
+            RegExp(r'/check-runs/(\d+)').firstMatch(link) ??
+            (link.contains('/actions/runs/')
+                ? null
+                : RegExp(r'/runs/(\d+)').firstMatch(link));
 
-      expect(match1?.group(1), equals('12345'));
-      expect(match2?.group(1), equals('67890'));
-    });
+        final match1 = parseCheckRunId(
+          'https://github.com/foo/bar/check-runs/12345',
+        );
+        final match2 = parseCheckRunId('https://github.com/foo/bar/runs/67890');
+        final match3 = parseCheckRunId(
+          'https://github.com/foo/bar/actions/runs/67890',
+        );
+
+        expect(match1?.group(1), equals('12345'));
+        expect(match2?.group(1), equals('67890'));
+        expect(match3, isNull);
+      },
+    );
   });
 }
