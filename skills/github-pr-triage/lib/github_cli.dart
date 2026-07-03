@@ -703,7 +703,7 @@ Future<PrGraphData> fetchPrGraphQLData(PrContext context) async {
 }
 
 /// Posts a reply to a PR review comment using its numeric [commentId].
-Future<void> replyToComment(
+Future<void> _replyToComment(
   PrContext context, {
   required String commentId,
   required String body,
@@ -726,7 +726,7 @@ Future<void> replyToComment(
 }
 
 /// Resolves a review thread via GraphQL using its [threadId] (e.g. `PRRT_...`).
-Future<void> resolveReviewThread(
+Future<void> _resolveReviewThread(
   PrContext context, {
   required String threadId,
 }) async {
@@ -773,9 +773,9 @@ Future<void> replyAndResolveThread(
     );
   }
   if (hasCommentId && hasBody) {
-    await replyToComment(context, commentId: commentId, body: body);
+    await _replyToComment(context, commentId: commentId, body: body);
   }
-  await resolveReviewThread(context, threadId: threadId);
+  await _resolveReviewThread(context, threadId: threadId);
 }
 
 PrCheckRun _parsePrCheckRun(Map json) {
