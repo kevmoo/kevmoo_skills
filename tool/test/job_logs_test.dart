@@ -39,10 +39,11 @@ void main() {
     });
 
     test(
-      'checkRunIdMatch matches both /check-runs/ and /runs/ but excludes /actions/runs/',
+      'checkRunIdMatch matches /check-runs/, /runs/, and job-level URLs but excludes plain /actions/runs/',
       () {
         RegExpMatch? parseCheckRunId(String link) =>
             RegExp(r'/check-runs/(\d+)').firstMatch(link) ??
+            RegExp(r'/actions/runs/\d+/jobs?/(\d+)').firstMatch(link) ??
             (link.contains('/actions/runs/')
                 ? null
                 : RegExp(r'/runs/(\d+)').firstMatch(link));
@@ -54,10 +55,18 @@ void main() {
         final match3 = parseCheckRunId(
           'https://github.com/foo/bar/actions/runs/67890',
         );
+        final match4 = parseCheckRunId(
+          'https://github.com/foo/bar/actions/runs/12345/job/67890',
+        );
+        final match5 = parseCheckRunId(
+          'https://github.com/foo/bar/actions/runs/12345/jobs/67890',
+        );
 
         expect(match1?.group(1), equals('12345'));
         expect(match2?.group(1), equals('67890'));
         expect(match3, isNull);
+        expect(match4?.group(1), equals('67890'));
+        expect(match5?.group(1), equals('67890'));
       },
     );
   });

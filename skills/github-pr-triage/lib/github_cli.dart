@@ -461,6 +461,7 @@ Future<String> fetchFailedCheckLog(PrContext context, PrCheckRun check) async {
   final runIdMatch = RegExp(r'/actions/runs/(\d+)').firstMatch(link);
   final checkRunIdMatch =
       RegExp(r'/check-runs/(\d+)').firstMatch(link) ??
+      RegExp(r'/actions/runs/\d+/jobs?/(\d+)').firstMatch(link) ??
       (link.contains('/actions/runs/')
           ? null
           : RegExp(r'/runs/(\d+)').firstMatch(link));
