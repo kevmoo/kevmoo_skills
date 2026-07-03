@@ -47,6 +47,12 @@ void main() {
       );
       expect(
         parseRunIdFromLink(
+          'https://github.com/owner/repo/actions/runs/123456789/',
+        ),
+        equals('123456789'),
+      );
+      expect(
+        parseRunIdFromLink(
           'https://github.com/owner/repo/actions/runs/123456789/job/987654321',
         ),
         equals('123456789'),
@@ -64,7 +70,17 @@ void main() {
           equals('12345'),
         );
         expect(
+          parseCheckRunIdFromLink(
+            'https://github.com/foo/bar/check-runs/12345/',
+          ),
+          equals('12345'),
+        );
+        expect(
           parseCheckRunIdFromLink('https://github.com/foo/bar/runs/67890'),
+          equals('67890'),
+        );
+        expect(
+          parseCheckRunIdFromLink('https://github.com/foo/bar/runs/67890/'),
           equals('67890'),
         );
         expect(
@@ -76,6 +92,12 @@ void main() {
         expect(
           parseCheckRunIdFromLink(
             'https://github.com/foo/bar/actions/runs/12345/job/67890',
+          ),
+          equals('67890'),
+        );
+        expect(
+          parseCheckRunIdFromLink(
+            'https://github.com/foo/bar/actions/runs/12345/job/67890/',
           ),
           equals('67890'),
         );

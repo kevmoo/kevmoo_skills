@@ -453,7 +453,8 @@ Future<List<PrCheckRun>> fetchPrChecks(PrContext context) async {
 
 /// Extracts the workflow run ID from a GitHub Actions URL (e.g. `.../actions/runs/12345`).
 String? parseRunIdFromLink(String link) {
-  final segments = Uri.tryParse(link)?.pathSegments ?? const [];
+  final rawSegments = Uri.tryParse(link)?.pathSegments ?? const [];
+  final segments = rawSegments.where((s) => s.isNotEmpty).toList();
   final idx = segments.indexOf('runs');
   if (idx > 0 && segments[idx - 1] == 'actions' && idx + 1 < segments.length) {
     final candidate = segments[idx + 1];
@@ -464,7 +465,8 @@ String? parseRunIdFromLink(String link) {
 
 /// Extracts the check run ID from a GitHub check run or job URL.
 String? parseCheckRunIdFromLink(String link) {
-  final segments = Uri.tryParse(link)?.pathSegments ?? const [];
+  final rawSegments = Uri.tryParse(link)?.pathSegments ?? const [];
+  final segments = rawSegments.where((s) => s.isNotEmpty).toList();
   if (segments.isEmpty) return null;
 
   final last = segments.last;
