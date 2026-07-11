@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
@@ -386,6 +387,23 @@ void main() {
       }
     });
 
+    Future<String> mockRunCommand(
+      String command,
+      List<String> args, {
+      String? workingDirectory,
+    }) async {
+      if (command == 'gh' &&
+          args.length >= 2 &&
+          args[0] == 'repo' &&
+          args[1] == 'view') {
+        return jsonEncode({
+          'owner': {'login': 'kevmoo'},
+          'name': 'kevmoo_skills',
+        });
+      }
+      return runCommand(command, args, workingDirectory: workingDirectory);
+    }
+
     test(
       'allows localOwner != owner when localRepo matches repo (fork workflow)',
       () async {
@@ -397,12 +415,16 @@ void main() {
           'https://github.com/kevmoo/kevmoo_skills.git',
         ], workingDirectory: tempDir.path);
 
-        final context = await resolvePrContext([
-          '--dir',
-          tempDir.path,
-          '--pr',
-          'https://github.com/forkcontributor/kevmoo_skills/pull/10',
-        ], onFail: (message) => fail('Should not fail: $message'));
+        final context = await resolvePrContext(
+          [
+            '--dir',
+            tempDir.path,
+            '--pr',
+            'https://github.com/forkcontributor/kevmoo_skills/pull/10',
+          ],
+          onFail: (message) => fail('Should not fail: $message'),
+          runCommand: mockRunCommand,
+        );
 
         expect(context.owner, equals('forkcontributor'));
         expect(context.repo, equals('kevmoo_skills'));
@@ -427,12 +449,16 @@ void main() {
           'https://github.com/upstreamowner/some_other_repo.git',
         ], workingDirectory: tempDir.path);
 
-        final context = await resolvePrContext([
-          '--dir',
-          tempDir.path,
-          '--pr',
-          'https://github.com/upstreamowner/some_other_repo/pull/25',
-        ], onFail: (message) => fail('Should not fail: $message'));
+        final context = await resolvePrContext(
+          [
+            '--dir',
+            tempDir.path,
+            '--pr',
+            'https://github.com/upstreamowner/some_other_repo/pull/25',
+          ],
+          onFail: (message) => fail('Should not fail: $message'),
+          runCommand: mockRunCommand,
+        );
 
         expect(context.owner, equals('upstreamowner'));
         expect(context.repo, equals('some_other_repo'));
@@ -464,6 +490,7 @@ void main() {
               failMsg = message;
               throw StateError(message);
             },
+            runCommand: mockRunCommand,
           );
         } catch (_) {}
 

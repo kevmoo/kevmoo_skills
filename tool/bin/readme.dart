@@ -29,9 +29,7 @@ void main(List<String> arguments) async {
     exit(1);
   }
 
-  final repoName = p.basename(repoRoot.path);
-  final repoSlug =
-      Platform.environment['GITHUB_REPOSITORY'] ?? 'kevmoo/$repoName';
+  final repoSlug = _resolveRepoSlug(repoRoot);
 
   final skillsDir = Directory(p.join(repoRoot.path, 'skills'));
   if (!skillsDir.existsSync()) {
@@ -159,6 +157,31 @@ Directory? _findRepoRoot(Directory startDir) {
     dir = parent;
   }
   return null;
+}
+
+String _resolveRepoSlug(Directory repoRoot) {
+  final envRepo = Platform.environment['GITHUB_REPOSITORY'];
+  if (envRepo != null && envRepo.isNotEmpty) {
+    return envRepo;
+  }
+  try {
+    final result = Process.runSync('git', [
+      'config',
+      '--get',
+      'remote.origin.url',
+    ], workingDirectory: repoRoot.path);
+    if (result.exitCode == 0) {
+      final url = result.stdout.toString().trim();
+      final regExp = RegExp(
+        r'(?:github\.com[/:]|git@github\.com:)([^/]+/[^/.]+)(?:\.git)?',
+      );
+      final match = regExp.firstMatch(url);
+      if (match != null) {
+        return match.group(1)!;
+      }
+    }
+  } catch (_) {}
+  return 'kevmoo/${p.basename(repoRoot.path)}';
 }
 
 Map<dynamic, dynamic> _parseFrontMatter(String content) {
