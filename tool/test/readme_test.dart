@@ -32,6 +32,27 @@ void main() {
       );
     });
 
+    test('extracts slug from URL with trailing slash', () {
+      expect(
+        readme.parseRepoSlugFromUrl('https://github.com/owner/repo/'),
+        equals('owner/repo'),
+      );
+    });
+
+    test('extracts slug from full pull request subpath URL', () {
+      expect(
+        readme.parseRepoSlugFromUrl('https://github.com/owner/repo/pull/39'),
+        equals('owner/repo'),
+      );
+    });
+
+    test('extracts slug from ssh:// URL with .git suffix', () {
+      expect(
+        readme.parseRepoSlugFromUrl('ssh://git@github.com/owner/repo.git'),
+        equals('owner/repo'),
+      );
+    });
+
     test('returns null for non-github URLs', () {
       expect(
         readme.parseRepoSlugFromUrl('https://gitlab.com/owner/repo.git'),

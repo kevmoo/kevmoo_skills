@@ -161,15 +161,31 @@ Directory? _findRepoRoot(Directory startDir) {
 
 String? parseRepoSlugFromUrl(String rawUrl) {
   var url = rawUrl.trim();
-  if (url.endsWith('.git')) {
-    url = url.substring(0, url.length - 4);
+  if (!url.contains('://') && url.contains('@') && url.contains(':')) {
+    url = 'ssh://${url.replaceFirst(':', '/')}';
   }
-  final regExp = RegExp(r'(?:github\.com[/:]|git@github\.com:)([^/]+/[^/]+)');
-  final match = regExp.firstMatch(url);
-  if (match != null) {
-    return match.group(1);
+
+  final uri = Uri.tryParse(url);
+  if (uri == null || uri.host.toLowerCase() != 'github.com') {
+    return null;
   }
-  return null;
+
+  final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
+  if (segments.length < 2) {
+    return null;
+  }
+
+  final owner = segments[0];
+  var repo = segments[1];
+  if (repo.endsWith('.git')) {
+    repo = repo.substring(0, repo.length - 4);
+  }
+
+  if (owner.isEmpty || repo.isEmpty) {
+    return null;
+  }
+
+  return '$owner/$repo';
 }
 
 String _resolveRepoSlug(Directory repoRoot) {
