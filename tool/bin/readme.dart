@@ -29,7 +29,7 @@ void main(List<String> arguments) async {
     exit(1);
   }
 
-  final repoSlug = _getRepoSlug(repoRoot);
+  final repoSlug = _resolveRepoSlug(repoRoot);
 
   final skillsDir = Directory(p.join(repoRoot.path, 'skills'));
   if (!skillsDir.existsSync()) {
@@ -144,44 +144,6 @@ void main(List<String> arguments) async {
   }
 }
 
-String _getRepoSlug(Directory repoRoot) {
-  final envSlug = Platform.environment['GITHUB_REPOSITORY'];
-  if (envSlug != null && envSlug.isNotEmpty) {
-    return envSlug;
-  }
-  try {
-    final result = Process.runSync('git', [
-      'config',
-      '--get',
-      'remote.origin.url',
-    ], workingDirectory: repoRoot.path);
-    if (result.exitCode == 0) {
-      final slug = getRepoSlugFromUrl(result.stdout as String);
-      if (slug.isNotEmpty) {
-        return slug;
-      }
-    }
-  } catch (_) {}
-  final repoName = p.basename(repoRoot.path);
-  return 'kevmoo/$repoName';
-}
-
-String getRepoSlugFromUrl(String url) {
-  var cleanUrl = url.trim();
-  while (cleanUrl.endsWith('/')) {
-    cleanUrl = cleanUrl.substring(0, cleanUrl.length - 1);
-  }
-  if (cleanUrl.endsWith('.git')) {
-    cleanUrl = cleanUrl.substring(0, cleanUrl.length - 4);
-  }
-  if (cleanUrl.contains('github.com:')) {
-    return cleanUrl.split('github.com:').last;
-  } else if (cleanUrl.contains('github.com/')) {
-    return cleanUrl.split('github.com/').last;
-  }
-  return '';
-}
-
 Directory? _findRepoRoot(Directory startDir) {
   var dir = startDir;
   while (true) {
@@ -195,6 +157,54 @@ Directory? _findRepoRoot(Directory startDir) {
     dir = parent;
   }
   return null;
+}
+
+String? parseRepoSlugFromUrl(String rawUrl) {
+  var url = rawUrl.trim();
+  if (!url.contains('://') && url.contains('@') && url.contains(':')) {
+    url = 'ssh://${url.replaceFirst(':', '/')}';
+  }
+
+  final uri = Uri.tryParse(url);
+  if (uri == null || uri.host.toLowerCase() != 'github.com') {
+    return null;
+  }
+
+  if (uri.pathSegments.where((s) => s.isNotEmpty).toList() case [
+    final owner,
+    var repo,
+    ...,
+  ]) {
+    if (repo.endsWith('.git')) {
+      repo = repo.substring(0, repo.length - 4);
+    }
+    if (owner.isNotEmpty && repo.isNotEmpty) {
+      return '$owner/$repo';
+    }
+  }
+
+  return null;
+}
+
+String _resolveRepoSlug(Directory repoRoot) {
+  final envRepo = Platform.environment['GITHUB_REPOSITORY'];
+  if (envRepo != null && envRepo.isNotEmpty) {
+    return envRepo;
+  }
+  try {
+    final result = Process.runSync('git', [
+      'config',
+      '--get',
+      'remote.origin.url',
+    ], workingDirectory: repoRoot.path);
+    if (result.exitCode == 0) {
+      final slug = parseRepoSlugFromUrl(result.stdout.toString());
+      if (slug != null && slug.isNotEmpty) {
+        return slug;
+      }
+    }
+  } catch (_) {}
+  return 'kevmoo/${p.basename(repoRoot.path)}';
 }
 
 Map<dynamic, dynamic> _parseFrontMatter(String content) {

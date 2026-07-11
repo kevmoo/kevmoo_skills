@@ -19,6 +19,14 @@ class PrContext {
   });
 }
 
+/// Function signature for running external process commands.
+typedef CommandRunner =
+    Future<String> Function(
+      String command,
+      List<String> args, {
+      String? workingDirectory,
+    });
+
 /// Runs an external process command and returns its standard output.
 ///
 /// Throws a [ProcessException] if the command exits with a non-zero exit code.
@@ -49,6 +57,7 @@ Future<String> runCommand(
 Future<PrContext> resolvePrContext(
   List<String> args, {
   required Never Function(String message) onFail,
+  CommandRunner runCommand = runCommand,
 }) async {
   String? prInput;
   String? targetDir;
@@ -177,12 +186,23 @@ Future<PrContext> resolvePrContext(
       localRepo != null &&
       owner != null &&
       repo != null) {
-    if (localOwner.toLowerCase() != owner.toLowerCase() ||
-        localRepo.toLowerCase() != repo.toLowerCase()) {
-      onFail(
-        'The target directory "$workingDir" is for repository "$localOwner/$localRepo", '
-        'but the specified PR is for repository "$owner/$repo".',
-      );
+    final sameRepoName = localRepo.toLowerCase() == repo.toLowerCase();
+    final sameOwner = localOwner.toLowerCase() == owner.toLowerCase();
+    if (!sameOwner || !sameRepoName) {
+      if (!sameRepoName) {
+        final matchesRemote = await _hasGitRemote(
+          workingDir,
+          owner,
+          repo,
+          runCommand: runCommand,
+        );
+        if (!matchesRemote) {
+          onFail(
+            'The target directory "$workingDir" is for repository "$localOwner/$localRepo", '
+            'but the specified PR is for repository "$owner/$repo".',
+          );
+        }
+      }
     }
   }
 
@@ -192,6 +212,30 @@ Future<PrContext> resolvePrContext(
     owner: resolvedOwner,
     repo: resolvedRepo,
   );
+}
+
+Future<bool> _hasGitRemote(
+  String workingDir,
+  String owner,
+  String repo, {
+  CommandRunner runCommand = runCommand,
+}) async {
+  try {
+    final output = await runCommand('git', [
+      'remote',
+      '-v',
+    ], workingDirectory: workingDir);
+    final pattern = RegExp(
+      '(?:[/:])${RegExp.escape(owner)}/${RegExp.escape(repo)}(?:\\.git|/|[\\s]|\$)',
+      caseSensitive: false,
+    );
+    for (final line in output.split('\n')) {
+      if (pattern.hasMatch(line)) {
+        return true;
+      }
+    }
+  } catch (_) {}
+  return false;
 }
 
 /// Represents a status check run on a PR.
@@ -253,6 +297,7 @@ Future<PrSyncStatus> fetchPrSyncStatus(
   PrContext context, {
   String? remoteBranch,
   String? remoteHeadSha,
+  CommandRunner runCommand = runCommand,
 }) async {
   var rBranch = remoteBranch;
   var rHeadSha = remoteHeadSha;
@@ -430,7 +475,10 @@ Future<PrSyncStatus> fetchPrSyncStatus(
 }
 
 /// Fetches status check runs for the specified [PrContext].
-Future<List<PrCheckRun>> fetchPrChecks(PrContext context) async {
+Future<List<PrCheckRun>> fetchPrChecks(
+  PrContext context, {
+  CommandRunner runCommand = runCommand,
+}) async {
   final repoArgs = ['-R', '${context.owner}/${context.repo}'];
   try {
     final checksOutput = await runCommand('gh', [
@@ -499,7 +547,11 @@ String? parseCheckRunIdFromLink(String link) {
 /// check run annotations via `/check-runs/{check_run_id}/annotations` to
 /// avoid failures when sibling workflow jobs are still in progress.
 /// Falls back to `gh run view --log-failed` if job-level API calls fail.
-Future<String> fetchFailedCheckLog(PrContext context, PrCheckRun check) async {
+Future<String> fetchFailedCheckLog(
+  PrContext context,
+  PrCheckRun check, {
+  CommandRunner runCommand = runCommand,
+}) async {
   final link = check.link;
   final runId = parseRunIdFromLink(link);
   final checkRunId = parseCheckRunIdFromLink(link);
@@ -608,7 +660,10 @@ Future<String> fetchFailedCheckLog(PrContext context, PrCheckRun check) async {
 }
 
 /// Fetches comments, reviews, and review threads for the specified [PrContext] using GraphQL.
-Future<PrGraphData> fetchPrGraphQLData(PrContext context) async {
+Future<PrGraphData> fetchPrGraphQLData(
+  PrContext context, {
+  CommandRunner runCommand = runCommand,
+}) async {
   const query = r'''
   query($owner: String!, $repo: String!, $pr: Int!) {
     repository(owner: $owner, name: $repo) {
@@ -709,6 +764,7 @@ Future<void> _replyToComment(
   PrContext context, {
   required String commentId,
   required String body,
+  CommandRunner runCommand = runCommand,
 }) async {
   if (!_digitsOnly.hasMatch(commentId)) {
     throw ArgumentError('Comment ID must be a numeric database ID.');
@@ -731,6 +787,7 @@ Future<void> _replyToComment(
 Future<void> _resolveReviewThread(
   PrContext context, {
   required String threadId,
+  CommandRunner runCommand = runCommand,
 }) async {
   if (threadId.trim().isEmpty) {
     throw ArgumentError('Thread ID cannot be empty.');
@@ -766,6 +823,7 @@ Future<void> replyAndResolveThread(
   required String threadId,
   String? commentId,
   String? body,
+  CommandRunner runCommand = runCommand,
 }) async {
   final hasCommentId = commentId != null && commentId.trim().isNotEmpty;
   final hasBody = body != null && body.trim().isNotEmpty;
@@ -775,9 +833,18 @@ Future<void> replyAndResolveThread(
     );
   }
   if (hasCommentId && hasBody) {
-    await _replyToComment(context, commentId: commentId, body: body);
+    await _replyToComment(
+      context,
+      commentId: commentId,
+      body: body,
+      runCommand: runCommand,
+    );
   }
-  await _resolveReviewThread(context, threadId: threadId);
+  await _resolveReviewThread(
+    context,
+    threadId: threadId,
+    runCommand: runCommand,
+  );
 }
 
 PrCheckRun _parsePrCheckRun(Map json) {
