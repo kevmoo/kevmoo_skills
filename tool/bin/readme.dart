@@ -159,6 +159,19 @@ Directory? _findRepoRoot(Directory startDir) {
   return null;
 }
 
+String? parseRepoSlugFromUrl(String rawUrl) {
+  var url = rawUrl.trim();
+  if (url.endsWith('.git')) {
+    url = url.substring(0, url.length - 4);
+  }
+  final regExp = RegExp(r'(?:github\.com[/:]|git@github\.com:)([^/]+/[^/]+)');
+  final match = regExp.firstMatch(url);
+  if (match != null) {
+    return match.group(1);
+  }
+  return null;
+}
+
 String _resolveRepoSlug(Directory repoRoot) {
   final envRepo = Platform.environment['GITHUB_REPOSITORY'];
   if (envRepo != null && envRepo.isNotEmpty) {
@@ -171,13 +184,9 @@ String _resolveRepoSlug(Directory repoRoot) {
       'remote.origin.url',
     ], workingDirectory: repoRoot.path);
     if (result.exitCode == 0) {
-      final url = result.stdout.toString().trim();
-      final regExp = RegExp(
-        r'(?:github\.com[/:]|git@github\.com:)([^/]+/[^/.]+)(?:\.git)?',
-      );
-      final match = regExp.firstMatch(url);
-      if (match != null) {
-        return match.group(1)!;
+      final slug = parseRepoSlugFromUrl(result.stdout.toString());
+      if (slug != null && slug.isNotEmpty) {
+        return slug;
       }
     }
   } catch (_) {}
