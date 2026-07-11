@@ -156,19 +156,30 @@ String _getRepoSlug(Directory repoRoot) {
       'remote.origin.url',
     ], workingDirectory: repoRoot.path);
     if (result.exitCode == 0) {
-      var url = (result.stdout as String).trim();
-      if (url.endsWith('.git')) {
-        url = url.substring(0, url.length - 4);
-      }
-      if (url.contains('github.com:')) {
-        return url.split('github.com:').last;
-      } else if (url.contains('github.com/')) {
-        return url.split('github.com/').last;
+      final slug = getRepoSlugFromUrl(result.stdout as String);
+      if (slug.isNotEmpty) {
+        return slug;
       }
     }
   } catch (_) {}
   final repoName = p.basename(repoRoot.path);
   return 'kevmoo/$repoName';
+}
+
+String getRepoSlugFromUrl(String url) {
+  var cleanUrl = url.trim();
+  while (cleanUrl.endsWith('/')) {
+    cleanUrl = cleanUrl.substring(0, cleanUrl.length - 1);
+  }
+  if (cleanUrl.endsWith('.git')) {
+    cleanUrl = cleanUrl.substring(0, cleanUrl.length - 4);
+  }
+  if (cleanUrl.contains('github.com:')) {
+    return cleanUrl.split('github.com:').last;
+  } else if (cleanUrl.contains('github.com/')) {
+    return cleanUrl.split('github.com/').last;
+  }
+  return '';
 }
 
 Directory? _findRepoRoot(Directory startDir) {
