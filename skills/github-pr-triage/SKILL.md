@@ -98,13 +98,20 @@ key_features:
      - Inform the user and call `ask_question` to ask their preference:
        * Option 1: `(Recommended) Proceed with triaging open comments now`
        * Option 2: `Wait for active CI status checks to complete first`
-     - *(Note: This interactive prompt is bypassed when operating within an
-       outer orchestrator skill like `pr-loop`, which handles background timers
-       automatically)*.
+     - **MANDATORY HARD BLOCK**: When CI is pending, you MUST halt execution after
+       calling `ask_question`. Do NOT proceed to Step 5 (Generate a Triage Report)
+       or create the `pr_triage_report.md` artifact until the user has answered,
+       because final CI results might change the triage plan and action items.
+     - *(Note: This interactive prompt and hard block are bypassed when
+       operating within an outer orchestrator skill like `pr-loop`, which handles
+       background timers automatically)*.
    - Analyze the stack traces, compile errors, or analyzer failures to
      understand why any failed checks failed.
 
 5. **Generate a Triage Report (Artifact)**:
+   - **Prereq (Hard Gate)**: If CI status checks are active/pending, you MUST
+     NOT generate this report until the user has answered the `ask_question`
+     prompt from Step 4.
    - Create a markdown artifact named `pr_triage_report.md` in the artifacts
      directory (using `write_to_file` with `RequestFeedback: true` in
      `ArtifactMetadata` to render an interactive 'Proceed' button). (Note: This
@@ -204,6 +211,11 @@ dart <path-to-github-pr-triage-skill>/bin/triage.dart resolve <thread_graphql_id
 
 
 ## Constraints
+- **Hard CI Gate**: If CI checks are running or pending, you MUST halt execution
+  after calling `ask_question` in Step 4 and DO NOT proceed to Step 5 or
+  generate `pr_triage_report.md` until the user responds, as pending CI
+  results may alter the final triage plan. (Note: Bypassed ONLY IF operating
+  within an outer orchestrator skill like `pr-loop`).
 - **CRITICAL**: You MUST NOT modify files or make any code edits to address PR
   comments or CI failures before generating a `pr_triage_report.md` artifact
   and obtaining explicit user approval on the plan. (Note: This constraint is

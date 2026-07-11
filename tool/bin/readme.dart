@@ -29,9 +29,7 @@ void main(List<String> arguments) async {
     exit(1);
   }
 
-  final repoName = p.basename(repoRoot.path);
-  final repoSlug =
-      Platform.environment['GITHUB_REPOSITORY'] ?? 'kevmoo/$repoName';
+  final repoSlug = _resolveRepoSlug(repoRoot);
 
   final skillsDir = Directory(p.join(repoRoot.path, 'skills'));
   if (!skillsDir.existsSync()) {
@@ -159,6 +157,56 @@ Directory? _findRepoRoot(Directory startDir) {
     dir = parent;
   }
   return null;
+}
+
+String? parseRepoSlugFromUrl(String rawUrl) {
+  var url = rawUrl.trim();
+  if (!url.contains('://') && url.contains('@') && url.contains(':')) {
+    url = 'ssh://${url.replaceFirst(':', '/')}';
+  }
+
+  final uri = Uri.tryParse(url);
+  if (uri == null || uri.host.toLowerCase() != 'github.com') {
+    return null;
+  }
+
+  final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
+  if (segments.length < 2) {
+    return null;
+  }
+
+  final owner = segments[0];
+  var repo = segments[1];
+  if (repo.endsWith('.git')) {
+    repo = repo.substring(0, repo.length - 4);
+  }
+
+  if (owner.isEmpty || repo.isEmpty) {
+    return null;
+  }
+
+  return '$owner/$repo';
+}
+
+String _resolveRepoSlug(Directory repoRoot) {
+  final envRepo = Platform.environment['GITHUB_REPOSITORY'];
+  if (envRepo != null && envRepo.isNotEmpty) {
+    return envRepo;
+  }
+  try {
+    final result = Process.runSync('git', [
+      'config',
+      '--get',
+      'remote.origin.url',
+    ], workingDirectory: repoRoot.path);
+    if (result.exitCode == 0) {
+      final slug = parseRepoSlugFromUrl(result.stdout.toString());
+      if (slug != null && slug.isNotEmpty) {
+        return slug;
+      }
+    }
+  } catch (_) {}
+  return 'kevmoo/${p.basename(repoRoot.path)}';
 }
 
 Map<dynamic, dynamic> _parseFrontMatter(String content) {
