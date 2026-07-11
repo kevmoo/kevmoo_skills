@@ -170,22 +170,20 @@ String? parseRepoSlugFromUrl(String rawUrl) {
     return null;
   }
 
-  final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
-  if (segments.length < 2) {
-    return null;
+  if (uri.pathSegments.where((s) => s.isNotEmpty).toList() case [
+    final owner,
+    var repo,
+    ...,
+  ]) {
+    if (repo.endsWith('.git')) {
+      repo = repo.substring(0, repo.length - 4);
+    }
+    if (owner.isNotEmpty && repo.isNotEmpty) {
+      return '$owner/$repo';
+    }
   }
 
-  final owner = segments[0];
-  var repo = segments[1];
-  if (repo.endsWith('.git')) {
-    repo = repo.substring(0, repo.length - 4);
-  }
-
-  if (owner.isEmpty || repo.isEmpty) {
-    return null;
-  }
-
-  return '$owner/$repo';
+  return null;
 }
 
 String _resolveRepoSlug(Directory repoRoot) {
