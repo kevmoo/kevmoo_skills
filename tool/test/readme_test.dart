@@ -53,6 +53,13 @@ void main() {
       );
     });
 
+    test('extracts slug from HTTPS URL with explicit port number', () {
+      expect(
+        readme.parseRepoSlugFromUrl('https://github.com:443/owner/repo.git'),
+        equals('owner/repo'),
+      );
+    });
+
     test('returns null for non-github URLs', () {
       expect(
         readme.parseRepoSlugFromUrl('https://gitlab.com/owner/repo.git'),

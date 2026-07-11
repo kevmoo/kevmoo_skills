@@ -130,8 +130,8 @@ which are bypassed in favor of autonomous execution):
   review pass are still in progress, schedule a background timer (`schedule`
   tool) and **go idle**. DO NOT start triaging or editing code until BOTH review
   comments and CI runs have fully completed!
-  Instead of enforcing a strict/hardcoded 90-second limit across all checks, use
-  **dynamic/adaptive polling timers** tailored to the activity:
+  Instead of enforcing a strict/hardcoded 90-second limit across all
+  checks, use **dynamic/adaptive polling timers** tailored to the activity:
   * **Review Pass / EYES Reaction (`has_active_eyes_reaction: true`)**: If an AI
     review bot is actively processing feedback, use a responsive timer (e.g.,
     60–120 seconds) since bot review passes typically complete within 2–3
@@ -140,10 +140,11 @@ which are bypassed in favor of autonomous execution):
     workflows, dynamically determine `DurationSeconds` to avoid unnecessary
     wakeups and token consumption on long-running jobs:
     * **Historical / Expected Durations**: Check known workflow characteristics
-      or inspect previous check run durations by running `gh pr checks --json name,startedAt,completedAt,state` directly. If a workflow (such as end-to-end integration tests or
-      multi-platform builds) historically takes 15–30+ minutes and just started,
-      schedule a longer timer (e.g., 300–600 seconds) rather than waking up
-      every 90 seconds.
+      or inspect previous check run durations by running
+      `gh pr checks --json name,startedAt,completedAt,state` directly. If a
+      workflow (such as end-to-end integration tests or multi-platform builds)
+      historically takes 15–30+ minutes and just started, schedule a longer
+      timer (e.g., 300–600 seconds) rather than waking up every 90 seconds.
     * **Intelligent Backoff**: If CI checks remain pending across consecutive
       polling cycles, adaptively increase the polling interval (e.g., 120s →
       240s → 480s up to a reasonable cap like 600s) to conserve steps while
@@ -151,8 +152,8 @@ which are bypassed in favor of autonomous execution):
     * **Workflow-Specific Sizing**: For fast lint/analyzer runs, use shorter
       intervals (e.g., 90–120s); for heavy builds or full suites, scale up.
     * **Combined Activity**: If both a review pass and CI checks are pending,
-      balance the timer (e.g., 120–180s) to catch review feedback promptly while
-      monitoring CI.
+      balance the timer (e.g., 120–180s) to catch review feedback promptly
+      while monitoring CI.
   * Always set a descriptive `Prompt` on the timer explaining what activity is
     being monitored and why the duration was chosen.
 * **Unified Triage Engine**: If `pr_status.dart` indicates unresolved threads or
