@@ -29,9 +29,7 @@ void main(List<String> arguments) async {
     exit(1);
   }
 
-  final repoName = p.basename(repoRoot.path);
-  final repoSlug =
-      Platform.environment['GITHUB_REPOSITORY'] ?? 'kevmoo/$repoName';
+  final repoSlug = _getRepoSlug(repoRoot);
 
   final skillsDir = Directory(p.join(repoRoot.path, 'skills'));
   if (!skillsDir.existsSync()) {
@@ -144,6 +142,33 @@ void main(List<String> arguments) async {
     print('------------------------------');
     print('Run with --write (or -w) to save changes to README.md.');
   }
+}
+
+String _getRepoSlug(Directory repoRoot) {
+  final envSlug = Platform.environment['GITHUB_REPOSITORY'];
+  if (envSlug != null && envSlug.isNotEmpty) {
+    return envSlug;
+  }
+  try {
+    final result = Process.runSync('git', [
+      'config',
+      '--get',
+      'remote.origin.url',
+    ], workingDirectory: repoRoot.path);
+    if (result.exitCode == 0) {
+      var url = (result.stdout as String).trim();
+      if (url.endsWith('.git')) {
+        url = url.substring(0, url.length - 4);
+      }
+      if (url.contains('github.com:')) {
+        return url.split('github.com:').last;
+      } else if (url.contains('github.com/')) {
+        return url.split('github.com/').last;
+      }
+    }
+  } catch (_) {}
+  final repoName = p.basename(repoRoot.path);
+  return 'kevmoo/$repoName';
 }
 
 Directory? _findRepoRoot(Directory startDir) {

@@ -140,8 +140,7 @@ which are bypassed in favor of autonomous execution):
     workflows, dynamically determine `DurationSeconds` to avoid unnecessary
     wakeups and token consumption on long-running jobs:
     * **Historical / Expected Durations**: Check known workflow characteristics
-      or inspect previous check run durations (e.g., timestamps from
-      `gh pr checks`). If a workflow (such as end-to-end integration tests or
+      or inspect previous check run durations by running `gh pr checks --json name,startedAt,completedAt,state` directly. If a workflow (such as end-to-end integration tests or
       multi-platform builds) historically takes 15–30+ minutes and just started,
       schedule a longer timer (e.g., 300–600 seconds) rather than waking up
       every 90 seconds.
