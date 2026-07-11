@@ -9,7 +9,7 @@ procedural, actionable instructions to AI assistants for specific domains or tas
 <!-- SKILLS_LIST_START -->
 To install any skill individually:
 ```bash
-npx skills add kevmoo/kevmoo_skills --skill <skill-name>
+npx skills add kevmoo/github_pr_triage_team --skill <skill-name>
 ```
 
 | Skill | Description | Key Features |

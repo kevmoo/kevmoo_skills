@@ -372,4 +372,109 @@ void main() {
       },
     );
   });
+
+  group('resolvePrContext unit tests', () {
+    late Directory tempDir;
+
+    setUp(() async {
+      tempDir = await Directory.systemTemp.createTemp('resolve_pr_test_');
+    });
+
+    tearDown(() async {
+      if (await tempDir.exists()) {
+        await tempDir.delete(recursive: true);
+      }
+    });
+
+    test(
+      'allows localOwner != owner when localRepo matches repo (fork workflow)',
+      () async {
+        await runCommand('git', ['init'], workingDirectory: tempDir.path);
+        await runCommand('git', [
+          'remote',
+          'add',
+          'origin',
+          'https://github.com/kevmoo/kevmoo_skills.git',
+        ], workingDirectory: tempDir.path);
+
+        final context = await resolvePrContext([
+          '--dir',
+          tempDir.path,
+          '--pr',
+          'https://github.com/forkcontributor/kevmoo_skills/pull/10',
+        ], onFail: (message) => fail('Should not fail: $message'));
+
+        expect(context.owner, equals('forkcontributor'));
+        expect(context.repo, equals('kevmoo_skills'));
+        expect(context.prNumber, equals('10'));
+      },
+    );
+
+    test(
+      'allows localRepo != repo when owner/repo matches configured git remote',
+      () async {
+        await runCommand('git', ['init'], workingDirectory: tempDir.path);
+        await runCommand('git', [
+          'remote',
+          'add',
+          'origin',
+          'https://github.com/kevmoo/kevmoo_skills.git',
+        ], workingDirectory: tempDir.path);
+        await runCommand('git', [
+          'remote',
+          'add',
+          'upstream',
+          'https://github.com/upstreamowner/some_other_repo.git',
+        ], workingDirectory: tempDir.path);
+
+        final context = await resolvePrContext([
+          '--dir',
+          tempDir.path,
+          '--pr',
+          'https://github.com/upstreamowner/some_other_repo/pull/25',
+        ], onFail: (message) => fail('Should not fail: $message'));
+
+        expect(context.owner, equals('upstreamowner'));
+        expect(context.repo, equals('some_other_repo'));
+        expect(context.prNumber, equals('25'));
+      },
+    );
+
+    test(
+      'rejects when localRepo != repo and owner/repo is not in git remotes',
+      () async {
+        await runCommand('git', ['init'], workingDirectory: tempDir.path);
+        await runCommand('git', [
+          'remote',
+          'add',
+          'origin',
+          'https://github.com/kevmoo/kevmoo_skills.git',
+        ], workingDirectory: tempDir.path);
+
+        String? failMsg;
+        try {
+          await resolvePrContext(
+            [
+              '--dir',
+              tempDir.path,
+              '--pr',
+              'https://github.com/otherowner/unrelated_repo/pull/50',
+            ],
+            onFail: (message) {
+              failMsg = message;
+              throw StateError(message);
+            },
+          );
+        } catch (_) {}
+
+        expect(
+          failMsg,
+          contains(
+            'The target directory "${tempDir.path}" is for repository "kevmoo/kevmoo_skills", '
+            'but the specified PR is for repository "otherowner/unrelated_repo".',
+          ),
+        );
+      },
+    );
+  });
 }

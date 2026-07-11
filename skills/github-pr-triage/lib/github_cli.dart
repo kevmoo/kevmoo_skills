@@ -177,12 +177,18 @@ Future<PrContext> resolvePrContext(
       localRepo != null &&
       owner != null &&
       repo != null) {
-    if (localOwner.toLowerCase() != owner.toLowerCase() ||
-        localRepo.toLowerCase() != repo.toLowerCase()) {
-      onFail(
-        'The target directory "$workingDir" is for repository "$localOwner/$localRepo", '
-        'but the specified PR is for repository "$owner/$repo".',
-      );
+    final sameRepoName = localRepo.toLowerCase() == repo.toLowerCase();
+    final sameOwner = localOwner.toLowerCase() == owner.toLowerCase();
+    if (!sameOwner || !sameRepoName) {
+      if (!sameRepoName) {
+        final matchesRemote = await _hasGitRemote(workingDir, owner, repo);
+        if (!matchesRemote) {
+          onFail(
+            'The target directory "$workingDir" is for repository "$localOwner/$localRepo", '
+            'but the specified PR is for repository "$owner/$repo".',
+          );
+        }
+      }
     }
   }
 
@@ -192,6 +198,25 @@ Future<PrContext> resolvePrContext(
     owner: resolvedOwner,
     repo: resolvedRepo,
   );
+}
+
+Future<bool> _hasGitRemote(String workingDir, String owner, String repo) async {
+  try {
+    final output = await runCommand('git', [
+      'remote',
+      '-v',
+    ], workingDirectory: workingDir);
+    final pattern = RegExp(
+      '(?:[/:])${RegExp.escape(owner)}/${RegExp.escape(repo)}(?:\\.git|/|[\\s]|\$)',
+      caseSensitive: false,
+    );
+    for (final line in output.split('\n')) {
+      if (pattern.hasMatch(line)) {
+        return true;
+      }
+    }
+  } catch (_) {}
+  return false;
 }
 
 /// Represents a status check run on a PR.
