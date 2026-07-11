@@ -8,8 +8,9 @@ description: >-
 key_features:
   - PR review loop
   - autonomous iteration
-  - Review comment polling
+  - Review comment and CI polling
   - Automated feedback remediation
+  - Dynamic/adaptive CI polling
 ---
 
 # Autonomous PR Review Loop (`pr-loop`)
@@ -93,6 +94,9 @@ which are bypassed in favor of autonomous execution):
   * **Initial Push**: Set `DurationSeconds=180` (3 minutes) to allow initial bot
     ingestion.
   * **Subsequent Pushes**: Set `DurationSeconds=120` (2 minutes).
+  * **Long-Running CI Checks**: If waiting primarily for long-running CI checks
+    rather than bot review ingestion, apply the dynamic/adaptive polling
+    timers described in Step 3 (`DurationSeconds=300` to `600`+ as appropriate).
   * **Prompt**: `"Poll PR #<number> via gh pr view <number> --json comments. Check if gemini-code-assist posted review feedback on commit <sha>."`
 * **CRITICAL IDLE PROTOCOL**: Immediately after calling `schedule`, output a
   concise visible status update to the user and **STOP calling tools**. You must
@@ -121,11 +125,37 @@ which are bypassed in favor of autonomous execution):
   > Passing local tests (`dart analyze`, `dart test`) are NEVER a substitute for remote CI status.
   > If `pr_status.dart` returns `"can_terminate": false`, the agent MUST NOT exit the loop
   > or declare victory early under any circumstances, regardless of local test results.
-* **Action on In-Progress Activity**: If `pr_status.dart` returns
-  `"can_terminate": false` because CI checks are in-progress or a review pass is
-  currently in progress, **schedule another 90s timer** and **go idle**. DO
-  NOT start triaging or editing code until BOTH review comments and CI runs have
-  fully completed!
+* **Action on In-Progress Activity (Dynamic & Adaptive Polling)**:
+  If `pr_status.dart` returns `"can_terminate": false` because CI checks or a
+  review pass are still in progress, schedule a background timer (`schedule`
+  tool) and **go idle**. DO NOT start triaging or editing code until BOTH review
+  comments and CI runs have fully completed!
+  Instead of enforcing a strict/hardcoded 90-second limit across all
+  checks, use **dynamic/adaptive polling timers** tailored to the activity:
+  * **Review Pass / EYES Reaction (`has_active_eyes_reaction: true`)**: If an AI
+    review bot is actively processing feedback, use a responsive timer (e.g.,
+    60–120 seconds) since bot review passes typically complete within 2–3
+    minutes.
+  * **In-Progress CI Checks (`in_progress_checks`)**: When waiting for CI
+    workflows, dynamically determine `DurationSeconds` to avoid unnecessary
+    wakeups and token consumption on long-running jobs:
+    * **Historical / Expected Durations**: Check known workflow characteristics
+      or inspect previous check run durations by running
+      `gh pr checks --json name,startedAt,completedAt,state` directly. If a
+      workflow (such as end-to-end integration tests or multi-platform builds)
+      historically takes 15–30+ minutes and just started, schedule a longer
+      timer (e.g., 300–600 seconds) rather than waking up every 90 seconds.
+    * **Intelligent Backoff**: If CI checks remain pending across consecutive
+      polling cycles, adaptively increase the polling interval (e.g., 120s →
+      240s → 480s up to a reasonable cap like 600s) to conserve steps while
+      continuing to monitor progress.
+    * **Workflow-Specific Sizing**: For fast lint/analyzer runs, use shorter
+      intervals (e.g., 90–120s); for heavy builds or full suites, scale up.
+    * **Combined Activity**: If both a review pass and CI checks are pending,
+      balance the timer (e.g., 120–180s) to catch review feedback promptly
+      while monitoring CI.
+  * Always set a descriptive `Prompt` on the timer explaining what activity is
+    being monitored and why the duration was chosen.
 * **Unified Triage Engine**: If `pr_status.dart` indicates unresolved threads or
   failed CI runs exist (`"can_terminate": false`), run `triage.dart` as defined
   in `github-pr-triage`:
@@ -202,7 +232,8 @@ which are bypassed in favor of autonomous execution):
   gh pr comment <pr_number> --body "/gemini review"
   ```
 * Once `/gemini review` is posted and all threads are verified as resolved, loop
-  back immediately to **Step 2 [START]** to schedule your 120s timer and go
+  back immediately to **Step 2 [START]** to schedule your background timer
+  (e.g., 120s for review bot ingestion, or adaptive duration for CI) and go
   idle!
 
 ---
