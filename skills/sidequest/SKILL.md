@@ -99,10 +99,10 @@ To rebuild or initialize the map without burning main-session tokens or pausing 
      1. Inspect `transcript.jsonl` using `view_file` (or search tools) to extract all major initiatives (Main Quests), sub-tasks (Sub-Quests), and digressions/blockers (Side Quests).
      2. Format the findings strictly using the 3-Tier Hierarchy (`🎯 Main Quests`, `📂 Sub-Quests`, `🐇 Side Quests`) and status tags (`✅ [COMPLETED]`, `🎯 [ACTIVE HEAD]`, `⏸️ [PAUSED]`, `[Active]`, `[Parked / Tracked for Later]`).
      3. Write the finalized markdown hierarchy map using `write_to_file` (with `Overwrite: true`) to `sidequest.md` in the session's artifact directory.
-     4. When done, call `send_message` to your parent agent confirming completion and providing the exact absolute path or file URI where `sidequest.md` was written.
+     4. When done, call `send_message` to your parent agent confirming completion and providing the exact absolute path where `sidequest.md` was written.
      ```
 2. **Continue Main Session:** Keep your primary context clean and continue pair programming with the user immediately while the subagent runs asynchronously.
-3. **Parent Handshake & UI Availability:** When the subagent sends its completion message confirming where `sidequest.md` was written (`file:///.../sidequest.md`), the parent agent MUST immediately read the file's content and write it into the conversation artifacts directory as `sidequest.md` using `write_to_file` (or use file copy tools directly). This guarantees `sidequest.md` opens immediately when clicked by the user right here in the main chat UI.
+3. **Parent Handshake & UI Availability:** When the subagent sends its completion message confirming the absolute path where `sidequest.md` was written, the parent agent MUST immediately read the file's content and write it into the conversation artifacts directory as `sidequest.md` using `write_to_file` (or use file copy tools directly). This guarantees `sidequest.md` opens immediately when clicked by the user right here in the main chat UI.
 *(Note: For setups without `invoke_subagent` or `transcript.jsonl`, perform a direct view/write on your private session directory).*
 
 ---
