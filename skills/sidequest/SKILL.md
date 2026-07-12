@@ -93,7 +93,7 @@ To rebuild or initialize the map without burning main-session tokens or pausing 
 
      1. Inspect `transcript.jsonl` using `view_file` (or search tools) to extract all major initiatives (Main Quests), sub-tasks (Sub-Quests), and digressions/blockers (Side Quests).
      2. Format the findings strictly using the 3-Tier Hierarchy (`🎯 Main Quests`, `📂 Sub-Quests`, `🐇 Side Quests`) and status tags (`✅ [COMPLETED]`, `🎯 [ACTIVE HEAD]`, `⏸️ [PAUSED]`, `[Active]`, `[Parked / Tracked for Later]`).
-     3. Write the finalized markdown table using `write_to_file` (with `Overwrite: true`) to `sidequest.md` in the session's artifact directory.
+     3. Write the finalized markdown hierarchy map using `write_to_file` (with `Overwrite: true`) to `sidequest.md` in the session's artifact directory.
      4. When done, call `send_message` to your parent agent confirming that `sidequest.md` has been successfully built/rebuilt.
      ```
 2. **Continue Main Session:** Keep your primary context clean and continue pair programming with the user immediately while the subagent runs asynchronously.
