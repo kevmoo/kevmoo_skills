@@ -9,6 +9,11 @@ description: >-
   conversation branches across multiple topics, blockers, or digressions. Don't
   use for simple one-off questions that don't involve multi-step work or task
   hierarchy management.
+key_features:
+  - Conversation mapping
+  - Task hierarchy
+  - Context drift prevention
+  - Subagent rebuilds
 ---
 
 # Sidequest (`/sidequest`)
