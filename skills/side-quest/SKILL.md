@@ -4,14 +4,14 @@ description: >-
   Synthesizes conversation history and active tasks into a visual hierarchy map
   (`side_quests.md`) to prevent context drift and cognitive overload across
   long sessions. Supports multiple sequential and concurrent main quests,
-  sub-quests, and side-quests. Use when the user invokes `/side-quest`, asks
-  where we are, what we were doing, or what's on our stack, or when the
-  conversation branches across multiple topics, blockers, or digressions. Don't
-  use for simple one-off questions that don't involve multi-step work or task
-  hierarchy management.
+  sub-quests, and side-quests. Use when the user invokes `/side-quest` or
+  `/sidequest`, asks where we are, what we were doing, or what's on our stack,
+  or when the conversation branches across multiple topics, blockers, or
+  digressions. Don't use for simple one-off questions that don't involve
+  multi-step work or task hierarchy management.
 ---
 
-# Side-Quest (`/side-quest`)
+# Side-Quest (`/side-quest` or `/sidequest`)
 
 An intelligent conversational synthesizer and visual grounding point for task hierarchies and digressions.
 
@@ -26,7 +26,7 @@ In complex pair-programming sessions, work rarely follows a straight line. Engin
 ---
 
 ## When to use this skill
-- When the user explicitly invokes `/side-quest` or `/side-quest rebuild`.
+- When the user explicitly invokes `/side-quest`, `/sidequest`, or `/side-quest rebuild`.
 - When the user asks *"where are we right now?"*, *"what's on our stack?"*, or *"what were we originally working on?"*.
 - When an interruption, unexpected blocker, or new topic causes the conversation to branch away from the active task.
 
@@ -64,18 +64,22 @@ Rather than restricting the map to a single rigid goal, `/side-quest` supports *
 When `/side-quest` triggers (either via explicit command, user question, or conversational branching), follow this exact decision workflow:
 
 1. **Determine Execution Mode:**
-   - **Is this the very first `/side-quest` check, or did the user request `/side-quest rebuild`?** → Execute **Mode B (Subagent Rebuild)** below.
-   - **Does `side_quests.md` already exist and we are just tracking ongoing session progress?** → Execute **Mode A (In-Session Delta Update)** below.
+   - **Is this the very first `/side-quest` check, or did the user explicitly request `/side-quest rebuild`?** → Execute **Mode B (Subagent Rebuild)** below.
+   - **Does `side_quests.md` already exist, and either a task progressed OR the user invoked `/side-quest` / `/sidequest` mid-session?** → Execute **Mode A (In-Session Delta Update & Summary)** below.
 
 ---
 
 ### Mode A: Rolling Ledger Delta Updates (In-Session `O(1)`)
-When an existing `side_quests.md` is active and a task progresses, completes, or meanders:
+When an existing `side_quests.md` is active and a task progresses, completes, meanders, or `/side-quest` (`/sidequest`) is explicitly invoked:
 1. **Do NOT re-read `transcript.jsonl` or conversation history.**
 2. Use `replace_file_content` (or standard file edit tools) directly on `file://<appDataDir>/brain/<conversation-id>/side_quests.md` to perform surgical updates:
    - **Progress:** Mark sub-quests or side quests from `[ ]` to `[x] **Sub-Quest N:** ... -> *Done/PR link*`.
    - **New Side Quest:** Append new blockers or digressions under `### 🐇 Active & Parked Side Quests`.
    - **Chapter Completion:** When a Main Quest is merged/committed, update its header from `🎯 [ACTIVE HEAD]` to `✅ [COMPLETED]`, and open the next `🎯 [ACTIVE HEAD] Main Quest` below it.
+3. **Explicit Command Response:** If the user invoked `/side-quest` (or `/sidequest`) directly, after performing any pending updates on `side_quests.md`, output a **brief, punchy chat summary** highlighting:
+   - Our active `🎯 Main Quest` and current `[ACTIVE HEAD]` sub-quest.
+   - Any open or parked `🐇 Side Quests`.
+   - Our immediate recommended next step.
 
 ---
 
