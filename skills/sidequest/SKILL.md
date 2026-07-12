@@ -16,7 +16,7 @@ key_features:
   - Subagent rebuilds
 ---
 
-# Sidequest (`/sidequest`)
+# 🧭 Sidequest (`/sidequest`)
 
 An intelligent conversational synthesizer and visual grounding point for task hierarchies and digressions.
 
@@ -49,17 +49,20 @@ Because the file is persisted to disk in the session folder, if the conversation
 
 ---
 
-## 🎯 Multi-Quest Hierarchy (`Main -> Sub -> Side`)
+## 🧭 Multi-Quest Hierarchy (`Main -> Sub -> Side`)
 
 Rather than restricting the map to a single rigid goal, `/sidequest` supports **Multiple Main Quests** across two natural patterns:
 
-1. **Sequential Quests (Chapter Progression):** When Main Quest 1 finishes completely (committed/pushed/merged), the agent marks it `✅ [COMPLETED]` and opens **Main Quest 2** as the new active chapter. This builds a clean chronological ledger of everything achieved across the session.
-2. **Concurrent Quests (Parallel Tracks):** While waiting on a 30-minute CI/presubmit run for Main Quest 1 (`⏸️ [PAUSED / WAITING ON CI]`), the user can pivot to start an independent major initiative (Main Quest 2 `🎯 [ACTIVE HEAD]`). Both coexist cleanly without subordinating parallel work.
+1. **Sequential Quests (Chapter Progression):** When Main Quest 1 finishes completely (committed/pushed/merged), the agent marks it `🏆 [COMPLETED]` and opens **Main Quest 2** as the new active chapter. This builds a clean chronological ledger of everything achieved across the session.
+2. **Concurrent Quests (Parallel Tracks):** While waiting on a 30-minute CI/presubmit run for Main Quest 1 (`⏸️ [PAUSED / WAITING ON CI]`), the user can pivot to start an independent major initiative (Main Quest 2 `⚔️ [ACTIVE HEAD]`). Both coexist cleanly without subordinating parallel work.
 
 ### The 3-Tier Hierarchy
-- **🎯 Main Quests:** High-level initiatives or major chapters (e.g., *Migrate UserService to v2*, *Investigate Bazel Thread Leak*).
-- **📂 Sub-Quests:** The logical milestones and planned phases needed to complete a Main Quest.
-- **🐇 Side Quests:** Interstitial blockers (presubmit failures, missing dependencies) or ideas/questions meandered into along the way.
+- **⚔️/🏆/⏸️ Main Quests:** High-level initiatives or major chapters (e.g., *Migrate UserService to v2*, *Investigate Bazel Thread Leak*).
+- **🛡️ Sub-Quests:** The logical milestones and planned phases needed to complete a Main Quest.
+  - Critical-path unplanned tasks (e.g. build errors, test failures, minor blockers) or steps should be nested **directly under** the corresponding Sub-Quest using indentation and helper tags:
+    - `👾 *Blocker:* <description>`: A critical-path blocker that must be resolved.
+    - `👣 *Step:* <description>`: A planned step/action item.
+- **🌿 Side Quests:** ONLY completely unrelated or out-of-scope tasks, tangents, or context drift. These are the rabbit holes that branch away from the main mission.
 
 ---
 
@@ -77,12 +80,13 @@ When `/sidequest` triggers (either via explicit command, user question, or conve
 When an existing `sidequest.md` is active and a task progresses, completes, meanders, or `/sidequest` is explicitly invoked:
 1. **Do NOT re-read `transcript.jsonl` or conversation history.**
 2. Use `replace_file_content` (or standard file edit tools) directly on `sidequest.md` in the session's artifact directory to perform surgical updates:
-   - **Progress:** Mark sub-quests or side quests from `[ ]` to `[x] **Sub-Quest N:** ... -> *Done/PR link*`.
-   - **New Side Quest:** Append new blockers or digressions under `### 🐇 Active & Parked Side Quests`.
-   - **Chapter Completion:** When a Main Quest is merged/committed, update its header from `🎯 [ACTIVE HEAD]` to `✅ [COMPLETED]`, and open the next `🎯 [ACTIVE HEAD] Main Quest` below it.
+   - **Progress:** Mark sub-quests, steps, or side quests from `[ ]` to `[x]`. Mark resolved blockers/steps with `💎` and update the text (e.g. `-> *Done/PR link*`).
+   - **Blockers & Steps:** Nest new critical-path blockers (`👾`) or steps (`👣`) under their active `🛡️ Sub-Quest`.
+   - **New Side Quest:** Append new unrelated tangents under `### 🌿 Active & Parked Side Quests`.
+   - **Chapter Completion:** When a Main Quest is merged/committed, update its header from `⚔️ [ACTIVE HEAD]` to `🏆 [COMPLETED]`, and open the next `⚔️ [ACTIVE HEAD] Main Quest` below it.
 3. **Explicit Command Response:** If the user invoked `/sidequest` directly, after performing any pending updates on `sidequest.md`, output a **brief, punchy chat summary** highlighting:
-   - Our active `🎯 Main Quest` and current `[ACTIVE HEAD]` sub-quest.
-   - Any open or parked `🐇 Side Quests`.
+   - Our active `⚔️ Main Quest` and current active `🛡️` sub-quest (marked `*(IN PROGRESS)*`).
+   - Any open or parked `🌿 Side Quests`.
    - Our immediate recommended next step.
 
 ---
@@ -97,10 +101,12 @@ To rebuild or initialize the map without burning main-session tokens or pausing 
    ```
    You are a background Sidequest Log Auditor. Your sole job is to inspect the full conversation transcript in the session's log directory and build/rebuild the visual hierarchy map.
 
-   1. Inspect `transcript.jsonl` using `view_file` (or search tools) to extract all major initiatives (Main Quests), sub-tasks (Sub-Quests), and digressions/blockers (Side Quests).
-   2. Format the findings strictly using the 3-Tier Hierarchy (`🎯 Main Quests`, `📂 Sub-Quests`, `🐇 Side Quests`) and status tags (`✅ [COMPLETED]`, `🎯 [ACTIVE HEAD]`, `⏸️ [PAUSED]`, `[Active]`, `[Parked / Tracked for Later]`).
-   3. Write the finalized markdown hierarchy map using `write_to_file` (with `Overwrite: true`) to `sidequest.md` in the session's artifact directory.
-   4. When done, notify your parent agent. (In Antigravity, call the `send_message` tool targeting the parent's conversation ID, confirming completion and providing the exact absolute path where `sidequest.md` was written. In harnesses without messaging, print the path to stdout or write it to a `.handshake` file in the session's artifact directory).
+   1. Inspect `transcript.jsonl` using `view_file` (or search tools) to extract all major initiatives (Main Quests), sub-tasks (Sub-Quests), and unrelated tangents (Side Quests).
+   2. Group critical-path blockers (errors, failures) or steps (actions) directly under their corresponding Sub-Quests using nested bullet points and appropriate tags (e.g. `  * [ ] 👾 *Blocker:* ...` or `  * [ ] 👣 *Step:* ...`). Mark resolved items with `💎`.
+   3. Put ONLY completely unrelated tasks or context drift under the `Side Quests` section (`🌿`).
+   4. Format the findings strictly using the RPG-themed 3-Tier Hierarchy (Main Quests with `⚔️ [ACTIVE HEAD]`, `🏆 [COMPLETED]`, `⏸️ [PAUSED]`, Sub-Quests with `🛡️`, and Side Quests with `🌿`, `🎒 [Parked / Tracked for Later]`).
+   5. Write the finalized markdown hierarchy map using `write_to_file` (with `Overwrite: true`) to `sidequest.md` in the session's artifact directory.
+   6. When done, notify your parent agent by calling `send_message` (or writing a `.handshake` file) confirming completion and providing the absolute path where `sidequest.md` was written.
    ```
 3. **Continue Main Session**: Keep your primary context clean and continue pair programming with the user immediately while the subagent runs asynchronously (if supported).
 4. **Parent Handshake & UI Availability**: When the subagent sends its completion notification (or the background process completes):
@@ -113,7 +119,7 @@ To rebuild or initialize the map without burning main-session tokens or pausing 
 
 While `sidequest.md` handles in-session digressions cleanly, some side quests cannot be resolved in one sitting (e.g., waiting on external team reviews, security approvals, or multi-day refactors).
 
-For items marked **`[Parked / Tracked for Later]`** in `sidequest.md`, the skill bridges seamlessly into your existing persistence tools:
+For items marked **`🎒 [Parked / Tracked for Later]`** in `sidequest.md`, the skill bridges seamlessly into your existing persistence tools:
 1. **Inspect Available Trackers:** The agent checks what issue tracking tools, CLIs, or skills exist in the user's active environment (e.g., `gh issue create` for GitHub repositories, local issue tracking skills, or project management frameworks).
 2. **Prompt to Escalate:** When parking a side quest, the agent gently prompts:
    > *"Would you like me to file a quick issue in your project's issue tracker (`gh issue` / local tracker) so this parked item survives across sessions?"*
@@ -125,32 +131,35 @@ For items marked **`[Parked / Tracked for Later]`** in `sidequest.md`, the skill
 Once `sidequest.md` exists, the agent adopts a helpful, low-friction discipline:
 - **No Heavy Pushback:** When the user pivots across files or topics, acknowledge it smoothly: *"Oh, we're going off on a sidequest, that's completely fine."*
 - **Gentle Triage Prompts:** When a new unexpected blocker or rabbit hole emerges (e.g., a broken build or linter warning), ask:
-  > *"We're diving into a sidequest to fix this dependency—that's totally fine. Should we tackle it right now, or track it in our artifact?"*
+  > *"We're taking a detour to resolve this blocker—that's completely fine. Should we tackle it right now, or track it in our map?"*
   > *"Should we fix this right now, or would you like me to file an issue in your tracker (`gh issue`) for later?"*
 - **Chapter-Break Awareness:** When a major PR is pushed or a task completes and the user introduces a new topic, recognize the chapter break:
-  > *"Looks like we finished Main Quest 1! Should we open a new Main Quest in our map for this new topic, or is this just a quick sidequest?"*
+  > *"Looks like we finished ⚔️ Main Quest 1! Should we open a new Main Quest in our map for this new topic, or is this just a quick sidequest?"*
 
 ---
 
 ## 📄 Template: `sidequest.md`
 
 ```markdown
-# 🗺️ Conversation Map & Sidequests
+# 🧭 Conversation Map & Sidequests
 
-## ✅ [COMPLETED] Main Quest 1: Migrate `UserService` to `v2` API
-* [x] **Sub-Quest 1:** Identify callers across repository -> *Done*
-* [x] **Sub-Quest 2:** Update client stub bindings -> *Merged in PR #142*
-* [x] **Side Quest:** Fix build missing `proto/public` dep -> *Resolved*
+## 🏆 [COMPLETED] Main Quest 1: Migrate `UserService` to `v2` API
+* [x] 🛡️ **Sub-Quest 1:** Identify callers across repository -> *Done*
+* [x] 🛡️ **Sub-Quest 2:** Update client stub bindings
+  * [x] 💎 *Blocker:* Fix build missing `proto/public` dep -> *Resolved*
+  * [x] 💎 *Step:* Merge in PR #142
 
 ---
 
-## 🎯 [ACTIVE HEAD] Main Quest 2: Investigate Thread Leak Issue
-* [x] **Sub-Quest 1:** Check configuration and reproduce reproduction test case
-* [ ] **Sub-Quest 2:** Profile thread spawning across workers *(IN PROGRESS)*
+## ⚔️ [ACTIVE HEAD] Main Quest 2: Investigate Thread Leak Issue
+* [x] 🛡️ **Sub-Quest 1:** Check configuration and reproduce reproduction test case
+* [ ] 🛡️ **Sub-Quest 2:** Profile thread spawning across workers *(IN PROGRESS)*
+  * [x] 💎 *Blocker:* Resolve local Docker network timeout -> *Fixed*
+  * [ ] 👣 *Step:* Run worker profiling script
 
-### 🐇 Active & Parked Side Quests (For Main Quest 2)
+### 🌿 Active & Parked Side Quests (For Main Quest 2)
 * [ ] **[Active]** Check why debug flag behaves differently on local vs remote machine.
-* [ ] **[Parked / Tracked for Later]** Refactor `LegacyThreadMonitor` -> *Filed Issue #215 in project tracker*
+* [ ] **🎒 [Parked / Tracked for Later]** Refactor `LegacyThreadMonitor` -> *Filed Issue #215 in project tracker*
 
 ---
 
