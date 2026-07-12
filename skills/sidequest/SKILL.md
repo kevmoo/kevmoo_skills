@@ -80,12 +80,12 @@ When `/sidequest` triggers (either via explicit command, user question, or conve
 When an existing `sidequest.md` is active and a task progresses, completes, meanders, or `/sidequest` is explicitly invoked:
 1. **Do NOT re-read `transcript.jsonl` or conversation history.**
 2. Use `replace_file_content` (or standard file edit tools) directly on `sidequest.md` in the session's artifact directory to perform surgical updates:
-   - **Progress:** Mark sub-quests, steps, or side quests from `[ ]` to `[x]`. Mark resolved blockers/steps with `💎` or updating text (e.g. `-> *Done/PR link*`).
+   - **Progress:** Mark sub-quests, steps, or side quests from `[ ]` to `[x]`. Mark resolved blockers/steps with `💎` and update the text (e.g. `-> *Done/PR link*`).
    - **Blockers & Steps:** Nest new critical-path blockers (`👾`) or steps (`👣`) under their active `🛡️ Sub-Quest`.
    - **New Side Quest:** Append new unrelated tangents under `### 🌿 Active & Parked Side Quests`.
    - **Chapter Completion:** When a Main Quest is merged/committed, update its header from `⚔️ [ACTIVE HEAD]` to `🏆 [COMPLETED]`, and open the next `⚔️ [ACTIVE HEAD] Main Quest` below it.
 3. **Explicit Command Response:** If the user invoked `/sidequest` directly, after performing any pending updates on `sidequest.md`, output a **brief, punchy chat summary** highlighting:
-   - Our active `⚔️ Main Quest` and current `⚔️ [ACTIVE HEAD]` sub-quest.
+   - Our active `⚔️ Main Quest` and current active `🛡️` sub-quest (marked `*(IN PROGRESS)*`).
    - Any open or parked `🌿 Side Quests`.
    - Our immediate recommended next step.
 
@@ -106,7 +106,7 @@ To rebuild or initialize the map without burning main-session tokens or pausing 
    3. Put ONLY completely unrelated tasks or context drift under the `Side Quests` section (`🌿`).
    4. Format the findings strictly using the RPG-themed 3-Tier Hierarchy (Main Quests with `⚔️ [ACTIVE HEAD]`, `🏆 [COMPLETED]`, `⏸️ [PAUSED]`, Sub-Quests with `🛡️`, and Side Quests with `🌿`, `🎒 [Parked / Tracked for Later]`).
    5. Write the finalized markdown hierarchy map using `write_to_file` (with `Overwrite: true`) to `sidequest.md` in the session's artifact directory.
-   6. When done, notify your parent agent by calling `send_message` (or writing a `.handshake` file) confirming completion.
+   6. When done, notify your parent agent by calling `send_message` (or writing a `.handshake` file) confirming completion and providing the absolute path where `sidequest.md` was written.
    ```
 3. **Continue Main Session**: Keep your primary context clean and continue pair programming with the user immediately while the subagent runs asynchronously (if supported).
 4. **Parent Handshake & UI Availability**: When the subagent sends its completion notification (or the background process completes):
