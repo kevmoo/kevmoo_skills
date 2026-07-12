@@ -3,6 +3,10 @@ name: github-pr-triage
 description: |-
   Triage open PR comments/reviews and associated CI/CD workflow failures using
   the `triage.dart` helper script and formulate an actionable plan.
+key_features:
+  - Review feedback triaging
+  - CI log extraction
+  - Action plan generation
 ---
 
 ## When to use this skill
@@ -23,6 +27,16 @@ description: |-
   AI bot like Gemini Code Assist or a human engineer — is infallible. AI review
   bots frequently hallucinate syntax limitations, suggest outdated patterns, or
   misunderstand broader repository architecture.
+- **Treat Severity Badges as Unverified External Claims**: Bot-generated severity
+  tags (such as `![critical]` or `![security-high]`) are unverified external claims,
+  NOT confirmed system diagnostics or compiler errors. Never blindly trust badges.
+- **Mandatory Pre-Edit Empirical Verification Gate**:
+  Before editing code for any reviewer comment claiming a syntax error, compilation
+  failure, or type issue, the agent MUST run static analysis (`dart analyze`) on
+  the **unmodified existing codebase** first.
+  - If `dart analyze` returns **0 issues**, the reviewer's claim is empirically false.
+    The item MUST be classified as `👎 Disagree (Hallucinated Syntax/Compile Error)` and
+    NO code changes may be made for that item.
 - **You have the execution advantage**: External reviewers inspect static code,
   whereas you can execute live compilers, static analyzers (`dart analyze`),
   and test suites (`dart test`). Always empirically test claims before accepting
@@ -60,12 +74,13 @@ description: |-
    tool).
 
 2. **Verify Workspace State**:
-   - The script output will show the PR URL, title, branch, and commit SHA.
-   - Verify that your current git branch matches the PR source branch
-     (`headRefName`).
-   - Run `git status` and ensure the working tree matches the PR branch.
-   - Verify you are at the correct commit. If not, inform the user or checkout
-     the correct branch/commit.
+   - The script output will show the PR URL, title, branch, Remote Commit SHA,
+     Local Commit SHA, and Sync Status (`in_sync`, `behind_remote`, `ahead_of_remote`, `diverged`, or `branch_mismatch`).
+   - Verify that your current git branch matches the PR source branch (`headRefName`).
+   - Check the **Sync Status**:
+     - If `Sync Status` is `behind_remote`, pull the latest remote commits (`git pull`) before making changes.
+     - If `Sync Status` is `ahead_of_remote` or `diverged`, push or sync local commits (`git push`).
+     - Do not start making code edits while the local workspace is out of sync with the remote PR.
 
 3. **Analyze Open Comments**:
    - The script lists all unresolved comment threads.
@@ -83,13 +98,20 @@ description: |-
      - Inform the user and call `ask_question` to ask their preference:
        * Option 1: `(Recommended) Proceed with triaging open comments now`
        * Option 2: `Wait for active CI status checks to complete first`
-     - *(Note: This interactive prompt is bypassed when operating within an
-       outer orchestrator skill like `pr-loop`, which handles background timers
-       automatically)*.
+     - **MANDATORY HARD BLOCK**: When CI is pending, you MUST halt execution after
+       calling `ask_question`. Do NOT proceed to Step 5 (Generate a Triage Report)
+       or create the `pr_triage_report.md` artifact until the user has answered,
+       because final CI results might change the triage plan and action items.
+     - *(Note: This interactive prompt and hard block are bypassed when
+       operating within an outer orchestrator skill like `pr-loop`, which handles
+       background timers automatically)*.
    - Analyze the stack traces, compile errors, or analyzer failures to
      understand why any failed checks failed.
 
 5. **Generate a Triage Report (Artifact)**:
+   - **Prereq (Hard Gate)**: If CI status checks are active/pending, you MUST
+     NOT generate this report until the user has answered the `ask_question`
+     prompt from Step 4.
    - Create a markdown artifact named `pr_triage_report.md` in the artifacts
      directory (using `write_to_file` with `RequestFeedback: true` in
      `ArtifactMetadata` to render an interactive 'Proceed' button). (Note: This
@@ -105,7 +127,7 @@ description: |-
        comment(s) or CI failure(s), including direct markdown links back to the
        comments/checks on GitHub. When linking to comments, use a descriptive
        link that includes both the comment number and the GitHub username of the
-       reviewer (e.g. `[Comment #1 by @reviewer_username](url)`).
+       reviewer (e.g. `[Comment #1 by @reviewer_username](#)`).
      - **Thread & Comment Identifiers (For Comments)**: Explicitly preserve the
        `Thread ID` (e.g. `PRRT_...`) and `Comment ID` (e.g. `3438780787`) from
        the comment header in `raw_triage_output.md` under each action item so
@@ -121,7 +143,9 @@ description: |-
            it, but it's low priority)
          * `👎 Disagree` (Incorrect or counter-productive suggestion; we should
            explain why and propose no action)
-       - **Rationale**: Your technical explanation of why you agree,
+        - **Empirical Verification**: Output of `dart analyze` or `dart test` run on
+          the unmodified codebase before accepting any fix or classifying a claim.
+        - **Rationale**: Your technical explanation of why you agree,
          disagree, or recommend a specific direction.
      - **Planned Action**:
        - The target file name(s) and specific line ranges.
@@ -173,26 +197,25 @@ description: |-
 
 ## Replying and Resolving Comments
 
-Use these API patterns to reply to review comments and resolve threads:
+For every addressed review thread, you MUST execute thread resolution (thread resolution is explicit, mandatory, and un-skippable).
 
-- **Reply to comment**:
-  ```bash
-  gh api repos/<owner>/<repo>/pulls/<pr_number>/comments/<comment_database_id>/replies -f body="<your reply>"
-  ```
-- **Resolve thread**:
-  ```bash
-  gh api graphql -f query='
-    mutation($threadId: ID!) {
-      resolveReviewThread(input: {threadId: $threadId}) {
-        thread {
-          isResolved
-        }
-      }
-    }
-  ' -F threadId='<thread_graphql_id>'
-  ```
+Use the `resolve` subcommand in `triage.dart` to programmatically reply to comments and resolve threads without shell-escaping issues:
+
+```bash
+# Reply to a comment and resolve its thread:
+dart <path-to-github-pr-triage-skill>/bin/triage.dart resolve <thread_graphql_id> <comment_database_id> "<your reply body>"
+
+# Or resolve a thread without posting a reply:
+dart <path-to-github-pr-triage-skill>/bin/triage.dart resolve <thread_graphql_id>
+```
+
 
 ## Constraints
+- **Hard CI Gate**: If CI checks are running or pending, you MUST halt execution
+  after calling `ask_question` in Step 4 and DO NOT proceed to Step 5 or
+  generate `pr_triage_report.md` until the user responds, as pending CI
+  results may alter the final triage plan. (Note: Bypassed ONLY IF operating
+  within an outer orchestrator skill like `pr-loop`).
 - **CRITICAL**: You MUST NOT modify files or make any code edits to address PR
   comments or CI failures before generating a `pr_triage_report.md` artifact
   and obtaining explicit user approval on the plan. (Note: This constraint is

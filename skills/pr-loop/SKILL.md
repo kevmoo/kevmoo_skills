@@ -4,6 +4,13 @@ description: >-
   Autonomous pull request review loop that pushes code, polls for AI/bot review
   comments (e.g., Gemini Code Assist), surgically remediates feedback, commits,
   pushes, comments `/gemini review`, and loops until zero feedback remains.
+  Requires the `github-pr-triage` skill.
+key_features:
+  - PR review loop
+  - autonomous iteration
+  - Review comment and CI polling
+  - Automated feedback remediation
+  - Dynamic/adaptive CI polling
 ---
 
 # Autonomous PR Review Loop (`pr-loop`)
@@ -11,6 +18,11 @@ description: >-
 This skill defines the autonomous loop pattern for pair programming with an
 automated AI code review bot (such as `gemini-code-assist`,
 `gemini-code-review`, or similar PR review agents).
+
+## 📦 Prerequisites & Skill Dependencies
+- **REQUIRED SKILL**: `github-pr-triage` MUST be installed alongside `pr-loop`.
+- `pr-loop` directly depends on binaries, scripts, and rule definitions provided
+  by `github-pr-triage` (including `triage.dart` and `github_cli.dart`).
 
 ## When to use this skill
 - Use this skill when asked to get into a review loop with an AI review agent on
@@ -20,10 +32,15 @@ automated AI code review bot (such as `gemini-code-assist`,
 
 ## 🔓 Upfront VCS Authorization & Safeguards
 
+- **NEVER GUESS Target PR or Branch**: Agents MUST NEVER guess the target branch
+  or pull request. If the active local branch or PR is ambiguous, unclear, or
+  not explicitly confirmed by the user, the agent MUST pause and explicitly ask
+  the user for clarification using the `ask_question` tool before initiating
+  the loop or executing any git pushes or gh commands.
 - **Request Blanket Upfront Consent**: When initiating `pr-loop`, the agent MUST
-  first confirm the target feature branch and remote with the user in its
-  opening message, requesting blanket consent for autonomous commits and pushes
-  for the duration of the loop.
+  first confirm the target feature branch and remote with the user using the
+  `ask_question` tool, requesting blanket consent for autonomous commits and
+  pushes for the duration of the loop.
 - **Autonomous Execution Scope**: Once upfront consent is established, the agent
   is authorized to execute `git commit` and `git push` autonomously on every
   loop iteration on that specific feature branch (`headRefName`) to `origin`.
@@ -36,7 +53,7 @@ automated AI code review bot (such as `gemini-code-assist`,
 
 ## 🏗️ Architectural Relationship & Rule Inheritance
 This skill functions as an autonomous, multi-pass loop wrapper around the core
-triage capabilities defined in the `github-pr-triage` skill. 
+triage capabilities defined in the `github-pr-triage` skill.
 
 **MANDATORY RULE DELEGATION**: `pr-loop` strictly inherits and follows ALL
 rules, mindsets, and protocols defined in `github-pr-triage` to the letter
@@ -56,23 +73,31 @@ which are bypassed in favor of autonomous execution):
 ## 🔄 The Autonomous Loop Workflow
 
 ### 1. Upfront Consent, Initial Push & PR Creation
-* **Request Upfront Consent**: Output a concise opening message stating the
-  active feature branch and remote, requesting blanket approval for autonomous
-  commits and pushes during this review loop session. **Wait for the user's
-  explicit chat confirmation before proceeding to any git push or PR creation.**
+* **Request Upfront Consent**: Use the `ask_question` tool to request blanket
+  approval for autonomous commits and pushes during this review loop session,
+  stating the active feature branch and remote. **Wait for the user's explicit
+  response before proceeding to any git push or PR creation.**
 * Verify local working tree state (`git status`); commit any uncommitted work.
 * Push feature branch to origin: `git push -u origin <head_branch>`.
 * Create the PR via GitHub CLI if not already opened:
   ```bash
-  gh pr create --title "<type>(<scope>): <summary>" --body "<walkthrough_summary>" --base main --head <head_branch>
+  gh pr create --title "<type>(<scope>): <summary>" \
+    --body "<walkthrough_summary>" --base main --head <head_branch>
   ```
 
-### 2. [START] Schedule Polling Timer
+### 2. [START] Immediate Status Check & Polling Timer
+* **Immediate Initial Check**: Before scheduling a background timer, execute an
+  immediate check of PR status (`dart <path-to-pr-loop-skill>/bin/pr_status.dart --dir .` or `gh pr view`).
+  * If actionable review comments or failed CI checks already exist, **bypass the initial timer** and proceed directly to Step 3/4.
+  * If review feedback or CI checks are still in progress, proceed to schedule the background wakeup timer.
 * Call the `schedule` tool to set a background wakeup timer:
   * **Initial Push**: Set `DurationSeconds=180` (3 minutes) to allow initial bot
     ingestion.
   * **Subsequent Pushes**: Set `DurationSeconds=120` (2 minutes).
-  * **Prompt**: `"Poll PR #<number> via gh pr view <number> --json comments,reviews. Check if gemini-code-assist posted review feedback on commit <sha>. If feedback exists, triage and fix. If empty, check reactions or stop."`
+  * **Long-Running CI Checks**: If waiting primarily for long-running CI checks
+    rather than bot review ingestion, apply the dynamic/adaptive polling
+    timers described in Step 3 (`DurationSeconds=300` to `600`+ as appropriate).
+  * **Prompt**: `"Poll PR #<number> via gh pr view <number> --json comments. Check if gemini-code-assist posted review feedback on commit <sha>."`
 * **CRITICAL IDLE PROTOCOL**: Immediately after calling `schedule`, output a
   concise visible status update to the user and **STOP calling tools**. You must
   go idle to allow the background timer task to tick.
@@ -80,27 +105,63 @@ which are bypassed in favor of autonomous execution):
 ### 3. Wakeup & Feedback Ingestion (Comments & CI/CD)
 * When reactive wakeup resumes your execution from the timer, inspect both
   reviewer comments and failing CI/CD status checks.
-* **Unified Triage Engine**: Run `triage.dart` as defined in `github-pr-triage`:
+* **Deterministic Status Verification Engine**:
+  Run the `pr_status.dart` helper script to evaluate whether the PR is ready for
+  termination or requires further triage:
+  ```bash
+  dart <path-to-pr-loop-skill>/bin/pr_status.dart --dir .
+  ```
+* **Strict Termination Rules ([STOP])**:
+  A PR is ONLY clean and ready for loop termination when `pr_status.dart`
+  returns `"can_terminate": true`. Specifically, termination requires:
+  1. Every check run in `gh pr checks` has completed cleanly (`SUCCESS`).
+  2. `reviewThreads` has 0 unresolved threads.
+  3. No review pass is currently in progress (i.e., no new review request has
+     been submitted since the last bot review).
+  4. The local git branch commit SHA is fully in sync with the remote PR head commit (`is_synced: true`).
+
+  > [!IMPORTANT]
+  > **NO LOCAL OVERRIDES / RATIONALIZATIONS**:
+  > Passing local tests (`dart analyze`, `dart test`) are NEVER a substitute for remote CI status.
+  > If `pr_status.dart` returns `"can_terminate": false`, the agent MUST NOT exit the loop
+  > or declare victory early under any circumstances, regardless of local test results.
+* **Action on In-Progress Activity (Dynamic & Adaptive Polling)**:
+  If `pr_status.dart` returns `"can_terminate": false` because CI checks or a
+  review pass are still in progress, schedule a background timer (`schedule`
+  tool) and **go idle**. DO NOT start triaging or editing code until BOTH review
+  comments and CI runs have fully completed!
+  Instead of enforcing a strict/hardcoded 90-second limit across all
+  checks, use **dynamic/adaptive polling timers** tailored to the activity:
+  * **Review Pass / EYES Reaction (`has_active_eyes_reaction: true`)**: If an AI
+    review bot is actively processing feedback, use a responsive timer (e.g.,
+    60–120 seconds) since bot review passes typically complete within 2–3
+    minutes.
+  * **In-Progress CI Checks (`in_progress_checks`)**: When waiting for CI
+    workflows, dynamically determine `DurationSeconds` to avoid unnecessary
+    wakeups and token consumption on long-running jobs:
+    * **Historical / Expected Durations**: Check known workflow characteristics
+      or inspect previous check run durations by running
+      `gh pr checks --json name,startedAt,completedAt,state` directly. If a
+      workflow (such as end-to-end integration tests or multi-platform builds)
+      historically takes 15–30+ minutes and just started, schedule a longer
+      timer (e.g., 300–600 seconds) rather than waking up every 90 seconds.
+    * **Intelligent Backoff**: If CI checks remain pending across consecutive
+      polling cycles, adaptively increase the polling interval (e.g., 120s →
+      240s → 480s up to a reasonable cap like 600s) to conserve steps while
+      continuing to monitor progress.
+    * **Workflow-Specific Sizing**: For fast lint/analyzer runs, use shorter
+      intervals (e.g., 90–120s); for heavy builds or full suites, scale up.
+    * **Combined Activity**: If both a review pass and CI checks are pending,
+      balance the timer (e.g., 120–180s) to catch review feedback promptly
+      while monitoring CI.
+  * Always set a descriptive `Prompt` on the timer explaining what activity is
+    being monitored and why the duration was chosen.
+* **Unified Triage Engine**: If `pr_status.dart` indicates unresolved threads or
+  failed CI runs exist (`"can_terminate": false`), run `triage.dart` as defined
+  in `github-pr-triage`:
   ```bash
   dart <path-to-github-pr-triage-skill>/bin/triage.dart --dir .
   ```
-* **Wait for BOTH Review Comments AND CI to Finish**:
-  Before starting a triage/remediation round, verify that BOTH review comments
-  and CI status checks have completed:
-  * **Review In-Progress**: Inspect `reactionGroups` in feedback output or PR
-    view. If `gemini-code-assist` attached an 👀 (`EYES`) reaction, she is
-    actively analyzing the push right now!
-  * **CI In-Progress**: Inspect CI checks (`gh pr checks`). If any checks are
-    pending, queued, or in-progress, CI is still running.
-  * **Action**: If EITHER review comments are in progress OR CI checks are
-    pending/running, **schedule another 90s timer** and **go idle**. DO NOT
-    start triaging or editing code until BOTH review comments and CI runs have
-    fully completed!
-* **Empty Check ([STOP]) Mandate**: Do NOT exit prematurely! You may ONLY declare victory and exit the loop if ALL three of the following criteria are met simultaneously:
-  1. **CI Green**: All CI status checks (`gh pr checks`) are complete and passing (`SUCCESS`).
-  2. **Zero Unresolved Threads**: Querying GraphQL `reviewThreads` yields zero threads with `isResolved: false`.
-  3. **Settled Review Pass**: `gemini-code-assist` has completed her review pass (no active 👀 `EYES` reaction AND all inline comments for the latest commit SHA have been processed and resolved).
-  If ANY CI check is pending, or if ANY review thread is unresolved/unprocessed, you MUST schedule a timer and continue looping!
 
 ### 4. Critical Assessment, Empirical Verification & Loop Convergence
 * **Follow `github-pr-triage` Rules to the Letter**:
@@ -109,19 +170,28 @@ which are bypassed in favor of autonomous execution):
   * Exercise **Empirical Skepticism** using `dart analyze` and `dart test`.
   * **Proactively write automated tests** for reviewer-requested behavior.
 * **Pragmatic Complexity & Anti-Overengineering Guardrail**:
-  Before implementing structural refactorings suggested by automated bots (e.g. creating new classes/structs, adding caching maps, or rearranging working data flows), evaluate the file's scope and scale. If a suggestion adds boilerplate ceremony or premature optimization for small-scale scripts or internal build utilities, classify it as `🤷 Meh` / overengineering. Reject it using `👎 Disagree` with technical rationale: `"Deferring structural refactoring; existing implementation is pragmatically optimal for script scope."`
+  Before implementing structural refactorings suggested by automated bots (e.g.
+  creating new classes/structs, adding caching maps, or rearranging working
+  data flows), evaluate the file's scope and scale. If a suggestion adds
+  boilerplate ceremony or premature optimization for small-scale scripts or
+  internal build utilities, classify it as `🤷 Meh` / overengineering. Reject
+  it using `👎 Disagree` with technical rationale: `"Deferring structural refactoring; existing implementation is pragmatically optimal."`
 * **Loop Convergence Protocol (Progressive Criticality Ramp)**:
   To prevent infinite spinning where new diffs generate endless feedback,
   the agent MUST track its iteration count (e.g. by counting `fix(review):`
   commits in `git log origin/main..HEAD`) and apply its OWN evaluation:
-  * **Pass 1 (Full Ingestion)**: Address `🔥 Urgent` bugs and `👍 Solid` functional improvements.
-  * **Passes 2–5 (Strict Relevance Filter)**: Reject optional `🤷 Meh` nitpicks, micro-optimizations, or syntactic alternative cascades (such as switching `!= null` checks to `isNotEmpty` or minor variable renamings) using `👎 Disagree`. Only implement clear, essential bug fixes or safety improvements.
-  * **Passes 6+ (Blockers Only / Force Convergence)**: Address ONLY `🔥 Urgent`
-    blockers (bugs, compiler errors, analyzer warnings, security risks). For
-    any optional refactorings or stylistic suggestions, reject them using
-    `👎 Disagree` with rationale:
-    `"Deferring optional suggestion to maintain loop"`
-    `"convergence; code verified."`
+  * **Pass 1 (Full Ingestion)**: Address `🔥 Urgent` bugs and `👍 Solid`
+    functional improvements.
+  * **Passes 2–5 (Strict Relevance Filter)**: Reject optional `🤷 Meh`
+    nitpicks, micro-optimizations, or syntactic alternative cascades (such as
+    switching `!= null` checks to `isNotEmpty` or minor variable renamings)
+    using `👎 Disagree`. Only implement clear, essential bug fixes or safety
+    improvements.
+  * **Passes 6+ (Blockers Only / Force Convergence)**:
+    Address ONLY `🔥 Urgent` blockers (bugs, compiler errors, analyzer
+    warnings, security risks). For any optional refactorings or stylistic
+    suggestions, reject them using `👎 Disagree` with rationale:
+    `"Deferring optional suggestion to maintain loop convergence; code verified."`
   * **Max Loop Circuit-Breaker**: Cap execution at 10 iterations max.
 * Surgically apply verified fixes (including newly created test files) and
   verify clean local quality gates.
@@ -137,26 +207,34 @@ which are bypassed in favor of autonomous execution):
   ```
   *(Note: If no code changes were made, e.g. all comments were disagreed with,
   skip committing and pushing).*
-* **Two-Step Reply & Resolve Protocol (MANDATORY)**:
-  For every addressed review thread, you MUST execute both steps in order:
-  1. **Post Reply Comment**: Call the REST API reply endpoint using the numeric comment `databaseId`:
-     ```bash
-     gh api repos/<owner>/<repo>/pulls/<pr_number>/comments/<comment_database_id>/replies -f body="<your concise explanation>"
-     ```
-  2. **Resolve Thread**: Call the GraphQL mutation using the thread `id` (`PRRT_...`):
-     ```bash
-     gh api graphql -f query='mutation { resolveReviewThread(input: {threadId: "<thread_id>"}) { thread { isResolved } } }'
-     ```
+* **Reply & Resolve Protocol (MANDATORY)**:
+  For every addressed review thread, you MUST execute thread resolution (thread resolution is explicit, mandatory, and un-skippable).
+  Use the `resolve` subcommand in `triage.dart`:
+  ```bash
+  dart <path-to-github-pr-triage-skill>/bin/triage.dart resolve <thread_id> <comment_id> "<your concise explanation>"
+  ```
 
-### 6. Trigger Subsequent Review Pass
-* **CRITICAL OPERATIONAL REMINDER**: `gemini-code-assist` automatically ingests
-  the *first* PR push. However, for **every subsequent push**, you MUST
-  explicitly prompt the bot again by posting a comment on the main PR thread:
+* **Pre-Timer Verification Gate (MANDATORY)**:
+  Before calling `schedule` or going idle, query GraphQL (or run `pr_status.dart`)
+  to verify that all addressed review threads report `isResolved: true`. If any
+  addressed thread reports `isResolved: false`, immediately execute the
+  `resolveReviewThread` mutation for that thread BEFORE setting the background
+  wakeup timer.
+
+### 6. Trigger Subsequent Review Pass (Or Terminate Zero-Change Loop)
+* **Zero-Code-Change Loop Termination Rule**:
+  If **0 code changes** were made in an iteration because all review comments were evaluated via the empirical verification gate (`dart analyze` returned 0 issues) and classified as `👎 Disagree`:
+  * **DO NOT** comment `/gemini review` on the PR. Re-triggering the review bot on the exact same commit causes an infinite review loop.
+  * **DO** post empirical disagreement replies on all review threads, resolve all threads via GraphQL (`triage.dart resolve`), and **terminate the loop immediately** with a final status summary.
+* **Subsequent Push Review Trigger**:
+  If code changes or new test files **were** committed and pushed to `origin`, you MUST explicitly prompt the bot again by posting a comment on the main PR thread:
   ```bash
   gh pr comment <pr_number> --body "/gemini review"
   ```
-* Once `/gemini review` is posted, loop back immediately to **Step 2 [START]**
-  to schedule your 120s timer and go idle!
+* Once `/gemini review` is posted and all threads are verified as resolved, loop
+  back immediately to **Step 2 [START]** to schedule your background timer
+  (e.g., 120s for review bot ingestion, or adaptive duration for CI) and go
+  idle!
 
 ---
 
