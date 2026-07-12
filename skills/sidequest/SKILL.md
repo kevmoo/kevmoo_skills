@@ -35,8 +35,7 @@ In complex pair-programming sessions, work rarely follows a straight line. Engin
 ## 🏗️ Core Architecture & Zero Repo Pollution
 
 ### Session-Private Storage (`sidequest.md`)
-Whenever `/sidequest` generates or updates the map, it writes **exclusively** to the agent's private session directory on disk:
-`<appDataDir>/brain/<conversation-id>/sidequest.md`
+Whenever `/sidequest` generates or updates the map, it writes **exclusively** to the session's artifact directory as `sidequest.md` (the exact session directory is dynamically provided at runtime).
 
 > [!IMPORTANT]
 > **Zero Repo Pollution:** This file exists purely inside the agent's session memory on disk. It **never** touches user repositories (`//depot/google3/...`, `~/github/...`, or `~/.dotfiles`), completely eliminating untracked git/hg/jj file warnings, presubmit failures, or accidental check-ins.
@@ -72,7 +71,7 @@ When `/sidequest` triggers (either via explicit command, user question, or conve
 ### Mode A: Rolling Ledger Delta Updates (In-Session `O(1)`)
 When an existing `sidequest.md` is active and a task progresses, completes, meanders, or `/sidequest` is explicitly invoked:
 1. **Do NOT re-read `transcript.jsonl` or conversation history.**
-2. Use `replace_file_content` (or standard file edit tools) directly on `<appDataDir>/brain/<conversation-id>/sidequest.md` to perform surgical updates:
+2. Use `replace_file_content` (or standard file edit tools) directly on `sidequest.md` in the session's artifact directory to perform surgical updates:
    - **Progress:** Mark sub-quests or side quests from `[ ]` to `[x] **Sub-Quest N:** ... -> *Done/PR link*`.
    - **New Side Quest:** Append new blockers or digressions under `### 🐇 Active & Parked Side Quests`.
    - **Chapter Completion:** When a Main Quest is merged/committed, update its header from `🎯 [ACTIVE HEAD]` to `✅ [COMPLETED]`, and open the next `🎯 [ACTIVE HEAD] Main Quest` below it.
@@ -88,14 +87,13 @@ To rebuild or initialize the map without burning main-session tokens or pausing 
 1. Spawn a background subagent using `invoke_subagent` (or equivalent subagent tool) with the following configuration:
    - `TypeName`: `"self"`
    - `Role`: `"Sidequest Log Auditor"`
-   - `Prompt`: Use this exact self-contained prompt (filling in your real `<conversation-id>` and `<appDataDir>`):
+   - `Prompt`: Use this exact self-contained prompt:
      ```
-     You are a background Sidequest Log Auditor. Your sole job is to inspect the full conversation transcript for conversation ID: <conversation-id> at `<appDataDir>/brain/<conversation-id>/.system_generated/logs/transcript.jsonl` and build/rebuild the visual hierarchy map.
+     You are a background Sidequest Log Auditor. Your sole job is to inspect the full conversation transcript in the session's log directory (e.g., `.system_generated/logs/transcript.jsonl`) and build/rebuild the visual hierarchy map.
 
      1. Inspect `transcript.jsonl` using `view_file` (or search tools) to extract all major initiatives (Main Quests), sub-tasks (Sub-Quests), and digressions/blockers (Side Quests).
      2. Format the findings strictly using the 3-Tier Hierarchy (`🎯 Main Quests`, `📂 Sub-Quests`, `🐇 Side Quests`) and status tags (`✅ [COMPLETED]`, `🎯 [ACTIVE HEAD]`, `⏸️ [PAUSED]`, `[Active]`, `[Parked / Tracked for Later]`).
-     3. Write the finalized markdown table using `write_to_file` (with `Overwrite: true`) to:
-        `<appDataDir>/brain/<conversation-id>/sidequest.md`
+     3. Write the finalized markdown table using `write_to_file` (with `Overwrite: true`) to `sidequest.md` in the session's artifact directory.
      4. When done, call `send_message` to your parent agent confirming that `sidequest.md` has been successfully built/rebuilt.
      ```
 2. **Continue Main Session:** Keep your primary context clean and continue pair programming with the user immediately while the subagent runs asynchronously.
