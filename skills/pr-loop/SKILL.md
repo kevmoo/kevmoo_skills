@@ -55,7 +55,7 @@ automated AI code review bot (such as `gemini-code-assist`,
 
 If the user halts the execution of `pr-loop` early, or if you decide to pivot to another task, you MUST clean up any active background timers or scheduled tasks to prevent orphaned wakeups:
 - **Antigravity Task Management**: Run `manage_task(Action="list")` to locate any active `schedule` timers created by this skill, and cancel them using `manage_task(Action="kill", TaskId="...")`.
-- **Harness-Agnostic Fallback**: If the harness does not support a graphical task manager, write the Task ID or system process PID (if using POSIX background tasks) to a `.tasks/` directory in the workspace, and ensure you kill those background jobs using standard shell signals (e.g., `kill <PID>`) upon termination.
+- **Harness-Agnostic Fallback**: If the harness does not support a graphical task manager, locate the system process PID (if using POSIX background tasks) by inspecting prior tool calls or using standard process commands (e.g., `ps` or `pgrep`), and ensure you kill those background jobs using standard shell signals (e.g., `kill <PID>`) upon termination. Avoid writing temporary state files to the workspace to prevent repository pollution.
 
 ## 🏗️ Architectural Relationship & Rule Inheritance
 This skill functions as an autonomous, multi-pass loop wrapper around the core

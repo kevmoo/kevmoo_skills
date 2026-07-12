@@ -100,7 +100,7 @@ To rebuild or initialize the map without burning main-session tokens or pausing 
    1. Inspect `transcript.jsonl` using `view_file` (or search tools) to extract all major initiatives (Main Quests), sub-tasks (Sub-Quests), and digressions/blockers (Side Quests).
    2. Format the findings strictly using the 3-Tier Hierarchy (`🎯 Main Quests`, `📂 Sub-Quests`, `🐇 Side Quests`) and status tags (`✅ [COMPLETED]`, `🎯 [ACTIVE HEAD]`, `⏸️ [PAUSED]`, `[Active]`, `[Parked / Tracked for Later]`).
    3. Write the finalized markdown hierarchy map using `write_to_file` (with `Overwrite: true`) to `sidequest.md` in the session's artifact directory.
-   4. When done, notify your parent agent. (In Antigravity, call the `send_message` tool targeting the parent's conversation ID, confirming completion and providing the exact absolute path where `sidequest.md` was written. In harnesses without messaging, print the path to stdout or write it to a `.handshake` file).
+   4. When done, notify your parent agent. (In Antigravity, call the `send_message` tool targeting the parent's conversation ID, confirming completion and providing the exact absolute path where `sidequest.md` was written. In harnesses without messaging, print the path to stdout or write it to a `.handshake` file in the session's artifact directory).
    ```
 3. **Continue Main Session**: Keep your primary context clean and continue pair programming with the user immediately while the subagent runs asynchronously (if supported).
 4. **Parent Handshake & UI Availability**: When the subagent sends its completion notification (or the background process completes):
