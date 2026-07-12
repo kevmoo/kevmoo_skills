@@ -55,7 +55,7 @@ Immediately following the summary in the same turn, invoke the `ask_question` to
 
 ### Phase 4: Handling Gate Selection
 - **If "Yes, proceed"**: Transition immediately to task execution.
-- **If "Open in artifact"**: Use `write_to_file` to save the structured summary and execution plan as a markdown artifact (`.md` file) in the session's artifact directory. Stop calling tools and wait for the user's line-by-line review and comments.
+- **If "Open in artifact"**: Use your file-writing tools to save the structured summary and execution plan as a markdown artifact (`.md` file) in the session's artifact directory. Configure the file to request interactive approval/feedback (e.g., set `RequestFeedback: true` in Antigravity's `ArtifactMetadata` to render a 'Proceed' button). If the harness does not support interactive gates, instruct the user in chat to review the file and reply 'Proceed' when they are ready. Stop calling tools and wait for the user's review and comments.
 - **If "No, adjust in chat"**: Ask what needs adjustment or loop back to Phase 1.
 
 ## Critical Rule: Zero Execution Before Approval & Global Rules

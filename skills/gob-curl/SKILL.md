@@ -132,3 +132,8 @@ Check the `messages` array for the most recent status updates from CI bots
     `gob-curl` often prints it as is, and you can just read past it).
 *   Review the `messages` array in the change detail or the output of `comments`
     to identify specific feedback you need to address in the code.
+
+### Asynchronous Execution for Large Logs
+If fetching massive execution logs (e.g., `bb log <BUILD_ID> "<STEP_NAME>"` for a long build step), the download can block the session:
+- **Background Execution**: Propose the command asynchronously (e.g., in Antigravity, set `WaitMsBeforeAsync: 500` or let it background) and schedule a `schedule` wakeup timer to check the task status, allowing you to remain responsive.
+- **Harness-Agnostic Fallback**: Propose the command as a POSIX background job redirecting output to a file (e.g., `bb log ... > build_step.log 2>&1 &`) and monitor the file size or process status (`ps`) in subsequent turns.

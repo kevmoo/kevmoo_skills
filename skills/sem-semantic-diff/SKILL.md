@@ -155,3 +155,8 @@ sem entities src/ --format json
   # OR
   sem impact --entity-id "src/test_utils.ts::function::setup"
   ```
+
+### Asynchronous Execution for Heavy Codebases
+On very large codebases, generating the initial dependency graph (`sem graph` or `sem impact`) can take considerable time and block the session:
+- **Background Execution**: Propose the command asynchronously (e.g., in Antigravity, set `WaitMsBeforeAsync: 500` or let it background) and schedule a `schedule` wakeup timer to monitor the task status, keeping the main thread free.
+- **Harness-Agnostic Fallback**: Propose running the graph indexing command as a POSIX background job redirecting output (e.g., `sem graph --format json > graph.json 2>&1 &`) and check the process PID or verify the output file existence in subsequent turns.

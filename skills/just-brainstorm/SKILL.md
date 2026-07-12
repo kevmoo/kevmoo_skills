@@ -47,6 +47,7 @@ Examples of trigger phrases:
 - The output of this skill **MUST be saved as an artifact** (`.md` file in the
   conversation artifacts directory using the `write_to_file` tool) so the user
   can easily review, share, and comment on specific sections.
+- **Do Not Request Interactive Approval Gates**: When saving the design proposal artifact, ensure that you do not request interactive approval/feedback (e.g., set `RequestFeedback: false` if using Antigravity's `ArtifactMetadata`). Because brainstorming is exploratory and does not define a single execution path, a blocking "Proceed" gate is inapplicable. Transition directly to discussion in chat.
 - Format the artifact clearly with headers, options tables, and pros/cons
   breakdowns.
 

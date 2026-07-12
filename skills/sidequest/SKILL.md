@@ -89,21 +89,23 @@ When an existing `sidequest.md` is active and a task progresses, completes, mean
 
 ### Mode B: Subagent Transcript Audit (`/sidequest rebuild`)
 To rebuild or initialize the map without burning main-session tokens or pausing the conversation:
-1. Spawn a background subagent using `invoke_subagent` (or equivalent subagent tool) with the following configuration:
-   - `TypeName`: `"self"`
-   - `Role`: `"Sidequest Log Auditor"`
-   - `Prompt`: Use this exact self-contained prompt:
-     ```
-     You are a background Sidequest Log Auditor. Your sole job is to inspect the full conversation transcript in the session's log directory and build/rebuild the visual hierarchy map.
+1. **Spawn a Background Auditor**: Spawn a background subagent using `invoke_subagent` (or equivalent platform-native multi-agent creation tool).
+   - **Antigravity Setup**: Use `TypeName: "self"`, `Role: "Sidequest Log Auditor"`, and provide the prompt below.
+   - **Fallback (Harnesses without Multi-Agent APIs)**: If the harness does not support spawning background subagents (like Claude Code), the agent should run the audit synchronously or perform a direct view/write of the transcript files in the session directory.
+2. **Subagent Prompt Configuration**:
+   Use this self-contained prompt:
+   ```
+   You are a background Sidequest Log Auditor. Your sole job is to inspect the full conversation transcript in the session's log directory and build/rebuild the visual hierarchy map.
 
-     1. Inspect `transcript.jsonl` using `view_file` (or search tools) to extract all major initiatives (Main Quests), sub-tasks (Sub-Quests), and digressions/blockers (Side Quests).
-     2. Format the findings strictly using the 3-Tier Hierarchy (`🎯 Main Quests`, `📂 Sub-Quests`, `🐇 Side Quests`) and status tags (`✅ [COMPLETED]`, `🎯 [ACTIVE HEAD]`, `⏸️ [PAUSED]`, `[Active]`, `[Parked / Tracked for Later]`).
-     3. Write the finalized markdown hierarchy map using `write_to_file` (with `Overwrite: true`) to `sidequest.md` in the session's artifact directory.
-     4. When done, call `send_message` to your parent agent confirming completion and providing the exact absolute path where `sidequest.md` was written.
-     ```
-2. **Continue Main Session:** Keep your primary context clean and continue pair programming with the user immediately while the subagent runs asynchronously.
-3. **Parent Handshake & UI Availability:** When the subagent sends its completion message confirming the absolute path where `sidequest.md` was written, the parent agent MUST immediately read the file's content and write it into the conversation artifacts directory as `sidequest.md` using `write_to_file` (or use file copy tools directly). This guarantees `sidequest.md` opens immediately when clicked by the user right here in the main chat UI.
-*(Note: For setups without `invoke_subagent` or `transcript.jsonl`, perform a direct view/write on your private session directory).*
+   1. Inspect `transcript.jsonl` using `view_file` (or search tools) to extract all major initiatives (Main Quests), sub-tasks (Sub-Quests), and digressions/blockers (Side Quests).
+   2. Format the findings strictly using the 3-Tier Hierarchy (`🎯 Main Quests`, `📂 Sub-Quests`, `🐇 Side Quests`) and status tags (`✅ [COMPLETED]`, `🎯 [ACTIVE HEAD]`, `⏸️ [PAUSED]`, `[Active]`, `[Parked / Tracked for Later]`).
+   3. Write the finalized markdown hierarchy map using `write_to_file` (with `Overwrite: true`) to `sidequest.md` in the session's artifact directory.
+   4. When done, notify your parent agent. (In Antigravity, call the `send_message` tool targeting the parent's conversation ID, confirming completion and providing the exact absolute path where `sidequest.md` was written. In harnesses without messaging, print the path to stdout or write it to a `.handshake` file in the session's artifact directory).
+   ```
+3. **Continue Main Session**: Keep your primary context clean and continue pair programming with the user immediately while the subagent runs asynchronously (if supported).
+4. **Parent Handshake & UI Availability**: When the subagent sends its completion notification (or the background process completes):
+   - In Antigravity, after receiving the `send_message` notification confirming the absolute path, the parent agent MUST immediately read the file's content and write it into the conversation artifacts directory as `sidequest.md` using `write_to_file` (or copy it directly).
+   - If running synchronously, copy the compiled file to the conversation's active artifact path so it's immediately available to the user.
 
 ---
 

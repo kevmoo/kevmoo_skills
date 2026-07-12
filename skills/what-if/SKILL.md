@@ -51,6 +51,7 @@ Examples of trigger phrases:
 - **Direct Chat Output**: Deliver the analysis inline directly to the user in
   your chat response. Do NOT create artifacts unless the analysis is
   exceptionally long or explicitly requested.
+- **Do Not Request Interactive Approval Gates**: If you generate an artifact for a long what-if analysis, ensure you do not request interactive approval/feedback (e.g., set `RequestFeedback: false` if using Antigravity's `ArtifactMetadata`). This analysis is purely informational/analytical and should not block execution with a "Proceed" gate.
 - Outline the step-by-step impact if the change were actually executed.
 - Identify potential breaking changes, migration friction, and ripple effects
   across dependent packages or modules.
