@@ -4,7 +4,8 @@ import 'package:logging/logging.dart';
 import 'package:test/test.dart';
 import 'package:test_process/test_process.dart';
 
-final String _configFilePath = Directory.current.path.endsWith('tool')
+final String _configFilePath =
+    Directory.current.path.split(Platform.pathSeparator).last == 'tool'
     ? 'dart_skills_lint.yaml'
     : 'tool/dart_skills_lint.yaml';
 
@@ -32,7 +33,9 @@ void main() {
 
   test('Run skill/scripts/test', () async {
     final skillsDir = Directory(
-      Directory.current.path.endsWith('tool') ? '../skills' : 'skills',
+      Directory.current.path.split(Platform.pathSeparator).last == 'tool'
+          ? '../skills'
+          : 'skills',
     );
     expect(
       skillsDir.existsSync(),
@@ -69,7 +72,9 @@ void main() {
 
   test('Verify formatting and analysis of all skills Dart code', () async {
     final skillsDir = Directory(
-      Directory.current.path.endsWith('tool') ? '../skills' : 'skills',
+      Directory.current.path.split(Platform.pathSeparator).last == 'tool'
+          ? '../skills'
+          : 'skills',
     );
     expect(
       skillsDir.existsSync(),

@@ -69,7 +69,8 @@ void main() {
   });
 
   test('validate README.md is up-to-date with the latest skills', () async {
-    final scriptPath = Directory.current.path.endsWith('tool')
+    final scriptPath =
+        Directory.current.path.split(Platform.pathSeparator).last == 'tool'
         ? 'bin/readme.dart'
         : 'tool/bin/readme.dart';
     final result = await Process.run(Platform.resolvedExecutable, [
