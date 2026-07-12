@@ -168,7 +168,10 @@ Dimension                                                              | Option 
 
 Create a definitive document named `DISTILLED_STRATEGY.md` in the conversation
 artifacts directory (`<appDataDir>/brain/<conversation-id>`) using the
-`write_to_file` tool. This document serves as the source of truth for execution.
+`write_to_file` tool. Save this document without requesting interactive
+approval/feedback (e.g., set `RequestFeedback: false` if using Jetski's
+`ArtifactMetadata`), as it serves as a strategic record rather than an
+interactive gateway to immediate execution. This document serves as the source of truth for execution.
 
 Structure the document as follows:
 
