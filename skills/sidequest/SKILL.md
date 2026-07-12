@@ -89,7 +89,7 @@ To rebuild or initialize the map without burning main-session tokens or pausing 
    - `Role`: `"Sidequest Log Auditor"`
    - `Prompt`: Use this exact self-contained prompt:
      ```
-     You are a background Sidequest Log Auditor. Your sole job is to inspect the full conversation transcript in the session's log directory (e.g., `.system_generated/logs/transcript.jsonl`) and build/rebuild the visual hierarchy map.
+     You are a background Sidequest Log Auditor. Your sole job is to inspect the full conversation transcript in the session's log directory and build/rebuild the visual hierarchy map.
 
      1. Inspect `transcript.jsonl` using `view_file` (or search tools) to extract all major initiatives (Main Quests), sub-tasks (Sub-Quests), and digressions/blockers (Side Quests).
      2. Format the findings strictly using the 3-Tier Hierarchy (`🎯 Main Quests`, `📂 Sub-Quests`, `🐇 Side Quests`) and status tags (`✅ [COMPLETED]`, `🎯 [ACTIVE HEAD]`, `⏸️ [PAUSED]`, `[Active]`, `[Parked / Tracked for Later]`).
