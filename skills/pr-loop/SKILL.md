@@ -96,17 +96,35 @@ which are bypassed in favor of autonomous execution):
   immediate check of PR status (`dart <path-to-pr-loop-skill>/bin/pr_status.dart --dir .` or `gh pr view`).
   * If actionable review comments or failed CI checks already exist, **bypass the initial timer** and proceed directly to Step 3/4.
   * If review feedback or CI checks are still in progress, proceed to schedule the background wakeup timer.
-* Call the `schedule` tool to set a background wakeup timer:
-  * **Initial Push**: Set `DurationSeconds=180` (3 minutes) to allow initial bot
-    ingestion.
-  * **Subsequent Pushes**: Set `DurationSeconds=120` (2 minutes).
-  * **Long-Running CI Checks**: If waiting primarily for long-running CI checks
-    rather than bot review ingestion, apply the dynamic/adaptive polling
-    timers described in Step 3 (`DurationSeconds=300` to `600`+ as appropriate).
-  * **Prompt**: `"Poll PR #<number> via gh pr view <number> --json comments. Check if gemini-code-assist posted review feedback on commit <sha>."`
-* **CRITICAL IDLE PROTOCOL**: Immediately after calling `schedule`, output a
-  concise visible status update to the user and **STOP calling tools**. You must
-  go idle to allow the background timer task to tick.
+* **Transition to Wait State**:
+  * **If CI checks are running/pending**:
+    1. Retrieve all active GHA run IDs for the current commit SHA:
+       `gh run list --commit <commit_sha> --json databaseId,status`
+       and filter for runs where status is not `completed`.
+       (If the returned list is empty, GHA has not registered the runs yet.
+       Retry up to 3 times with a 5-second delay; if still empty, proceed
+       to Step 3/4).
+    2. Watch the runs:
+       * **Antigravity**: Dynamically construct and execute the watch command
+         using the `run_command` tool:
+         * If there is only one active run ID, run `gh run watch <run_id>`.
+         * If there are multiple active run IDs, run them in parallel (e.g.,
+           `gh run watch <run_id_1> & gh run watch <run_id_2> & wait`).
+         * If there are no active GHA run IDs (e.g., due to external non-GHA
+           checks), fall back to scheduling a polling timer (e.g., `schedule`
+           with `DurationSeconds=300`).
+         Before going idle, verify that all addressed review threads report
+         `isResolved: true` (resolve them if not). Then, **STOP calling tools**
+         and go idle; you will be reactively woken up when all runs complete.
+       * **Other Agents / Harnesses**: If your harness supports long-running
+         commands and active GHA run IDs exist, run `gh run watch <run_id>` for
+         each run synchronously. If not, or if there are no active GHA run IDs (e.g.,
+         due to external non-GHA checks), verify that all addressed review
+         threads report `isResolved: true` (resolve them if not) before
+         scheduling a long-interval timer (e.g., 5-10 minutes) or going idle.
+  * **If ONLY bot review is pending (no CI running)**:
+    1. Call the `schedule` tool with `DurationSeconds=120` to poll for comments (or use harness-specific polling/timer).
+    2. **STOP calling tools** and go idle.
 
 ### 3. Wakeup & Feedback Ingestion (Comments & CI/CD)
 * When reactive wakeup resumes your execution from the timer, inspect both
@@ -131,37 +149,35 @@ which are bypassed in favor of autonomous execution):
   > Passing local tests (`dart analyze`, `dart test`) are NEVER a substitute for remote CI status.
   > If `pr_status.dart` returns `"can_terminate": false`, the agent MUST NOT exit the loop
   > or declare victory early under any circumstances, regardless of local test results.
-* **Action on In-Progress Activity (Dynamic & Adaptive Polling)**:
+* **Action on In-Progress Activity (Waiting for CI/Review)**:
   If `pr_status.dart` returns `"can_terminate": false` because CI checks or a
-  review pass are still in progress, schedule a background timer (`schedule`
-  tool) and **go idle**. DO NOT start triaging or editing code until BOTH review
-  comments and CI runs have fully completed!
-  Instead of enforcing a strict/hardcoded 90-second limit across all
-  checks, use **dynamic/adaptive polling timers** tailored to the activity:
-  * **Review Pass / EYES Reaction (`has_active_eyes_reaction: true`)**: If an AI
-    review bot is actively processing feedback, use a responsive timer (e.g.,
-    60–120 seconds) since bot review passes typically complete within 2–3
-    minutes.
-  * **In-Progress CI Checks (`in_progress_checks`)**: When waiting for CI
-    workflows, dynamically determine `DurationSeconds` to avoid unnecessary
-    wakeups and token consumption on long-running jobs:
-    * **Historical / Expected Durations**: Check known workflow characteristics
-      or inspect previous check run durations by running
-      `gh pr checks --json name,startedAt,completedAt,state` directly. If a
-      workflow (such as end-to-end integration tests or multi-platform builds)
-      historically takes 15–30+ minutes and just started, schedule a longer
-      timer (e.g., 300–600 seconds) rather than waking up every 90 seconds.
-    * **Intelligent Backoff**: If CI checks remain pending across consecutive
-      polling cycles, adaptively increase the polling interval (e.g., 120s →
-      240s → 480s up to a reasonable cap like 600s) to conserve steps while
-      continuing to monitor progress.
-    * **Workflow-Specific Sizing**: For fast lint/analyzer runs, use shorter
-      intervals (e.g., 90–120s); for heavy builds or full suites, scale up.
-    * **Combined Activity**: If both a review pass and CI checks are pending,
-      balance the timer (e.g., 120–180s) to catch review feedback promptly
-      while monitoring CI.
-  * Always set a descriptive `Prompt` on the timer explaining what activity is
-    being monitored and why the duration was chosen.
+  review pass are still in progress, go idle to wait for them. DO NOT start
+  triaging or editing code until BOTH review comments and CI runs have fully
+  completed!
+  * **Waiting for CI**:
+    * **Antigravity**: Retrieve all active GHA run IDs. Dynamically
+      construct and execute the watch command using the `run_command` tool:
+      * If there is only one active run ID, run `gh run watch <run_id>`.
+      * If there are multiple active run IDs, run them in parallel (e.g.,
+        `gh run watch <run_id_1> & gh run watch <run_id_2> & wait`).
+      * If there are no active GHA run IDs (e.g., due to external non-GHA
+        checks), fall back to scheduling a polling timer (e.g., `schedule`
+        with `DurationSeconds=300`).
+      Before going idle, verify that all addressed review threads report
+      `isResolved: true` (resolve them if not). Then, **STOP calling tools**,
+      and go idle. The platform will wake you up reactively when all runs
+      complete.
+    * **Other Agents / Harnesses**: Run `gh run watch <run_id>` synchronously
+      for each active run if your harness allows long-running commands and
+      active GHA run IDs exist. Otherwise, or if there are no active GHA run
+      IDs (e.g., due to external non-GHA checks), verify that all addressed
+      review threads report `isResolved: true` (resolve them if not) before
+      scheduling a timer or falling back to checking CI status at larger
+      intervals (e.g., 5-10 minutes) using standard timers or sleep commands,
+      or going idle.
+  * **Waiting for Bot Review only**: If CI is complete but the bot review pass
+    is still in progress, call `schedule` with a short interval (e.g., 60-120
+    seconds) to poll for comments (or use harness-specific polling/timer).
 * **Unified Triage Engine**: If `pr_status.dart` indicates unresolved threads or
   failed CI runs exist (`"can_terminate": false`), run `triage.dart` as defined
   in `github-pr-triage`:
