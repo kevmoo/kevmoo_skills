@@ -98,18 +98,22 @@ which are bypassed in favor of autonomous execution):
   * If review feedback or CI checks are still in progress, proceed to schedule the background wakeup timer.
 * **Transition to Wait State**:
   * **If CI checks are running/pending**:
-    1. Retrieve the active GHA run ID for the current commit SHA:
-       `gh run list --commit <commit_sha> --limit=1 --json databaseId`.
-       (If the returned list is empty, GHA has not registered the run yet.
+    1. Retrieve all active GHA run IDs for the current commit SHA:
+       `gh run list --commit <commit_sha> --json databaseId,status`.
+       (If the returned list is empty, GHA has not registered the runs yet.
        Wait a few seconds and retry).
-    2. Watch the run:
-       * **Antigravity**: Run `gh run watch <run_id>` using `run_command`. The
-         platform will automatically background this command. **STOP calling
-         tools** and go idle; you will be reactively woken up on completion.
+    2. Watch the runs:
+       * **Antigravity**: Run `gh run watch <run_id_1> & gh run watch
+         <run_id_2> & wait` (joining all active run IDs in parallel) using a
+         single `run_command`. The platform will background this. Before
+         going idle, verify that all addressed review threads report
+         `isResolved: true` (resolve them if not). Then, **STOP calling tools**
+         and go idle; you will be reactively woken up when all runs complete.
        * **Other Agents / Harnesses**: If your harness supports long-running
-         commands, you can run `gh run watch <run_id>` synchronously. If not,
-         fall back to scheduling a long-interval timer (e.g., 5-10 minutes)
-         or using your harness's sleep mechanism to check status later.
+         commands, run `gh run watch` for each run synchronously. If not,
+         verify that all addressed review threads report `isResolved: true`
+         (resolve them if not) before scheduling a long-interval timer (e.g.,
+         5-10 minutes) or using sleep commands.
   * **If ONLY bot review is pending (no CI running)**:
     1. Call the `schedule` tool with `DurationSeconds=120` to poll for comments (or use harness-specific polling/timer).
     2. **STOP calling tools** and go idle.
@@ -143,14 +147,19 @@ which are bypassed in favor of autonomous execution):
   triaging or editing code until BOTH review comments and CI runs have fully
   completed!
   * **Waiting for CI**:
-    * **Antigravity**: Retrieve the active GHA run ID and execute `gh run watch
-      <run_id>` using the `run_command` tool. Let it go to the background,
-      **STOP calling tools**, and go idle. The platform will wake you up
-      reactively when GHA completes.
+    * **Antigravity**: Retrieve all active GHA run IDs and execute `gh run
+      watch <run_id_1> & gh run watch <run_id_2> & wait` (joining all active
+      run IDs in parallel) using the `run_command` tool. Let them go to the
+      background. Before going idle, verify that all addressed review threads
+      report `isResolved: true` (resolve them if not). Then, **STOP calling
+      tools**, and go idle. The platform will wake you up reactively when
+      all runs complete.
     * **Other Agents / Harnesses**: Run `gh run watch <run_id>` synchronously
-      if your harness allows long-running commands. Otherwise, fall back to
-      checking CI status at larger intervals (e.g., 5-10 minutes) using
-      standard timers or sleep commands to minimize token consumption.
+      for each active run if your harness allows long-running commands.
+      Otherwise, verify that all addressed review threads report
+      `isResolved: true` (resolve them if not) before scheduling a timer
+      or falling back to checking CI status at larger intervals (e.g.,
+      5-10 minutes) using standard timers or sleep commands.
   * **Waiting for Bot Review only**: If CI is complete but the bot review pass
     is still in progress, call `schedule` with a short interval (e.g., 60-120
     seconds) to poll for comments (or use harness-specific polling/timer).
