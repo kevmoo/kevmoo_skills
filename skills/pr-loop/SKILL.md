@@ -99,9 +99,11 @@ which are bypassed in favor of autonomous execution):
 * **Transition to Wait State**:
   * **If CI checks are running/pending**:
     1. Retrieve all active GHA run IDs for the current commit SHA:
-       `gh run list --commit <commit_sha> --json databaseId,status`.
+       `gh run list --commit <commit_sha> --json databaseId,status`
+       and filter for runs where status is not `completed`.
        (If the returned list is empty, GHA has not registered the runs yet.
-       Wait a few seconds and retry).
+       Retry up to 3 times with a 5-second delay; if still empty, proceed
+       to Step 3/4).
     2. Watch the runs:
        * **Antigravity**: Run `gh run watch <run_id_1> & gh run watch
          <run_id_2> & wait` (joining all active run IDs in parallel) using a
