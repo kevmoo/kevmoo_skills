@@ -100,8 +100,13 @@ which are bypassed in favor of autonomous execution):
   * **If CI checks are running/pending**:
     1. Retrieve the active GHA run ID: `gh run list --workflow=bazel.yml --limit=1 --json databaseId`.
     2. Watch the run:
-       * **Antigravity**: Run `gh run watch <run_id>` using `run_command`. The platform will automatically background this command. **STOP calling tools** and go idle; you will be reactively woken up on completion.
-       * **Other Agents / Harnesses**: If your harness supports long-running commands, you can run `gh run watch <run_id>` synchronously. If not, fall back to scheduling a long-interval timer (e.g., 5-10 minutes) or using your harness's sleep mechanism to check status later.
+       * **Antigravity**: Run `gh run watch <run_id>` using `run_command`. The
+         platform will automatically background this command. **STOP calling
+         tools** and go idle; you will be reactively woken up on completion.
+       * **Other Agents / Harnesses**: If your harness supports long-running
+         commands, you can run `gh run watch <run_id>` synchronously. If not,
+         fall back to scheduling a long-interval timer (e.g., 5-10 minutes)
+         or using your harness's sleep mechanism to check status later.
   * **If ONLY bot review is pending (no CI running)**:
     1. Call the `schedule` tool with `DurationSeconds=120` to poll for comments (or use harness-specific polling/timer).
     2. **STOP calling tools** and go idle.
@@ -130,11 +135,22 @@ which are bypassed in favor of autonomous execution):
   > If `pr_status.dart` returns `"can_terminate": false`, the agent MUST NOT exit the loop
   > or declare victory early under any circumstances, regardless of local test results.
 * **Action on In-Progress Activity (Waiting for CI/Review)**:
-  If `pr_status.dart` returns `"can_terminate": false` because CI checks or a review pass are still in progress, go idle to wait for them. DO NOT start triaging or editing code until BOTH review comments and CI runs have fully completed!
+  If `pr_status.dart` returns `"can_terminate": false` because CI checks or a
+  review pass are still in progress, go idle to wait for them. DO NOT start
+  triaging or editing code until BOTH review comments and CI runs have fully
+  completed!
   * **Waiting for CI**:
-    * **Antigravity**: Retrieve the active GHA run ID and execute `gh run watch <run_id>` using the `run_command` tool. Let it go to the background, **STOP calling tools**, and go idle. The platform will wake you up reactively when GHA completes.
-    * **Other Agents / Harnesses**: Run `gh run watch <run_id>` synchronously if your harness allows long-running commands. Otherwise, fall back to checking CI status at larger intervals (e.g., 5-10 minutes) using standard timers or sleep commands to minimize token consumption.
-  * **Waiting for Bot Review only**: If CI is complete but the bot review pass is still in progress, call `schedule` with a short interval (e.g., 60-120 seconds) to poll for comments (or use harness-specific polling/timer).
+    * **Antigravity**: Retrieve the active GHA run ID and execute `gh run watch
+      <run_id>` using the `run_command` tool. Let it go to the background,
+      **STOP calling tools**, and go idle. The platform will wake you up
+      reactively when GHA completes.
+    * **Other Agents / Harnesses**: Run `gh run watch <run_id>` synchronously
+      if your harness allows long-running commands. Otherwise, fall back to
+      checking CI status at larger intervals (e.g., 5-10 minutes) using
+      standard timers or sleep commands to minimize token consumption.
+  * **Waiting for Bot Review only**: If CI is complete but the bot review pass
+    is still in progress, call `schedule` with a short interval (e.g., 60-120
+    seconds) to poll for comments (or use harness-specific polling/timer).
 * **Unified Triage Engine**: If `pr_status.dart` indicates unresolved threads or
   failed CI runs exist (`"can_terminate": false`), run `triage.dart` as defined
   in `github-pr-triage`:
