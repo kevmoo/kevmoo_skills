@@ -1,69 +1,59 @@
 ---
 name: just-brainstorm
 description: |-
-  Brainstorm architectural designs, explore potential solutions, and weigh
-  implementation tradeoffs collaboratively without making code changes.
+  Ponder architectural designs, explore potential solutions, weigh tradeoffs,
+  or analyze the impact of proposed codebase changes without making code changes.
+  Always outputs the analysis to a Markdown artifact.
 key_features:
   - Architectural design
-  - trade-off evaluation
-  - Design requirement clarification
-  - Non-destructive exploration
+  - Trade-off evaluation
+  - Impact & "what-if" analysis
+  - Codebase metric gathering
 ---
 
 ## When to use this skill
 
-Activate this skill when the user asks to brainstorm, explore design ideas,
-discuss potential solutions, or outline architecture before committing to
-execution.
+Activate this skill when you need to think through a design, explore options,
+or evaluate the impact of a potential change before writing code.
 
 Examples of trigger phrases:
 - "Let me brainstorm..."
 - "Just brainstorming here..."
-- "What are some ways we could solve..."
+- "What if we [do specific change]..."
+- "What would break if we..."
+- "How hard would it be to migrate..."
 - "Help me design..."
 
-## Critical Rule: Zero Code Changes Allowed
+## Critical Rule: Zero Codebase Changes
 
-- **NO CODEBASE FILE EDITS OR CREATION**: Under no circumstances should you edit
-  existing project files, write new implementation code, or modify repository
-  state. (Note: Writing the mandatory design artifact using `write_to_file` as
-  described in the workflow below is the only permitted file creation).
-- **READ-ONLY INSPECTION IS ALLOWED**: You are fully authorized and encouraged
-  to inspect the codebase using read-only tools (`grep_search`, `view_file`,
-  `list_dir`) to understand the current architecture and ground your
-  brainstorming in reality.
-- **DO NOT ASSUME IMPLEMENTATION IS DESIRED**: Never jump from brainstorming
-  directly into writing code unless explicitly commanded in a separate
-  follow-up turn.
+- **NO CODEBASE FILE EDITS OR CREATION**: Do not edit existing project files,
+  write new implementation code, or modify repository state.
+- **MANDATORY ARTIFACT GENERATION**: The only permitted file creation is the
+  design/analysis artifact (`.md` file in the conversation artifacts directory).
 
 ## Procedural Workflow
 
-### 1. Interactive Alignment (`ask_question`)
-- You are **strongly encouraged** to use the `ask_question` tool early to
-  request clarification, surface design choices, and align on goals or
-  constraints before drafting extensive proposals.
+### 1. Gather Context & Empirical Data (Read-Only)
+- Inspect the codebase using read-only tools (`grep_search`, `view_file`, `list_dir`)
+  to ground your brainstorming or analysis in reality.
+- **For Impact Analysis ("What-if")**: Gather real statistics. Calculate usage
+  counts, identify affected call sites, and map out dependencies. Do not guess.
 
-### 2. Mandatory Artifact Generation
-- The output of this skill **MUST be saved as an artifact** (`.md` file in the
-  conversation artifacts directory using the `write_to_file` tool) so the user
-  can easily review, share, and comment on specific sections.
-- **Do Not Request Interactive Approval Gates**: When saving the design proposal artifact, ensure that you do not request interactive approval/feedback (e.g., set `RequestFeedback: false` if using Antigravity's `ArtifactMetadata`). Because brainstorming is exploratory and does not define a single execution path, a blocking "Proceed" gate is inapplicable. Transition directly to discussion in chat.
-- Format the artifact clearly with headers, options tables, and pros/cons
-  breakdowns.
+### 2. Interactive Alignment (`ask_question`)
+- Use `ask_question` early if the goals, constraints, or the scope of the
+  "what-if" scenario are unclear.
 
-### 3. Structure Your Proposals
-- Present 2–4 distinct architectural or conceptual options (e.g., simple vs.
-  scalable, synchronous vs. asynchronous).
-- Highlight tradeoffs, impact on existing code, and relative complexity for each
-  option.
-- Summarize discussion points for the user to consider.
+### 3. Generate the Artifact
+- Write the output to a `.md` file in the conversation artifacts directory.
+- Use `RequestFeedback: false` in the artifact metadata (do not block with "Proceed" gates).
+- **Structure for Design Brainstorming**:
+  - Present 2–4 distinct options.
+  - Highlight tradeoffs (pros/cons) and relative complexity.
+- **Structure for Impact Analysis ("What-if")**:
+  - Detail the step-by-step impact if the change were executed.
+  - List breaking changes, migration friction, and affected modules with metrics.
+  - Provide a summary risk/feasibility verdict.
 
-### 4. Offer Obvious Next Steps
-- Conclude by suggesting relevant, actionable next steps based on the context.
-- Examples of suggested next steps (pick 1–3 that fit best or tailor your own):
-  - Create a GitHub issue to track the design/decision.
-  - Explore one of the proposed options deeper.
-  - Create an implementation plan based on the preferred option.
-  - Begin implementing the preferred plan.
-- You are not required to include all suggestions—tailor them to what makes the
-  most sense for the current discussion.
+### 4. Conclude with Next Steps
+- Suggest 1–3 actionable next steps (e.g., create an implementation plan,
+  explore a specific option deeper, or start implementation).
