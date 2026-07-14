@@ -110,7 +110,8 @@ which are bypassed in favor of autonomous execution):
          `isResolved: true` (resolve them if not). Then, **STOP calling tools**
          and go idle; you will be reactively woken up when all runs complete.
        * **Other Agents / Harnesses**: If your harness supports long-running
-         commands, run `gh run watch` for each run synchronously. If not,
+         commands, run `gh run watch <run_id>` for each run synchronously.
+         If not,
          verify that all addressed review threads report `isResolved: true`
          (resolve them if not) before scheduling a long-interval timer (e.g.,
          5-10 minutes) or using sleep commands.
