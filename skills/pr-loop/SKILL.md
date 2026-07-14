@@ -98,8 +98,10 @@ which are bypassed in favor of autonomous execution):
   * If review feedback or CI checks are still in progress, proceed to schedule the background wakeup timer.
 * **Transition to Wait State**:
   * **If CI checks are running/pending**:
-    1. Retrieve the active GHA run ID for the current branch:
-       `gh run list --branch <branch_name> --limit=1 --json databaseId`.
+    1. Retrieve the active GHA run ID for the current commit SHA:
+       `gh run list --commit <commit_sha> --limit=1 --json databaseId`.
+       (If the returned list is empty, GHA has not registered the run yet.
+       Wait a few seconds and retry).
     2. Watch the run:
        * **Antigravity**: Run `gh run watch <run_id>` using `run_command`. The
          platform will automatically background this command. **STOP calling
