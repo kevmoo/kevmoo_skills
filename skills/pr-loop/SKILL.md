@@ -105,18 +105,23 @@ which are bypassed in favor of autonomous execution):
        Retry up to 3 times with a 5-second delay; if still empty, proceed
        to Step 3/4).
     2. Watch the runs:
-       * **Antigravity**: Run `gh run watch <run_id_1> & gh run watch
-         <run_id_2> & wait` (joining all active run IDs in parallel) using a
-         single `run_command`. The platform will background this. Before
-         going idle, verify that all addressed review threads report
+       * **Antigravity**: Dynamically construct and execute the watch command
+         using the `run_command` tool:
+         * If there is only one active run ID, run `gh run watch <run_id>`.
+         * If there are multiple active run IDs, run them in parallel (e.g.,
+           `gh run watch <run_id_1> & gh run watch <run_id_2> & wait`).
+         * If there are no active GHA run IDs (e.g., due to external non-GHA
+           checks), fall back to scheduling a polling timer (e.g., `schedule`
+           with `DurationSeconds=300`).
+         Before going idle, verify that all addressed review threads report
          `isResolved: true` (resolve them if not). Then, **STOP calling tools**
          and go idle; you will be reactively woken up when all runs complete.
        * **Other Agents / Harnesses**: If your harness supports long-running
-         commands, run `gh run watch <run_id>` for each run synchronously.
-         If not,
-         verify that all addressed review threads report `isResolved: true`
-         (resolve them if not) before scheduling a long-interval timer (e.g.,
-         5-10 minutes) or using sleep commands.
+         commands and active GHA run IDs exist, run `gh run watch <run_id>` for
+         each run synchronously. If not, or if there are no active GHA run IDs (e.g.,
+         due to external non-GHA checks), verify that all addressed review
+         threads report `isResolved: true` (resolve them if not) before
+         scheduling a long-interval timer (e.g., 5-10 minutes) or going idle.
   * **If ONLY bot review is pending (no CI running)**:
     1. Call the `schedule` tool with `DurationSeconds=120` to poll for comments (or use harness-specific polling/timer).
     2. **STOP calling tools** and go idle.
@@ -150,19 +155,26 @@ which are bypassed in favor of autonomous execution):
   triaging or editing code until BOTH review comments and CI runs have fully
   completed!
   * **Waiting for CI**:
-    * **Antigravity**: Retrieve all active GHA run IDs and execute `gh run
-      watch <run_id_1> & gh run watch <run_id_2> & wait` (joining all active
-      run IDs in parallel) using the `run_command` tool. Let them go to the
-      background. Before going idle, verify that all addressed review threads
-      report `isResolved: true` (resolve them if not). Then, **STOP calling
-      tools**, and go idle. The platform will wake you up reactively when
-      all runs complete.
+    * **Antigravity**: Retrieve all active GHA run IDs. Dynamically
+      construct and execute the watch command using the `run_command` tool:
+      * If there is only one active run ID, run `gh run watch <run_id>`.
+      * If there are multiple active run IDs, run them in parallel (e.g.,
+        `gh run watch <run_id_1> & gh run watch <run_id_2> & wait`).
+      * If there are no active GHA run IDs (e.g., due to external non-GHA
+        checks), fall back to scheduling a polling timer (e.g., `schedule`
+        with `DurationSeconds=300`).
+      Before going idle, verify that all addressed review threads report
+      `isResolved: true` (resolve them if not). Then, **STOP calling tools**,
+      and go idle. The platform will wake you up reactively when all runs
+      complete.
     * **Other Agents / Harnesses**: Run `gh run watch <run_id>` synchronously
-      for each active run if your harness allows long-running commands.
-      Otherwise, verify that all addressed review threads report
-      `isResolved: true` (resolve them if not) before scheduling a timer
-      or falling back to checking CI status at larger intervals (e.g.,
-      5-10 minutes) using standard timers or sleep commands.
+      for each active run if your harness allows long-running commands and
+      active GHA run IDs exist. Otherwise, or if there are no active GHA run
+      IDs (e.g., due to external non-GHA checks), verify that all addressed
+      review threads report `isResolved: true` (resolve them if not) before
+      scheduling a timer or falling back to checking CI status at larger
+      intervals (e.g., 5-10 minutes) using standard timers or sleep commands,
+      or going idle.
   * **Waiting for Bot Review only**: If CI is complete but the bot review pass
     is still in progress, call `schedule` with a short interval (e.g., 60-120
     seconds) to poll for comments (or use harness-specific polling/timer).
