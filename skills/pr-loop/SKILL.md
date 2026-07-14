@@ -98,7 +98,8 @@ which are bypassed in favor of autonomous execution):
   * If review feedback or CI checks are still in progress, proceed to schedule the background wakeup timer.
 * **Transition to Wait State**:
   * **If CI checks are running/pending**:
-    1. Retrieve the active GHA run ID: `gh run list --workflow=bazel.yml --limit=1 --json databaseId`.
+    1. Retrieve the active GHA run ID for the current branch:
+       `gh run list --branch <branch_name> --limit=1 --json databaseId`.
     2. Watch the run:
        * **Antigravity**: Run `gh run watch <run_id>` using `run_command`. The
          platform will automatically background this command. **STOP calling
