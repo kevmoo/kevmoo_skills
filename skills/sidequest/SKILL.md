@@ -38,9 +38,9 @@ fry"):
   accidental amends in stacked workflows (e.g. `jj`, Gerrit) or forgotten code
   changes.
 
-`/sidequest` solves this by maintaining an organic, multi-tiered visual map
-(`sidequest.md`) in session memory, keeping both human and agent anchored
-without adding friction or bloat.
+`/sidequest` maintains an organic, multi-tiered visual map (`sidequest.md`) in
+session memory, keeping both human and agent anchored without adding friction or
+bloat.
 
 ---
 
@@ -111,7 +111,7 @@ Rather than restricting the map to a single rigid goal, `/sidequest` supports
 To prevent divergent state confusion and accidental amends in stacked-commit
 workflows (e.g. `jj`, Gerrit, Git branches):
 - Track the VCS status of modified files directly in `sidequest.md` alongside
-  each active Quest or detour:
+  each active Quest or detour using the 5-stage lifecycle:
   - `📝 Dirty`: Lists modified/untracked files in the working copy.
   - `📦 Local Commit`: Lists committed changes / revision IDs awaiting push.
   - `🚀 Uploaded`: Lists published PRs, Gerrit CLs, or remote branches in
@@ -179,43 +179,17 @@ the conversation:
 1. **Spawn a Background Auditor**: Spawn a background subagent using
    `invoke_subagent` (or equivalent platform-native multi-agent creation tool).
    - **Antigravity Setup**: Use `TypeName: "self"`,
-     `Role: "Sidequest Log Auditor"`, and provide the prompt below.
+     `Role: "Sidequest Log Auditor"`, and provide the prompt from
+     `resources/auditor_prompt.txt`.
    - **Fallback (Harnesses without Multi-Agent APIs)**: If the harness does
      not support spawning background subagents (like Claude Code), the agent
      should run the audit synchronously or perform a direct view/write of the
      transcript files in the session directory.
 2. **Subagent Prompt Configuration**:
-   Use this self-contained prompt:
-   ```
-   You are a background Sidequest Log Auditor. Your sole job is to inspect the
-   full conversation transcript in the session's log directory and
-   build/rebuild the visual hierarchy map.
-
-   1. Inspect `transcript.jsonl` using `view_file` (or search tools) to extract
-      all major initiatives (Main Quests), sub-tasks (Sub-Quests), and
-      unrelated tangents (Side Quests).
-   2. Group critical-path blockers (errors, failures) or steps (actions)
-      directly under their corresponding Sub-Quests using nested bullet points
-      and appropriate tags (e.g. `  * [ ] 👾 *Blocker:* ...` or
-      `  * [ ] 👣 *Step:* ...`). For vanquished blockers, format them with `💀`
-      and strikethrough (e.g. `  * [x] 💀 ~~*Blocker:* ...~~ -> *Resolved*`).
-      For completed steps, format them with strikethrough
-      (e.g. `  * [x] 👣 ~~*Step:* ...~~ -> *Done*`).
-   3. Track the VCS / working copy state for each active quest or code detour
-      using the 5-stage lifecycle: `📝 Dirty`, `📦 Local Commit`,
-      `🚀 Uploaded`, `🎉 Merged / Submitted`, or `🧹 Clean`.
-   4. Put ONLY completely unrelated tasks or context drift under the
-      `Side Quests` section (`🌿`).
-   5. Format the findings strictly using the RPG-themed 3-Tier Hierarchy
-      (Main Quests with `⚔️ [ACTIVE HEAD]`, `🏆 [COMPLETED]`, `⏸️ [PAUSED]`,
-      Sub-Quests with `🛡️`, and Side Quests with `🌿`,
-      `🎒 [Parked / Tracked for Later]`).
-   6. Write the finalized markdown hierarchy map using `write_to_file` (with
-      `Overwrite: true`) to `sidequest.md` in the session's artifact directory.
-   7. When done, notify your parent agent by calling `send_message` (or writing
-      a `.handshake` file) confirming completion and providing the absolute path
-      where `sidequest.md` was written.
-   ```
+   Read `resources/auditor_prompt.txt` for the complete auditor prompt. It
+   instructs the subagent to parse `transcript.jsonl`, format items according
+   to the 3-Tier Hierarchy, track the 5-stage VCS lifecycle, and write the
+   result to `sidequest.md` in the session's artifact directory.
 3. **Continue Main Session**: Keep your primary context clean and continue pair
    programming with the user immediately while the subagent runs asynchronously
    (if supported).
@@ -276,37 +250,7 @@ Once `sidequest.md` exists, the agent adopts a helpful, low-friction discipline:
 
 ---
 
-## 📄 Template: `sidequest.md`
+## 📄 Template Reference
 
-```markdown
-# 🧭 Conversation Map & Sidequests
-
-## 🏆 [COMPLETED] Main Quest 1: Migrate `UserService` to `v2` API
-> **VCS State:** `🧹 Clean` -> PR #142 (Merged upstream, local workspace synced)
-* [x] 🛡️ **Sub-Quest 1:** Identify callers across repository -> *Done*
-* [x] 🛡️ **Sub-Quest 2:** Update client stub bindings
-  * [x] 💀 ~~*Blocker:* Fix build missing `proto/public` dep~~ -> *Resolved*
-  * [x] 👣 ~~*Step:* Merge in PR #142~~ -> *Done*
-
----
-
-## ⚔️ [ACTIVE HEAD] Main Quest 2: Investigate Thread Leak Issue
-> **VCS State:** `📝 Dirty` | Branch: `fix-leak` | Modified: `lib/worker.dart`
-* [x] 🛡️ **Sub-Quest 1:** Check config and reproduce reproduction test case
-* [ ] 🛡️ **Sub-Quest 2:** Profile thread spawning across workers *(IN PROGRESS)*
-  * [x] 💀 ~~*Blocker:* Resolve local Docker network timeout~~ -> *Fixed*
-  * [ ] 👣 *Step:* Run worker profiling script
-
-### 🌿 Active & Parked Side Quests (For Main Quest 2)
-* [ ] **[Active]** Check why debug flag behaves differently on local vs
-  remote machine.
-  * 📝 *VCS:* `test/debug_test.dart` (Uncommitted)
-* [ ] **🎒 [Parked / Tracked for Later]** Refactor `LegacyThreadMonitor` ->
-  *Filed Issue #215 in project tracker*
-
----
-
-## ⏸️ [PAUSED] Main Quest 3: Code Review for PR #27
-> **VCS State:** `🚀 Uploaded` -> PR #27 (Awaiting Review)
-* [ ] **Status:** Waiting on author reply to our comment on line 142.
-```
+For a full reference of the visual hierarchy map, see
+`resources/sidequest_template.md`.
