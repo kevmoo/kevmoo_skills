@@ -186,15 +186,33 @@ the conversation:
 2. **Subagent Prompt Configuration**:
    Use this self-contained prompt:
    ```
-   You are a background Sidequest Log Auditor. Your sole job is to inspect the full conversation transcript in the session's log directory and build/rebuild the visual hierarchy map.
+   You are a background Sidequest Log Auditor. Your sole job is to inspect the
+   full conversation transcript in the session's log directory and
+   build/rebuild the visual hierarchy map.
 
-   1. Inspect `transcript.jsonl` using `view_file` (or search tools) to extract all major initiatives (Main Quests), sub-tasks (Sub-Quests), and unrelated tangents (Side Quests).
-   2. Group critical-path blockers (errors, failures) or steps (actions) directly under their corresponding Sub-Quests using nested bullet points and appropriate tags (e.g. `  * [ ] 👾 *Blocker:* ...` or `  * [ ] 👣 *Step:* ...`). For vanquished blockers, format them with `💀` and strikethrough (e.g. `  * [x] 💀 ~~*Blocker:* ...~~ -> *Resolved*`). For completed steps, format them with strikethrough (e.g. `  * [x] 👣 ~~*Step:* ...~~ -> *Done*`).
-   3. Track the VCS / working copy state (dirty files, local commits, uploaded PRs/CLs, merged state) for each active quest or code detour.
-   4. Put ONLY completely unrelated tasks or context drift under the `Side Quests` section (`🌿`).
-   5. Format the findings strictly using the RPG-themed 3-Tier Hierarchy (Main Quests with `⚔️ [ACTIVE HEAD]`, `🏆 [COMPLETED]`, `⏸️ [PAUSED]`, Sub-Quests with `🛡️`, and Side Quests with `🌿`, `🎒 [Parked / Tracked for Later]`).
-   6. Write the finalized markdown hierarchy map using `write_to_file` (with `Overwrite: true`) to `sidequest.md` in the session's artifact directory.
-   7. When done, notify your parent agent by calling `send_message` (or writing a `.handshake` file) confirming completion and providing the absolute path where `sidequest.md` was written.
+   1. Inspect `transcript.jsonl` using `view_file` (or search tools) to extract
+      all major initiatives (Main Quests), sub-tasks (Sub-Quests), and
+      unrelated tangents (Side Quests).
+   2. Group critical-path blockers (errors, failures) or steps (actions)
+      directly under their corresponding Sub-Quests using nested bullet points
+      and appropriate tags (e.g. `  * [ ] 👾 *Blocker:* ...` or
+      `  * [ ] 👣 *Step:* ...`). For vanquished blockers, format them with `💀`
+      and strikethrough (e.g. `  * [x] 💀 ~~*Blocker:* ...~~ -> *Resolved*`).
+      For completed steps, format them with strikethrough
+      (e.g. `  * [x] 👣 ~~*Step:* ...~~ -> *Done*`).
+   3. Track the VCS / working copy state (dirty files, local commits, uploaded
+      PRs/CLs, merged state) for each active quest or code detour.
+   4. Put ONLY completely unrelated tasks or context drift under the
+      `Side Quests` section (`🌿`).
+   5. Format the findings strictly using the RPG-themed 3-Tier Hierarchy
+      (Main Quests with `⚔️ [ACTIVE HEAD]`, `🏆 [COMPLETED]`, `⏸️ [PAUSED]`,
+      Sub-Quests with `🛡️`, and Side Quests with `🌿`,
+      `🎒 [Parked / Tracked for Later]`).
+   6. Write the finalized markdown hierarchy map using `write_to_file` (with
+      `Overwrite: true`) to `sidequest.md` in the session's artifact directory.
+   7. When done, notify your parent agent by calling `send_message` (or writing
+      a `.handshake` file) confirming completion and providing the absolute path
+      where `sidequest.md` was written.
    ```
 3. **Continue Main Session**: Keep your primary context clean and continue pair
    programming with the user immediately while the subagent runs asynchronously
@@ -223,7 +241,9 @@ skill bridges seamlessly into your existing persistence tools:
    `gh issue create` for GitHub repositories, local issue tracking skills,
    or project management frameworks).
 2. **Prompt to Escalate:** When parking a side quest, the agent gently prompts:
-   > *"Would you like me to file a quick issue in your project's issue tracker (`gh issue` / local tracker) so this parked item survives across sessions?"*
+   > *"Would you like me to file a quick issue in your project's issue
+   > tracker (`gh issue` / local tracker) so this parked item survives across
+   > sessions?"*
 
 ---
 
@@ -235,17 +255,22 @@ Once `sidequest.md` exists, the agent adopts a helpful, low-friction discipline:
   completely fine."*
 - **VCS & Detour Awareness:** When completing a code detour or blocker, prompt
   before returning to the main track so uncommitted edits aren't forgotten:
-  > *"Detour resolved! Changes in `lib/foo.dart` are currently uncommitted. Should we commit/upload before resuming Main Quest 1?"*
+  > *"Detour resolved! Changes in `lib/foo.dart` are currently uncommitted.
+  > Should we commit/upload before resuming Main Quest 1?"*
 - **Sync & Rebase Prompts:** When a remote PR or CL lands upstream, prompt
   to sync:
-  > *"PR #142 has merged upstream! Should we pull main and sync local branches to get back to 🧹 Clean?"*
+  > *"PR #142 has merged upstream! Should we pull main and sync local
+  > branches to get back to 🧹 Clean?"*
 - **Gentle Triage Prompts:** When a new unexpected blocker or rabbit hole
   emerges (e.g., a broken build or linter warning), ask:
-  > *"We're taking a detour to resolve this blocker—that's completely fine. Should we tackle it right now, or track it in our map?"*
-  > *"Should we fix this right now, or would you like me to file an issue in your tracker (`gh issue`) for later?"*
+  > *"We're taking a detour to resolve this blocker—that's completely fine.
+  > Should we tackle it right now, or track it in our map?"*
+  > *"Should we fix this right now, or would you like me to file an issue
+  > in your tracker (`gh issue`) for later?"*
 - **Chapter-Break Awareness:** When a major PR is pushed or a task completes and
   the user introduces a new topic, recognize the chapter break:
-  > *"Looks like we finished ⚔️ Main Quest 1! Should we open a new Main Quest in our map for this new topic, or is this just a quick sidequest?"*
+  > *"Looks like we finished ⚔️ Main Quest 1! Should we open a new Main
+  > Quest in our map for this new topic, or is this just a quick sidequest?"*
 
 ---
 
@@ -265,15 +290,17 @@ Once `sidequest.md` exists, the agent adopts a helpful, low-friction discipline:
 
 ## ⚔️ [ACTIVE HEAD] Main Quest 2: Investigate Thread Leak Issue
 > **VCS State:** `📝 Dirty` | Branch: `fix-leak` | Modified: `lib/worker.dart`
-* [x] 🛡️ **Sub-Quest 1:** Check configuration and reproduce reproduction test case
+* [x] 🛡️ **Sub-Quest 1:** Check config and reproduce reproduction test case
 * [ ] 🛡️ **Sub-Quest 2:** Profile thread spawning across workers *(IN PROGRESS)*
   * [x] 💀 ~~*Blocker:* Resolve local Docker network timeout~~ -> *Fixed*
   * [ ] 👣 *Step:* Run worker profiling script
 
 ### 🌿 Active & Parked Side Quests (For Main Quest 2)
-* [ ] **[Active]** Check why debug flag behaves differently on local vs remote machine.
+* [ ] **[Active]** Check why debug flag behaves differently on local vs
+  remote machine.
   * 📝 *VCS:* `test/debug_test.dart` (Uncommitted)
-* [ ] **🎒 [Parked / Tracked for Later]** Refactor `LegacyThreadMonitor` -> *Filed Issue #215 in project tracker*
+* [ ] **🎒 [Parked / Tracked for Later]** Refactor `LegacyThreadMonitor` ->
+  *Filed Issue #215 in project tracker*
 
 ---
 
