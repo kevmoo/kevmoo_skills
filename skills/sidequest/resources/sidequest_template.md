@@ -13,8 +13,7 @@
 ## ⚔️ [ACTIVE HEAD] Main Quest 2: Investigate Thread Leak Issue
 > **VCS State:** `📝 Dirty` | Branch: `fix-leak` | Modified: `lib/worker.dart`
 * [x] 🛡️ **Sub-Quest 1:** Check config and run the reproduction test case
-* [ ] 🛡️ **Sub-Quest 2:** Profile thread spawning across workers
-  *(IN PROGRESS)*
+* [ ] 🛡️ **Sub-Quest 2:** Profile thread spawning across workers *(IN PROGRESS)*
   * [x] 💀 ~~*Blocker:* Resolve local Docker network timeout~~ -> *Fixed*
   * [ ] 👣 *Step:* Run worker profiling script
 
