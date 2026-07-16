@@ -72,12 +72,13 @@ Structure the `question` argument in `ask_question` using markdown:
 - Conclude with: `*How would you like to proceed?*`
 
 Configure the `options` array with:
-1. `"(Recommended) Yes, proceed"`
-2. `"Open in artifact"`
-3. `"No, adjust in chat"`
+- `"(Recommended) Yes, proceed"`
+- `"Open in artifact"`
+- `"No, adjust in chat"`
 
 ### Phase 3: Handling Gate Selection
-- **If "Yes, proceed"**: Transition immediately to task execution.
+- **If "(Recommended) Yes, proceed"**: Transition immediately to task
+  execution.
 - **If "Open in artifact"**: Use `write_to_file` to save the structured
   summary and execution plan as a markdown artifact (`.md` file) in the
   session's artifact directory. Configure the file to request interactive
