@@ -22,6 +22,5 @@ the visual hierarchy map.
    with `🛡️`, and Side Quests with `🌿`, `🎒 [Parked / Tracked for Later]`).
 6. Write the finalized markdown hierarchy map using `write_to_file` (with
    `Overwrite: true`) to `sidequest.md` in the session's artifact directory.
-7. When done, notify your parent agent by calling `send_message` (or writing
-   a `.handshake` file) confirming completion and providing the absolute path
-   where `sidequest.md` was written.
+7. When done, notify your parent agent by calling `send_message` confirming
+   completion and providing the absolute path where `sidequest.md` was written.
