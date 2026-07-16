@@ -179,8 +179,8 @@ the conversation:
 1. **Spawn a Background Auditor**: Spawn a background subagent using
    `invoke_subagent` (or equivalent platform-native multi-agent creation tool).
    - **Antigravity Setup**: Use `TypeName: "self"`,
-     `Role: "Sidequest Log Auditor"`, and provide the prompt from
-     `skills/sidequest/resources/auditor_prompt.txt`.
+     `Role: "Sidequest Log Auditor"`, and provide the prompt contents read
+     from `skills/sidequest/resources/auditor_prompt.txt`.
    - **Fallback (Harnesses without Multi-Agent APIs)**: If the harness does
      not support spawning background subagents (like Claude Code), the agent
      should run the audit synchronously or perform a direct view/write of the
