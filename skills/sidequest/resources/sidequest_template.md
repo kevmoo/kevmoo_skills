@@ -1,8 +1,8 @@
 # 🧭 Conversation Map & Sidequests
 
 ## 🏆 [COMPLETED] Main Quest 1: Migrate `UserService` to `v2` API
-> **VCS State:** `🧹 Clean` -> PR #142 (Merged upstream, local workspace
-> synced)
+> **VCS State:** `🧹 Clean` -> PR #142 (Merged upstream,
+> local workspace synced)
 * [x] 🛡️ **Sub-Quest 1:** Identify callers across repository -> *Done*
 * [x] 🛡️ **Sub-Quest 2:** Update client stub bindings
   * [x] 💀 ~~*Blocker:* Fix build missing `proto/public` dep~~ -> *Resolved*
