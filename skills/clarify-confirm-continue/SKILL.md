@@ -78,7 +78,7 @@ Configure the `options` array with:
 
 ### Phase 3: Handling Gate Selection
 - **If "Yes, proceed"**: Transition immediately to task execution.
-- **If "Open in artifact"**: Use your file-writing tools to save the structured
+- **If "Open in artifact"**: Use `write_to_file` to save the structured
   summary and execution plan as a markdown artifact (`.md` file) in the
   session's artifact directory. Configure the file to request interactive
   approval/feedback (e.g., set `RequestFeedback: true` in Antigravity's
