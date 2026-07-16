@@ -85,8 +85,8 @@ Configure the `options` array with:
   approval/feedback (e.g., set `RequestFeedback: true` in Antigravity's
   `ArtifactMetadata` to render a 'Proceed' button). If the harness does not
   support interactive gates, instruct the user in chat to review the file and
-  reply 'Proceed' when they are ready. Stop calling tools and wait for the
-  user's review and comments.
+  reply 'Proceed' when they are ready. In either case, stop calling tools and
+  go idle to await reactive wakeup.
 - **If "No, adjust in chat"**: Ask what needs adjustment or loop back to
   Phase 1.
 
