@@ -101,6 +101,8 @@ Rather than restricting the map to a single rigid goal, `/sidequest` supports
     - `💀 ~~*Blocker:* <description>~~ -> *Resolved*`: A vanquished blocker,
       visually slain with strikethrough and a skull emoji (`💀`).
     - `👣 *Step:* <description>`: A planned step/action item.
+    - `👣 ~~*Step:* <description>~~ -> *Done*`: A completed step, formatted
+      with strikethrough.
 - **🌿 Side Quests:** ONLY completely unrelated or out-of-scope tasks, tangents,
   or context drift. These are the rabbit holes that branch away from the main
   mission.
@@ -200,8 +202,9 @@ the conversation:
       and strikethrough (e.g. `  * [x] 💀 ~~*Blocker:* ...~~ -> *Resolved*`).
       For completed steps, format them with strikethrough
       (e.g. `  * [x] 👣 ~~*Step:* ...~~ -> *Done*`).
-   3. Track the VCS / working copy state (dirty files, local commits, uploaded
-      PRs/CLs, merged state) for each active quest or code detour.
+   3. Track the VCS / working copy state for each active quest or code detour
+      using the 5-stage lifecycle: `📝 Dirty`, `📦 Local Commit`,
+      `🚀 Uploaded`, `🎉 Merged / Submitted`, or `🧹 Clean`.
    4. Put ONLY completely unrelated tasks or context drift under the
       `Side Quests` section (`🌿`).
    5. Format the findings strictly using the RPG-themed 3-Tier Hierarchy
