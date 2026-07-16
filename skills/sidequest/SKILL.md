@@ -112,8 +112,7 @@ To prevent divergent state confusion and accidental amends in stacked-commit
 workflows (e.g. `jj`, Gerrit, Git branches):
 - Track the VCS status of modified files directly in `sidequest.md` alongside
   each active Quest or detour:
-  - `📝 Dirty (Uncommitted)`: Lists modified/untracked files in the working
-    copy.
+  - `📝 Dirty`: Lists modified/untracked files in the working copy.
   - `📦 Local Commit`: Lists committed changes / revision IDs awaiting push.
   - `🚀 Uploaded`: Lists published PRs, Gerrit CLs, or remote branches in
     review.
