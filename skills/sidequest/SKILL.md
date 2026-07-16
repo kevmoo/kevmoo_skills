@@ -145,7 +145,10 @@ meanders, or `/sidequest` is explicitly invoked:
 2. Use `replace_file_content` (or standard file edit tools) directly on
    `sidequest.md` in the session's artifact directory to perform surgical
    updates:
-   - **Progress:** Mark sub-quests, steps, or side quests from `[ ]` to `[x]`.
+   - **Progress & Completion:** Mark sub-quests, steps, or side quests from
+     `[ ]` to `[x]`. For completed steps (`👣`), wrap the step text in
+     strikethrough (`~~...~~`) and append the resolution (e.g.,
+     `* [x] 👣 ~~*Step:* Merge in PR #142~~ -> *Done*`).
    - **Vanquished Blockers:** When a blocker (`👾`) is resolved, replace `👾`
      with `💀`, wrap the blocker text in strikethrough (`~~...~~`), and note
      the resolution (e.g., `* [x] 💀 ~~*Blocker:* Fix build~~ -> *Resolved*`).
@@ -186,7 +189,7 @@ the conversation:
    You are a background Sidequest Log Auditor. Your sole job is to inspect the full conversation transcript in the session's log directory and build/rebuild the visual hierarchy map.
 
    1. Inspect `transcript.jsonl` using `view_file` (or search tools) to extract all major initiatives (Main Quests), sub-tasks (Sub-Quests), and unrelated tangents (Side Quests).
-   2. Group critical-path blockers (errors, failures) or steps (actions) directly under their corresponding Sub-Quests using nested bullet points and appropriate tags (e.g. `  * [ ] 👾 *Blocker:* ...` or `  * [ ] 👣 *Step:* ...`). For vanquished blockers, format them with `💀` and strikethrough (e.g. `  * [x] 💀 ~~*Blocker:* ...~~ -> *Resolved*`).
+   2. Group critical-path blockers (errors, failures) or steps (actions) directly under their corresponding Sub-Quests using nested bullet points and appropriate tags (e.g. `  * [ ] 👾 *Blocker:* ...` or `  * [ ] 👣 *Step:* ...`). For vanquished blockers, format them with `💀` and strikethrough (e.g. `  * [x] 💀 ~~*Blocker:* ...~~ -> *Resolved*`). For completed steps, format them with strikethrough (e.g. `  * [x] 👣 ~~*Step:* ...~~ -> *Done*`).
    3. Track the VCS / working copy state (dirty files, local commits, uploaded PRs/CLs, merged state) for each active quest or code detour.
    4. Put ONLY completely unrelated tasks or context drift under the `Side Quests` section (`🌿`).
    5. Format the findings strictly using the RPG-themed 3-Tier Hierarchy (Main Quests with `⚔️ [ACTIVE HEAD]`, `🏆 [COMPLETED]`, `⏸️ [PAUSED]`, Sub-Quests with `🛡️`, and Side Quests with `🌿`, `🎒 [Parked / Tracked for Later]`).
