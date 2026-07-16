@@ -180,16 +180,17 @@ the conversation:
    `invoke_subagent` (or equivalent platform-native multi-agent creation tool).
    - **Antigravity Setup**: Use `TypeName: "self"`,
      `Role: "Sidequest Log Auditor"`, and provide the prompt from
-     `resources/auditor_prompt.txt`.
+     `skills/sidequest/resources/auditor_prompt.txt`.
    - **Fallback (Harnesses without Multi-Agent APIs)**: If the harness does
      not support spawning background subagents (like Claude Code), the agent
      should run the audit synchronously or perform a direct view/write of the
      transcript files in the session directory.
 2. **Subagent Prompt Configuration**:
-   Read `resources/auditor_prompt.txt` for the complete auditor prompt. It
-   instructs the subagent to parse `transcript.jsonl`, format items according
-   to the 3-Tier Hierarchy, track the 5-stage VCS lifecycle, and write the
-   result to `sidequest.md` in the session's artifact directory.
+   Read `skills/sidequest/resources/auditor_prompt.txt` for the complete
+   auditor prompt. It instructs the subagent to parse `transcript.jsonl`,
+   format items according to the 3-Tier Hierarchy, track the 5-stage VCS
+   lifecycle, and write the result to `sidequest.md` in the session's
+   artifact directory.
 3. **Continue Main Session**: Keep your primary context clean and continue pair
    programming with the user immediately while the subagent runs asynchronously
    (if supported).
@@ -253,4 +254,4 @@ Once `sidequest.md` exists, the agent adopts a helpful, low-friction discipline:
 ## 📄 Template Reference
 
 For a full reference of the visual hierarchy map, see
-`resources/sidequest_template.md`.
+`skills/sidequest/resources/sidequest_template.md`.
