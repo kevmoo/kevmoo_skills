@@ -39,8 +39,8 @@ fry"):
   changes.
 
 `/sidequest` solves this by maintaining an organic, multi-tiered visual map
-(`sidequest.md`) in session memory, keeping both human and agent anchored without
-adding friction or bloat.
+(`sidequest.md`) in session memory, keeping both human and agent anchored
+without adding friction or bloat.
 
 ---
 
@@ -56,9 +56,9 @@ adding friction or bloat.
 ## 🏗️ Core Architecture & Zero Repo Pollution
 
 ### Session-Private Storage (`sidequest.md`)
-Whenever `/sidequest` generates or updates the map, it writes **exclusively** to
-the session's artifact directory as `sidequest.md` (the exact session directory is
-dynamically provided at runtime).
+Whenever `/sidequest` generates or updates the map, it writes **exclusively**
+to the session's artifact directory as `sidequest.md` (the exact session
+directory is dynamically provided at runtime).
 
 > [!IMPORTANT]
 > **Zero Repo Pollution:** This file exists purely inside the agent's session
@@ -177,12 +177,12 @@ To rebuild or initialize the map without burning main-session tokens or pausing
 the conversation:
 1. **Spawn a Background Auditor**: Spawn a background subagent using
    `invoke_subagent` (or equivalent platform-native multi-agent creation tool).
-   - **Antigravity Setup**: Use `TypeName: "self"`, `Role: "Sidequest Log Auditor"`,
-     and provide the prompt below.
-   - **Fallback (Harnesses without Multi-Agent APIs)**: If the harness does not
-     support spawning background subagents (like Claude Code), the agent should
-     run the audit synchronously or perform a direct view/write of the transcript
-     files in the session directory.
+   - **Antigravity Setup**: Use `TypeName: "self"`,
+     `Role: "Sidequest Log Auditor"`, and provide the prompt below.
+   - **Fallback (Harnesses without Multi-Agent APIs)**: If the harness does
+     not support spawning background subagents (like Claude Code), the agent
+     should run the audit synchronously or perform a direct view/write of the
+     transcript files in the session directory.
 2. **Subagent Prompt Configuration**:
    Use this self-contained prompt:
    ```
@@ -199,8 +199,8 @@ the conversation:
 3. **Continue Main Session**: Keep your primary context clean and continue pair
    programming with the user immediately while the subagent runs asynchronously
    (if supported).
-4. **Parent Handshake & UI Availability**: When the subagent sends its completion
-   notification (or the background process completes):
+4. **Parent Handshake & UI Availability**: When the subagent sends its
+   completion notification (or the background process completes):
    - In Antigravity, after receiving the `send_message` notification confirming
      the absolute path, the parent agent MUST immediately read the file's
      content and write it into the conversation artifacts directory as
@@ -219,9 +219,9 @@ security approvals, or multi-day refactors).
 For items marked **`🎒 [Parked / Tracked for Later]`** in `sidequest.md`, the
 skill bridges seamlessly into your existing persistence tools:
 1. **Inspect Available Trackers:** The agent checks what issue tracking tools,
-   CLIs, or skills exist in the user's active environment (e.g., `gh issue create`
-   for GitHub repositories, local issue tracking skills, or project management
-   frameworks).
+   CLIs, or skills exist in the user's active environment (e.g.,
+   `gh issue create` for GitHub repositories, local issue tracking skills,
+   or project management frameworks).
 2. **Prompt to Escalate:** When parking a side quest, the agent gently prompts:
    > *"Would you like me to file a quick issue in your project's issue tracker (`gh issue` / local tracker) so this parked item survives across sessions?"*
 
@@ -230,15 +230,17 @@ skill bridges seamlessly into your existing persistence tools:
 ## 💬 Ongoing Conversational Behavior
 
 Once `sidequest.md` exists, the agent adopts a helpful, low-friction discipline:
-- **No Heavy Pushback:** When the user pivots across files or topics, acknowledge
-  it smoothly: *"Oh, we're going off on a sidequest, that's completely fine."*
+- **No Heavy Pushback:** When the user pivots across files or topics,
+  acknowledge it smoothly: *"Oh, we're going off on a sidequest, that's
+  completely fine."*
 - **VCS & Detour Awareness:** When completing a code detour or blocker, prompt
   before returning to the main track so uncommitted edits aren't forgotten:
   > *"Detour resolved! Changes in `lib/foo.dart` are currently uncommitted. Should we commit/upload before resuming Main Quest 1?"*
-- **Sync & Rebase Prompts:** When a remote PR or CL lands upstream, prompt to sync:
+- **Sync & Rebase Prompts:** When a remote PR or CL lands upstream, prompt
+  to sync:
   > *"PR #142 has merged upstream! Should we pull main and sync local branches to get back to 🧹 Clean?"*
-- **Gentle Triage Prompts:** When a new unexpected blocker or rabbit hole emerges
-  (e.g., a broken build or linter warning), ask:
+- **Gentle Triage Prompts:** When a new unexpected blocker or rabbit hole
+  emerges (e.g., a broken build or linter warning), ask:
   > *"We're taking a detour to resolve this blocker—that's completely fine. Should we tackle it right now, or track it in our map?"*
   > *"Should we fix this right now, or would you like me to file an issue in your tracker (`gh issue`) for later?"*
 - **Chapter-Break Awareness:** When a major PR is pushed or a task completes and
