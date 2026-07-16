@@ -72,9 +72,9 @@ Structure the `question` argument in `ask_question` using markdown:
 - Conclude with: `*How would you like to proceed?*`
 
 Configure the `options` array with:
-1. `"(Recommended) Yes, proceed as summarized."`
-2. `"Open this proposal in a markdown artifact so we can iterate on it."`
-3. `"No, let's adjust the scope or clarify further in chat."`
+1. `"(Recommended) Yes, proceed"`
+2. `"Open in artifact"`
+3. `"No, adjust in chat"`
 
 ### Phase 3: Handling Gate Selection
 - **If "Yes, proceed"**: Transition immediately to task execution.
