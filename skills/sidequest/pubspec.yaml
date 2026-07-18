@@ -1,4 +1,6 @@
 name: sidequest
+description: A self-contained sidequest skill package.
+version: 1.0.0
 publish_to: none
 
 environment:
