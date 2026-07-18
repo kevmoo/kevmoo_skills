@@ -4,10 +4,14 @@ import 'package:logging/logging.dart';
 import 'package:test/test.dart';
 import 'package:test_process/test_process.dart';
 
-final String _configFilePath =
-    Directory.current.path.split(Platform.pathSeparator).last == 'tool'
-    ? 'dart_skills_lint.yaml'
-    : 'tool/dart_skills_lint.yaml';
+final String _configFilePath = _getConfigFilePath();
+
+String _getConfigFilePath() {
+  if (Directory.current.path.split(Platform.pathSeparator).last == 'tool') {
+    return 'dart_skills_lint.yaml';
+  }
+  return 'tool/dart_skills_lint.yaml';
+}
 
 void main() {
   test('Validate skills', () async {
