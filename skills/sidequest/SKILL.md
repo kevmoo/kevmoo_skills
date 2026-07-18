@@ -2,16 +2,18 @@
 name: sidequest
 description: >-
   Synthesizes conversation history and active tasks into a visual hierarchy map
-  (`sidequest.md`) to prevent context drift and cognitive overload across
-  long sessions. Supports multiple sequential and concurrent main quests,
-  sub-quests, and side-quests. Use when the user invokes `/sidequest`, asks
-  where we are, what we were doing, or what's on our stack, or when the
-  conversation branches across multiple topics, blockers, or digressions. Don't
-  use for simple one-off questions that don't involve multi-step work or task
-  hierarchy management.
+  (`sidequest.md`) backed by a deterministic JSON state file (`sidequest.json`).
+  Supports multiple sequential and concurrent main quests, sub-quests, and
+  side-quests with automatic hierarchical numbering and completion sequencing.
+  Use when the user invokes `/sidequest`, asks where we are, what we were doing,
+  or what's on our stack, or when the conversation branches across multiple
+  topics, blockers, or digressions. Don't use for simple one-off questions that
+  don't involve multi-step work or task hierarchy management.
 key_features:
   - Conversation mapping
-  - Task hierarchy
+  - Task hierarchy & numbering
+  - Chronological completion tracking
+  - JSON-first CLI automation
   - Context drift prevention
   - Subagent rebuilds
   - VCS state tracking
@@ -38,9 +40,9 @@ fry"):
   accidental amends in stacked workflows (e.g. `jj`, Gerrit) or forgotten code
   changes.
 
-`/sidequest` maintains an organic, multi-tiered visual map (`sidequest.md`) in
-session memory, keeping both human and agent anchored without adding friction or
-bloat.
+`/sidequest` maintains a deterministic JSON data model (`sidequest.json`) and an
+organic, multi-tiered visual map (`sidequest.md`) in session memory, keeping
+both human and agent anchored without adding friction or bloat.
 
 ---
 
@@ -55,21 +57,21 @@ bloat.
 
 ## 🏗️ Core Architecture & Zero Repo Pollution
 
-### Session-Private Storage (`sidequest.md`)
+### Session-Private Storage (`sidequest.json` & `sidequest.md`)
 Whenever `/sidequest` generates or updates the map, it writes **exclusively**
-to the session's artifact directory as `sidequest.md` (the exact session
-directory is dynamically provided at runtime).
+to the session's artifact directory as `sidequest.json` and `sidequest.md` (the
+exact session directory is dynamically provided at runtime).
 
 > [!IMPORTANT]
-> **Zero Repo Pollution:** This file exists purely inside the agent's session
-> memory on disk. It **never** touches user repositories (`//depot/google3/...`,
+> **Zero Repo Pollution:** These files exist purely inside the agent's session
+> memory on disk. They **never** touch user repositories (`//depot/google3/...`,
 > `~/github/...`, or `~/.dotfiles`), completely eliminating untracked git/hg/jj
 > file warnings, presubmit failures, or accidental check-ins.
 
-Because the file is persisted to disk in the session folder, if the conversation
-undergoes **context compaction** (due to large log outputs or long turns), the
-agent can instantly re-read `sidequest.md` to recover exact task hierarchy
-without losing state.
+Because the state is persisted as structured JSON on disk in the session folder,
+if the conversation undergoes **context compaction** (due to large log outputs
+or long turns), the agent can instantly re-read or mutate state without losing
+history or corrupting markdown formatting.
 
 ---
 
@@ -88,29 +90,36 @@ Rather than restricting the map to a single rigid goal, `/sidequest` supports
    `⚔️ [ACTIVE HEAD]`). Both coexist cleanly without subordinating parallel
    work.
 
-### The 3-Tier Hierarchy
+### The 3-Tier Hierarchy & Hierarchical Numbering
 - **⚔️/🏆/⏸️ Main Quests:** High-level initiatives or major chapters (e.g.,
-  *Migrate UserService to v2*, *Investigate Bazel Thread Leak*).
+  *Main Quest 1: Migrate UserService to v2*, *Main Quest 2: Investigate Thread Leak*).
 - **🛡️ Sub-Quests:** The logical milestones and planned phases needed to
-  complete a Main Quest.
+  complete a Main Quest. Formatted with fully-qualified dot-separated numbering
+  (e.g., `Sub-Quest 1.1`, `Sub-Quest 2.1`).
   - Critical-path unplanned tasks (e.g. build errors, test failures, minor
-    blockers) or steps should be nested **directly under** the corresponding
-    Sub-Quest using indentation and helper tags:
-    - `👾 *Blocker:* <description>`: An active critical-path blocker that must
-      be resolved.
-    - `💀 ~~*Blocker:* <description>~~ -> *Resolved*`: A vanquished blocker,
+    blockers) or steps are nested **directly under** the corresponding
+    Sub-Quest with dot-separated hierarchical IDs (e.g. `1.1.1`, `1.1.2`):
+    - `👾 *Blocker 1.1.1:* <description>`: An active critical-path blocker.
+    - `💀 ~~*Blocker 1.1.1:* <description>~~ -> *Resolved*`: A vanquished blocker,
       visually slain with strikethrough and a skull emoji (`💀`).
-    - `👣 *Step:* <description>`: A planned step/action item.
-    - `👣 ~~*Step:* <description>~~ -> *Done*`: A completed step, formatted
+    - `👣 *Step 1.1.2:* <description>`: A planned step/action item.
+    - `👣 ~~*Step 1.1.2:* <description>~~ -> *Done*`: A completed step, formatted
       with strikethrough.
 - **🌿 Side Quests:** ONLY completely unrelated or out-of-scope tasks, tangents,
   or context drift. These are the rabbit holes that branch away from the main
-  mission.
+  mission. Global side quests use `G1`, `G2`; quest-specific ones use `S1`, `S2`.
+
+### 🔢 Chronological Completion Order & Recent Work Star (`[#N ⭐]`)
+Whenever any task, blocker, sub-quest, or side quest is completed:
+- It receives a sequential completion order tag: `[#1]`, `[#2]`, `[#3]`.
+- The **most recently completed** item across the entire session displays the
+  star indicator next to its order tag (`[#N ⭐]`), allowing humans and agents
+  to pinpoint the latest milestone at a single glance.
 
 ### 📦 Version Control (VCS) State Integration
 To prevent divergent state confusion and accidental amends in stacked-commit
 workflows (e.g. `jj`, Gerrit, Git branches):
-- Track the VCS status of modified files directly in `sidequest.md` alongside
+- Track the VCS status of modified files directly in `sidequest.json` alongside
   each active Quest or detour using the 5-stage lifecycle:
   - `📝 Dirty`: Lists modified/untracked files in the working copy.
   - `📦 Local Commit`: Lists committed changes / revision IDs awaiting push.
@@ -133,38 +142,40 @@ conversational branching), follow this exact decision workflow:
    - **Is this the very first `/sidequest` check, or did the user explicitly
      request `/sidequest rebuild`?** → Execute **Mode B (Subagent Rebuild)**
      below.
-   - **Does `sidequest.md` already exist, and either a task progressed OR the
-     user invoked `/sidequest` mid-session?** → Execute **Mode A (In-Session
-     Delta Update & Summary)** below.
+   - **Does `sidequest.json` already exist, and either a task progressed OR the
+     user invoked `/sidequest` mid-session?** → Execute **Mode A (Deterministic
+     CLI Updates)** below.
 
 ---
 
-### Mode A: Rolling Ledger Delta Updates (In-Session `O(1)`)
-When an existing `sidequest.md` is active and a task progresses, completes,
+### Mode A: Deterministic CLI Updates (In-Session `O(1)`)
+When an existing `sidequest.json` is active and a task progresses, completes,
 meanders, or `/sidequest` is explicitly invoked:
-1. **Do NOT re-read `transcript.jsonl` or conversation history.**
-2. Use `replace_file_content` (or standard file edit tools) directly on
-   `sidequest.md` in the session's artifact directory to perform surgical
-   updates:
-   - **Progress & Completion:** Mark sub-quests, steps, or side quests from
-     `[ ]` to `[x]`. For completed steps (`👣`), wrap the step text in
-     strikethrough (`~~...~~`) and append the resolution (e.g.,
-     `* [x] 👣 ~~*Step:* Merge in PR #142~~ -> *Done*`).
-   - **Vanquished Blockers:** When a blocker (`👾`) is resolved, replace `👾`
-     with `💀`, wrap the blocker text in strikethrough (`~~...~~`), and note
-     the resolution (e.g., `* [x] 💀 ~~*Blocker:* Fix build~~ -> *Resolved*`).
-   - **VCS State Updates:** Update the active VCS state annotation for any
-     modified files, local commits, uploaded PRs/CLs, or merged status.
-   - **Blockers & Steps:** Nest new critical-path blockers (`👾`) or steps
-     (`👣`) under their active `🛡️ Sub-Quest`.
-   - **New Side Quest:** Append new unrelated tangents under
-     `### 🌿 Active & Parked Side Quests`.
-   - **Chapter Completion:** When a Main Quest is merged/committed, update its
-     header from `⚔️ [ACTIVE HEAD]` to `🏆 [COMPLETED]`, and open the next
-     `⚔️ [ACTIVE HEAD] Main Quest` below it.
+1. **Do NOT re-read `transcript.jsonl` or generate multi-line markdown diffs.**
+2. Run the lightweight Dart CLI tool via `run_command`:
+   ```bash
+   dart run skills/sidequest/bin/sidequest.dart <subcommand> --dir="<session_artifact_dir>"
+   ```
+   *(Or set `JETSKI_ARTIFACT_DIR` environment variable).*
+
+#### Common CLI Subcommands:
+- **Initialize**: `dart run skills/sidequest/bin/sidequest.dart init "Quest Title"`
+- **Add Main Quest**: `dart run skills/sidequest/bin/sidequest.dart quest add "Title"`
+- **Add Sub-Quest**: `dart run skills/sidequest/bin/sidequest.dart subquest add 1 "Title"`
+- **Add Step / Blocker**:
+  - `dart run skills/sidequest/bin/sidequest.dart step add 1.1 "Run tests"`
+  - `dart run skills/sidequest/bin/sidequest.dart blocker add 1.1 "Build failure"`
+- **Add Side Quest**: `dart run skills/sidequest/bin/sidequest.dart sidequest add "Fix typo" [--global] [--parked]`
+- **Complete Item**: `dart run skills/sidequest/bin/sidequest.dart complete 1.1.1`
+  *(Automatically updates `lastCompletionOrder`, tags item `[#N ⭐]`, strips the star
+  from the previous completed item, and emits `sidequest.md`).*
+- **Update VCS State**:
+  `dart run skills/sidequest/bin/sidequest.dart vcs 1 --stage=dirty --branch=fix-leak --files="lib/a.dart"`
+- **Batch Updates (Multi-mutation in 1 turn)**:
+  `dart run skills/sidequest/bin/sidequest.dart batch '{"complete":["1.1.1"],"vcs":{"quest":"1","stage":"dirty"}}'`
+
 3. **Explicit Command Response:** If the user invoked `/sidequest` directly,
-   after performing any pending updates on `sidequest.md`, output a **brief,
-   punchy chat summary** highlighting:
+   output a **brief, punchy chat summary** highlighting:
    - Our active `⚔️ Main Quest` and current active `🛡️` sub-quest (marked
      `*(IN PROGRESS)*`).
    - Active VCS/working copy status (dirty files, active commit/branch).
@@ -176,48 +187,27 @@ meanders, or `/sidequest` is explicitly invoked:
 ### Mode B: Subagent Transcript Audit (`/sidequest rebuild`)
 To rebuild or initialize the map without burning main-session tokens or pausing
 the conversation:
-1. **Spawn a Background Auditor**: Spawn a background subagent using
-   `invoke_subagent` (or equivalent platform-native multi-agent creation tool).
-   - **Antigravity Setup**: Use `TypeName: "self"`,
-     `Role: "Sidequest Log Auditor"`, and provide the prompt contents read
-     from `skills/sidequest/resources/auditor_prompt.txt` (relative to the
-     repository root).
-   - **Fallback (Harnesses without Multi-Agent APIs)**: If the harness does
-     not support spawning background subagents (like Claude Code), the agent
-     should run the audit synchronously or perform a direct view/write of the
-     transcript files in the session directory.
-2. **Subagent Prompt Configuration**:
-   Read `skills/sidequest/resources/auditor_prompt.txt` (relative to the
-   repository root) for the complete auditor prompt. It instructs the subagent
-   to parse `transcript.jsonl`, format items according to the 3-Tier Hierarchy,
-   track the 5-stage VCS lifecycle, and write the result to `sidequest.md` in
-   the session's artifact directory.
-3. **Continue Main Session**: Keep your primary context clean and continue pair
-   programming with the user immediately while the subagent runs asynchronously
-   (if supported).
-4. **Parent Handshake & UI Availability**: When the subagent sends its
-   completion notification (or the background process completes):
-   - In Antigravity, after receiving the `send_message` notification confirming
-     the absolute path, the parent agent MUST immediately read the file's
-     content and write it into the conversation artifacts directory as
-     `sidequest.md` using `write_to_file` (or copy it directly).
-   - If running synchronously, copy the compiled file to the conversation's
-     active artifact path so it's immediately available to the user.
+1. **Pass Baseline JSON to Auditor**: Read the existing `sidequest.json` (if present)
+   and pass its content as the baseline to a background subagent using `invoke_subagent`.
+   - **Setup**: `TypeName: "research"`, `Role: "Sidequest Log Auditor"`.
+   - **Subagent Prompt**: Read prompt instructions from
+     [auditor_prompt.txt](resources/auditor_prompt.txt).
+2. **Delta Transcript Audit**: The subagent inspects `transcript.jsonl` strictly
+   for steps beyond the baseline `watermark.stepIndex`, preventing full-history re-parsing.
+3. **Universal Read-Only Contract**: The subagent returns its audited JSON payload
+   in its `send_message` completion notification.
+4. **Parent Merge & Emission**: The parent agent receives the JSON payload, runs
+   `dart run skills/sidequest/bin/sidequest.dart merge-audit --input=<payload_file>`,
+   and automatically compiles the finalized `sidequest.md`.
 
 ---
 
 ## 🤝 Multi-Session Handshake (Context-Specific Issue Trackers)
 
-While `sidequest.md` handles in-session digressions cleanly, some side quests
-cannot be resolved in one sitting (e.g., waiting on external team reviews,
-security approvals, or multi-day refactors).
-
-For items marked **`🎒 [Parked / Tracked for Later]`** in `sidequest.md`, the
+For items marked **`🎒 [Parked / Tracked for Later]`** in `sidequest.json`, the
 skill bridges seamlessly into your existing persistence tools:
-1. **Inspect Available Trackers:** The agent checks what issue tracking tools,
-   CLIs, or skills exist in the user's active environment (e.g.,
-   `gh issue create` for GitHub repositories, local issue tracking skills,
-   or project management frameworks).
+1. **Inspect Available Trackers:** Check what issue tracking tools, CLIs, or
+   skills exist in the user's active environment (e.g. `gh issue create`).
 2. **Prompt to Escalate:** When parking a side quest, the agent gently prompts:
    > *"Would you like me to file a quick issue in your project's issue
    > tracker (`gh issue` / local tracker) so this parked item survives across
@@ -225,35 +215,8 @@ skill bridges seamlessly into your existing persistence tools:
 
 ---
 
-## 💬 Ongoing Conversational Behavior
-
-Once `sidequest.md` exists, the agent adopts a helpful, low-friction discipline:
-- **No Heavy Pushback:** When the user pivots across files or topics,
-  acknowledge it smoothly: *"Oh, we're going off on a sidequest, that's
-  completely fine."*
-- **VCS & Detour Awareness:** When completing a code detour or blocker, prompt
-  before returning to the main track so uncommitted edits aren't forgotten:
-  > *"Detour resolved! Changes in `lib/foo.dart` are currently uncommitted.
-  > Should we commit/upload before resuming Main Quest 1?"*
-- **Sync & Rebase Prompts:** When a remote PR or CL lands upstream, prompt
-  to sync:
-  > *"PR #142 has merged upstream! Should we pull main and sync local
-  > branches to get back to 🧹 Clean?"*
-- **Gentle Triage Prompts:** When a new unexpected blocker or rabbit hole
-  emerges (e.g., a broken build or linter warning), ask:
-  > *"We're taking a detour to resolve this blocker—that's completely fine.
-  > Should we tackle it right now, or track it in our map?"*
-  > *"Should we fix this right now, or would you like me to file an issue
-  > in your tracker (`gh issue`) for later?"*
-- **Chapter-Break Awareness:** When a major PR is pushed or a task completes and
-  the user introduces a new topic, recognize the chapter break:
-  > *"Looks like we finished ⚔️ Main Quest 1! Should we open a new Main
-  > Quest in our map for this new topic, or is this just a quick sidequest?"*
-
----
-
 ## 📄 Template Reference
 
 For a full reference of the visual hierarchy map, see
-`skills/sidequest/resources/sidequest_template.md` (relative to the
-repository root).
+[sidequest_template.md](resources/sidequest_template.md).
+
