@@ -2,7 +2,7 @@
 
 import 'dart:io';
 
-import '../lib/sidequest.dart';
+import 'package:sidequest/sidequest.dart';
 
 Future<void> main(List<String> rawArgs) async {
   String? dir;
