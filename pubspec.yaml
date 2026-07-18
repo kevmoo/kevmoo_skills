@@ -6,4 +6,3 @@ environment:
 
 workspace:
   - tool
-  - skills/sidequest
