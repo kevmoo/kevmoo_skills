@@ -2,7 +2,8 @@ name: kevmoo_skills
 publish_to: none
 
 environment:
-  sdk: ^3.9.0
+  sdk: ^3.12.0
 
 workspace:
   - tool
+  - skills/sidequest

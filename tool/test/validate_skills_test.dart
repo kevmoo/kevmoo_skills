@@ -9,6 +9,11 @@ final String _configFilePath =
     ? 'dart_skills_lint.yaml'
     : 'tool/dart_skills_lint.yaml';
 
+final String _skillsDirPath =
+    Directory.current.path.split(Platform.pathSeparator).last == 'tool'
+    ? '../skills'
+    : 'skills';
+
 void main() {
   test('Validate skills', () async {
     Logger.root.level = Level.ALL;
@@ -32,11 +37,7 @@ void main() {
   });
 
   test('Run skill/scripts/test', () async {
-    final skillsDir = Directory(
-      Directory.current.path.split(Platform.pathSeparator).last == 'tool'
-          ? '../skills'
-          : 'skills',
-    );
+    final skillsDir = Directory(_skillsDirPath);
     expect(
       skillsDir.existsSync(),
       isTrue,
@@ -71,11 +72,7 @@ void main() {
   }, timeout: Timeout(Duration(minutes: 3)));
 
   test('Verify formatting and analysis of all skills Dart code', () async {
-    final skillsDir = Directory(
-      Directory.current.path.split(Platform.pathSeparator).last == 'tool'
-          ? '../skills'
-          : 'skills',
-    );
+    final skillsDir = Directory(_skillsDirPath);
     expect(
       skillsDir.existsSync(),
       isTrue,
@@ -92,9 +89,11 @@ void main() {
 
     // Ensure pub get has been run for all nested packages to prevent analysis failures
     final pubspecs = <File>[];
-    for (final dir in skillsDir.listSync().whereType<Directory>().where(
+    final directories = skillsDir.listSync().whereType<Directory>();
+    final validDirs = directories.where(
       (dir) => File('${dir.path}/SKILL.md').existsSync(),
-    )) {
+    );
+    for (final dir in validDirs) {
       final pubspec = File('${dir.path}/pubspec.yaml');
       if (pubspec.existsSync()) {
         pubspecs.add(pubspec);

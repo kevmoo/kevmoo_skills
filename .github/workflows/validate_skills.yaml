@@ -3,12 +3,14 @@ name: validate_skills
 on:
   pull_request:
     paths:
+      - 'pubspec.yaml'
       - 'skills/**'
       - 'tool/**'
       - '.github/workflows/validate_skills.yaml'
   push:
     branches: [ main ]
     paths:
+      - 'pubspec.yaml'
       - 'skills/**'
       - 'tool/**'
       - '.github/workflows/validate_skills.yaml'
@@ -16,6 +18,9 @@ on:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        sdk: [3.12.0, dev]
     defaults:
       run:
         working-directory: tool
@@ -23,7 +28,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: dart-lang/setup-dart@v1
         with:
-          sdk: dev
+          sdk: ${{ matrix.sdk }}
 
       - run: dart pub get
         id: pub-get
@@ -32,7 +37,7 @@ jobs:
         if: always() && steps.pub-get.outcome == 'success'
 
       - run: dart format --output=none --set-exit-if-changed .
-        if: always() && steps.pub-get.outcome == 'success'
+        if: always() && steps.pub-get.outcome == 'success' && matrix.sdk == 'dev'
 
       - run: dart test
         if: always() && steps.pub-get.outcome == 'success'

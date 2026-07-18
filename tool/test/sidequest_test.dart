@@ -5,7 +5,7 @@ import 'package:checks/checks.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
-import '../../skills/sidequest/lib/sidequest.dart';
+import 'package:sidequest/sidequest.dart';
 
 void main() {
   group('Sidequest Data Model & Serialization', () {
