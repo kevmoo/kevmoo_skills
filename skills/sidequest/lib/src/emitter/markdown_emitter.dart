@@ -45,7 +45,7 @@ class MarkdownEmitter {
     }
 
     if (quest.statusNote != null && quest.statusNote!.trim().isNotEmpty) {
-      buffer.writeln('* [ ] **Status:** ${quest.statusNote}');
+      buffer.writeln('* **Status:** ${quest.statusNote}');
     }
 
     for (final sq in quest.subQuests) {

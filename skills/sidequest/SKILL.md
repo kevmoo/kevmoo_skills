@@ -191,7 +191,7 @@ the conversation:
    and pass its content as the baseline to a background subagent using `invoke_subagent`.
    - **Setup**: `TypeName: "research"`, `Role: "Sidequest Log Auditor"`.
    - **Subagent Prompt**: Read prompt instructions from
-     [auditor_prompt.txt](file:///Users/kevmoo/github/kevmoo/kevmoo_skills/skills/sidequest/resources/auditor_prompt.txt).
+     [auditor_prompt.txt](resources/auditor_prompt.txt).
 2. **Delta Transcript Audit**: The subagent inspects `transcript.jsonl` strictly
    for steps beyond the baseline `watermark.stepIndex`, preventing full-history re-parsing.
 3. **Universal Read-Only Contract**: The subagent returns its audited JSON payload
@@ -218,4 +218,5 @@ skill bridges seamlessly into your existing persistence tools:
 ## 📄 Template Reference
 
 For a full reference of the visual hierarchy map, see
-[sidequest_template.md](file:///Users/kevmoo/github/kevmoo/kevmoo_skills/skills/sidequest/resources/sidequest_template.md).
+[sidequest_template.md](resources/sidequest_template.md).
+

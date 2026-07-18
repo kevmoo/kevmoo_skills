@@ -83,7 +83,9 @@ class SidequestCliRunner {
         final title = args.length > 1
             ? args.sublist(1).join(' ')
             : 'New Main Quest';
-        final newId = '${data.quests.length + 1}';
+        final nextQuestNumber =
+            data.quests.map((q) => int.tryParse(q.id) ?? 0).fold(0, max) + 1;
+        final newId = '$nextQuestNumber';
         data.quests.add(
           MainQuest(
             id: newId,
@@ -133,7 +135,12 @@ class SidequestCliRunner {
     final quest = _findQuest(data, questId);
     if (quest == null) return 1;
 
-    final subId = '$questId.${quest.subQuests.length + 1}';
+    final nextSubNumber =
+        quest.subQuests
+            .map((sq) => int.tryParse(sq.id.split('.').last) ?? 0)
+            .fold(0, max) +
+        1;
+    final subId = '$questId.$nextSubNumber';
     quest.subQuests.add(
       SubQuest(id: subId, title: title, status: TaskStatus.inProgress),
     );
@@ -153,7 +160,12 @@ class SidequestCliRunner {
     final sub = _findSubQuest(data, subId);
     if (sub == null) return 1;
 
-    final itemId = '$subId.${sub.items.length + 1}';
+    final nextItemNumber =
+        sub.items
+            .map((item) => int.tryParse(item.id.split('.').last) ?? 0)
+            .fold(0, max) +
+        1;
+    final itemId = '$subId.$nextItemNumber';
     sub.items.add(
       TaskItem(
         id: itemId,
@@ -178,7 +190,12 @@ class SidequestCliRunner {
     final sub = _findSubQuest(data, subId);
     if (sub == null) return 1;
 
-    final itemId = '$subId.${sub.items.length + 1}';
+    final nextItemNumber =
+        sub.items
+            .map((item) => int.tryParse(item.id.split('.').last) ?? 0)
+            .fold(0, max) +
+        1;
+    final itemId = '$subId.$nextItemNumber';
     sub.items.add(
       TaskItem(
         id: itemId,
@@ -219,7 +236,18 @@ class SidequestCliRunner {
         (results['quest'] == null && data.quests.isEmpty);
 
     if (isGlobal || results['quest'] == null) {
-      final id = 'G${data.globalSideQuests.length + 1}';
+      final nextGlobalNumber =
+          data.globalSideQuests
+              .map(
+                (sq) =>
+                    int.tryParse(
+                      sq.id.startsWith('G') ? sq.id.substring(1) : sq.id,
+                    ) ??
+                    0,
+              )
+              .fold(0, max) +
+          1;
+      final id = 'G$nextGlobalNumber';
       data.globalSideQuests.add(
         SideQuest(id: id, title: title, status: status, note: note),
       );
@@ -229,7 +257,18 @@ class SidequestCliRunner {
       final qId = results['quest'] as String;
       final quest = _findQuest(data, qId);
       if (quest == null) return 1;
-      final id = 'S${quest.sideQuests.length + 1}';
+      final nextSideNumber =
+          quest.sideQuests
+              .map(
+                (sq) =>
+                    int.tryParse(
+                      sq.id.startsWith('S') ? sq.id.substring(1) : sq.id,
+                    ) ??
+                    0,
+              )
+              .fold(0, max) +
+          1;
+      final id = 'S$nextSideNumber';
       quest.sideQuests.add(
         SideQuest(id: id, title: title, status: status, note: note),
       );
@@ -449,8 +488,16 @@ class SidequestCliRunner {
 
     if (batchMap['complete'] is List) {
       for (final id in batchMap['complete'] as List) {
-        final nextOrder = ++data.lastCompletionOrder;
-        _setItemStatus(data, id.toString(), TaskStatus.completed, nextOrder);
+        final nextOrder = data.lastCompletionOrder + 1;
+        final updated = _setItemStatus(
+          data,
+          id.toString(),
+          TaskStatus.completed,
+          nextOrder,
+        );
+        if (updated) {
+          data.lastCompletionOrder = nextOrder;
+        }
       }
     }
 
@@ -459,7 +506,12 @@ class SidequestCliRunner {
       final qId = map['quest'] as String? ?? '1';
       final quest = _findQuest(data, qId);
       if (quest != null) {
-        final subId = '$qId.${quest.subQuests.length + 1}';
+        final nextSubNumber =
+            quest.subQuests
+                .map((sq) => int.tryParse(sq.id.split('.').last) ?? 0)
+                .fold(0, max) +
+            1;
+        final subId = '$qId.$nextSubNumber';
         quest.subQuests.add(
           SubQuest(
             id: subId,
@@ -545,7 +597,7 @@ class SidequestCliRunner {
     return null;
   }
 
-  void _setItemStatus(
+  bool _setItemStatus(
     SidequestData data,
     String id,
     TaskStatus status,
@@ -554,16 +606,19 @@ class SidequestCliRunner {
     for (final q in data.quests) {
       if (q.id == id) {
         q.status = QuestStatus.completed;
+        return true;
       }
       for (final sq in q.subQuests) {
         if (sq.id == id) {
           sq.status = status;
           sq.completionOrder = order;
+          return true;
         }
         for (final item in sq.items) {
           if (item.id == id) {
             item.status = status;
             item.completionOrder = order;
+            return true;
           }
         }
       }
@@ -571,6 +626,7 @@ class SidequestCliRunner {
         if (sq.id == id) {
           sq.status = SideQuestStatus.completed;
           sq.completionOrder = order;
+          return true;
         }
       }
     }
@@ -578,8 +634,10 @@ class SidequestCliRunner {
       if (sq.id == id) {
         sq.status = SideQuestStatus.completed;
         sq.completionOrder = order;
+        return true;
       }
     }
+    return false;
   }
 
   void _recalculateMaxCompletionOrder(SidequestData data) {
