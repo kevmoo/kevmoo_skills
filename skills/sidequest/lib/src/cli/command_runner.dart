@@ -312,7 +312,9 @@ class SidequestCliRunner {
             break;
           }
         }
+        if (found) break;
       }
+      if (found) break;
       for (final sq in q.sideQuests) {
         if (sq.id == id) {
           sq.status = SideQuestStatus.completed;
@@ -322,6 +324,7 @@ class SidequestCliRunner {
           break;
         }
       }
+      if (found) break;
     }
 
     if (!found) {

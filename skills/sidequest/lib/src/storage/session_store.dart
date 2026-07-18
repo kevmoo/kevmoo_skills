@@ -59,6 +59,7 @@ class SessionStore {
     // Backup existing if present
     if (await file.exists()) {
       await file.copy(bakFile.path);
+      await file.delete();
     }
 
     // Atomic rename
