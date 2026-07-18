@@ -291,12 +291,20 @@ class SidequestCliRunner {
 
     for (final q in data.quests) {
       if (q.id == id) {
+        if (q.status == QuestStatus.completed) {
+          stdout.writeln('✔ Main Quest $id is already completed.');
+          return 0;
+        }
         q.status = QuestStatus.completed;
         found = true;
         break;
       }
       for (final sq in q.subQuests) {
         if (sq.id == id) {
+          if (sq.status == TaskStatus.completed) {
+            stdout.writeln('✔ Sub-Quest $id is already completed.');
+            return 0;
+          }
           sq.status = TaskStatus.completed;
           sq.completionOrder = nextOrder;
           data.lastCompletionOrder = nextOrder;
@@ -305,6 +313,10 @@ class SidequestCliRunner {
         }
         for (final item in sq.items) {
           if (item.id == id) {
+            if (item.status == TaskStatus.completed) {
+              stdout.writeln('✔ Item $id is already completed.');
+              return 0;
+            }
             item.status = TaskStatus.completed;
             item.completionOrder = nextOrder;
             data.lastCompletionOrder = nextOrder;
@@ -317,6 +329,10 @@ class SidequestCliRunner {
       if (found) break;
       for (final sq in q.sideQuests) {
         if (sq.id == id) {
+          if (sq.status == SideQuestStatus.completed) {
+            stdout.writeln('✔ Side Quest $id is already completed.');
+            return 0;
+          }
           sq.status = SideQuestStatus.completed;
           sq.completionOrder = nextOrder;
           data.lastCompletionOrder = nextOrder;
@@ -330,6 +346,10 @@ class SidequestCliRunner {
     if (!found) {
       for (final sq in data.globalSideQuests) {
         if (sq.id == id) {
+          if (sq.status == SideQuestStatus.completed) {
+            stdout.writeln('✔ Global Side Quest $id is already completed.');
+            return 0;
+          }
           sq.status = SideQuestStatus.completed;
           sq.completionOrder = nextOrder;
           data.lastCompletionOrder = nextOrder;

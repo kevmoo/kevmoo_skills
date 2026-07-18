@@ -59,10 +59,12 @@ class SessionStore {
     // Backup existing if present
     if (await file.exists()) {
       await file.copy(bakFile.path);
-      await file.delete();
     }
 
-    // Atomic rename
+    // Atomic rename (on Windows, delete target first as rename does not overwrite)
+    if (Platform.isWindows && await file.exists()) {
+      await file.delete();
+    }
     await tmpFile.rename(file.path);
 
     // Emit Markdown
