@@ -107,6 +107,13 @@ void main() {
       final data = SidequestData(
         version: 1,
         lastCompletionOrder: 2,
+        globalSideQuests: [
+          SideQuest(
+            id: 'G1',
+            title: 'Update global dotfiles',
+            status: SideQuestStatus.active,
+          ),
+        ],
         quests: [
           MainQuest(
             id: '1',
@@ -122,6 +129,14 @@ void main() {
                 title: 'Identify callers',
                 status: TaskStatus.completed,
                 completionOrder: 1,
+              ),
+            ],
+            sideQuests: [
+              SideQuest(
+                id: 'S1',
+                title: 'Investigate legacy cache',
+                status: SideQuestStatus.parked,
+                note: 'Filed Issue #99',
               ),
             ],
           ),
@@ -165,6 +180,10 @@ void main() {
       // Hierarchical Sub-Quest Numbering (#57)
       check(markdown).contains('Sub-Quest 1.1:');
       check(markdown).contains('Sub-Quest 2.1:');
+
+      // SideQuest IDs rendered
+      check(markdown).contains('[Active Side-Quest G1]');
+      check(markdown).contains('[Parked Side-Quest S1 / Tracked for Later]');
 
       // Completion Order Numbers (#58)
       check(markdown).contains('[#1]');
@@ -244,11 +263,12 @@ void main() {
       () async {
         final runner = SidequestCliRunner(store: store);
 
-        // Add subquest
-        await runner.run(['subquest', 'add', '1', 'SubQuest Title']);
+        // Add subquest with unquoted multi-word title
+        await runner.run(['subquest', 'add', '1', 'SubQuest', 'Title', 'Here']);
         var data = (await store.load())!;
         check(data.quests[0].subQuests.length).equals(1);
         check(data.quests[0].subQuests[0].id).equals('1.1');
+        check(data.quests[0].subQuests[0].title).equals('SubQuest Title Here');
 
         // Add blocker & step
         await runner.run(['blocker', 'add', '1.1', 'Broken Build']);
@@ -280,6 +300,46 @@ void main() {
         check(md).contains('[#2 ⭐]');
       },
     );
+
+    test('completes, reopens, and removes MainQuest and SideQuests', () async {
+      final runner = SidequestCliRunner(store: store);
+
+      // Add sidequests (Global & Quest-scoped)
+      await runner.run(['sidequest', 'add', 'Global Task', '--global']);
+      await runner.run(['sidequest', 'add', 'Quest Task', '--quest=1']);
+
+      var data = (await store.load())!;
+      check(data.globalSideQuests.length).equals(1);
+      check(data.quests[0].sideQuests.length).equals(1);
+
+      // Complete Global SideQuest G1
+      await runner.run(['complete', 'G1']);
+      data = (await store.load())!;
+      check(data.globalSideQuests[0].status).equals(SideQuestStatus.completed);
+      check(data.globalSideQuests[0].completionOrder).equals(1);
+      check(data.lastCompletionOrder).equals(1);
+
+      // Complete MainQuest 1
+      await runner.run(['complete', '1']);
+      data = (await store.load())!;
+      check(data.quests[0].status).equals(QuestStatus.completed);
+
+      // Reopen Global SideQuest G1
+      await runner.run(['reopen', 'G1']);
+      data = (await store.load())!;
+      check(data.globalSideQuests[0].status).equals(SideQuestStatus.active);
+      check(data.globalSideQuests[0].completionOrder).isNull();
+      check(data.lastCompletionOrder).equals(0);
+
+      // Add and remove MainQuest 2
+      await runner.run(['quest', 'add', 'Temporary Quest']);
+      data = (await store.load())!;
+      check(data.quests.length).equals(2);
+
+      await runner.run(['remove', '2']);
+      data = (await store.load())!;
+      check(data.quests.length).equals(1);
+    });
 
     test('executes batch mutations atomically', () async {
       final runner = SidequestCliRunner(store: store);

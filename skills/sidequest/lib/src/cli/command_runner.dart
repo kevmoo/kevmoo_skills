@@ -63,7 +63,7 @@ class SidequestCliRunner {
   }
 
   Future<int> _handleInit(List<String> args) async {
-    final title = args.isNotEmpty ? args[0] : 'Main Quest 1';
+    final title = args.isNotEmpty ? args.join(' ') : 'Main Quest 1';
     final data = SidequestData.initial(firstQuestTitle: title);
     await store.save(data);
     stdout.writeln('✔ Initialized sidequest.json & rendered sidequest.md');
@@ -80,7 +80,9 @@ class SidequestCliRunner {
 
     switch (action) {
       case 'add':
-        final title = args.length > 1 ? args[1] : 'New Main Quest';
+        final title = args.length > 1
+            ? args.sublist(1).join(' ')
+            : 'New Main Quest';
         final newId = '${data.quests.length + 1}';
         data.quests.add(
           MainQuest(
@@ -126,7 +128,7 @@ class SidequestCliRunner {
       return 1;
     }
     final questId = args[1];
-    final title = args[2];
+    final title = args.sublist(2).join(' ');
     final data = await _requireData();
     final quest = _findQuest(data, questId);
     if (quest == null) return 1;
@@ -146,7 +148,7 @@ class SidequestCliRunner {
       return 1;
     }
     final subId = args[1];
-    final title = args[2];
+    final title = args.sublist(2).join(' ');
     final data = await _requireData();
     final sub = _findSubQuest(data, subId);
     if (sub == null) return 1;
@@ -171,7 +173,7 @@ class SidequestCliRunner {
       return 1;
     }
     final subId = args[1];
-    final title = args[2];
+    final title = args.sublist(2).join(' ');
     final data = await _requireData();
     final sub = _findSubQuest(data, subId);
     if (sub == null) return 1;
@@ -204,7 +206,9 @@ class SidequestCliRunner {
       ..addOption('note');
 
     final results = parser.parse(args.sublist(1));
-    final title = results.rest.isNotEmpty ? results.rest[0] : 'New Side Quest';
+    final title = results.rest.isNotEmpty
+        ? results.rest.join(' ')
+        : 'New Side Quest';
     final isParked = results['parked'] as bool;
     final status = isParked ? SideQuestStatus.parked : SideQuestStatus.active;
     final note = results['note'] as String?;
@@ -246,8 +250,12 @@ class SidequestCliRunner {
     final nextOrder = data.lastCompletionOrder + 1;
     bool found = false;
 
-    // Check TaskItems
     for (final q in data.quests) {
+      if (q.id == id) {
+        q.status = QuestStatus.completed;
+        found = true;
+        break;
+      }
       for (final sq in q.subQuests) {
         if (sq.id == id) {
           sq.status = TaskStatus.completed;
@@ -277,13 +285,15 @@ class SidequestCliRunner {
       }
     }
 
-    for (final sq in data.globalSideQuests) {
-      if (sq.id == id) {
-        sq.status = SideQuestStatus.completed;
-        sq.completionOrder = nextOrder;
-        data.lastCompletionOrder = nextOrder;
-        found = true;
-        break;
+    if (!found) {
+      for (final sq in data.globalSideQuests) {
+        if (sq.id == id) {
+          sq.status = SideQuestStatus.completed;
+          sq.completionOrder = nextOrder;
+          data.lastCompletionOrder = nextOrder;
+          found = true;
+          break;
+        }
       }
     }
 
@@ -307,6 +317,10 @@ class SidequestCliRunner {
     bool found = false;
 
     for (final q in data.quests) {
+      if (q.id == id) {
+        q.status = QuestStatus.active;
+        found = true;
+      }
       for (final sq in q.subQuests) {
         if (sq.id == id) {
           sq.status = TaskStatus.inProgress;
@@ -320,6 +334,21 @@ class SidequestCliRunner {
             found = true;
           }
         }
+      }
+      for (final sq in q.sideQuests) {
+        if (sq.id == id) {
+          sq.status = SideQuestStatus.active;
+          sq.completionOrder = null;
+          found = true;
+        }
+      }
+    }
+
+    for (final sq in data.globalSideQuests) {
+      if (sq.id == id) {
+        sq.status = SideQuestStatus.active;
+        sq.completionOrder = null;
+        found = true;
       }
     }
 
@@ -342,14 +371,33 @@ class SidequestCliRunner {
     final id = args[0];
     final data = await _requireData();
 
+    bool found = false;
+
+    if (data.quests.any((q) => q.id == id)) {
+      data.quests.removeWhere((q) => q.id == id);
+      found = true;
+    }
+
     for (final q in data.quests) {
+      if (q.subQuests.any((sq) => sq.id == id)) found = true;
       q.subQuests.removeWhere((sq) => sq.id == id);
       for (final sq in q.subQuests) {
+        if (sq.items.any((item) => item.id == id)) found = true;
         sq.items.removeWhere((item) => item.id == id);
       }
+      if (q.sideQuests.any((sq) => sq.id == id)) found = true;
       q.sideQuests.removeWhere((sq) => sq.id == id);
     }
-    data.globalSideQuests.removeWhere((sq) => sq.id == id);
+
+    if (data.globalSideQuests.any((sq) => sq.id == id)) {
+      data.globalSideQuests.removeWhere((sq) => sq.id == id);
+      found = true;
+    }
+
+    if (!found) {
+      stderr.writeln('Error: Item with ID "$id" not found.');
+      return 1;
+    }
 
     _recalculateMaxCompletionOrder(data);
     await store.save(data);
@@ -504,6 +552,9 @@ class SidequestCliRunner {
     int order,
   ) {
     for (final q in data.quests) {
+      if (q.id == id) {
+        q.status = QuestStatus.completed;
+      }
       for (final sq in q.subQuests) {
         if (sq.id == id) {
           sq.status = status;
@@ -515,6 +566,18 @@ class SidequestCliRunner {
             item.completionOrder = order;
           }
         }
+      }
+      for (final sq in q.sideQuests) {
+        if (sq.id == id) {
+          sq.status = SideQuestStatus.completed;
+          sq.completionOrder = order;
+        }
+      }
+    }
+    for (final sq in data.globalSideQuests) {
+      if (sq.id == id) {
+        sq.status = SideQuestStatus.completed;
+        sq.completionOrder = order;
       }
     }
   }
@@ -534,6 +597,10 @@ class SidequestCliRunner {
         if (sq.completionOrder != null)
           maxOrder = max(maxOrder, sq.completionOrder!);
       }
+    }
+    for (final sq in data.globalSideQuests) {
+      if (sq.completionOrder != null)
+        maxOrder = max(maxOrder, sq.completionOrder!);
     }
     data.lastCompletionOrder = maxOrder;
   }

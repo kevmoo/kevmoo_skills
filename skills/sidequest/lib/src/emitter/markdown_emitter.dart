@@ -123,14 +123,16 @@ class MarkdownEmitter {
     final tag = _orderTag(sq.completionOrder, lastCompletionOrder);
 
     if (isDone) {
-      buffer.writeln('* $checkbox $tag**[Completed]** ${sq.title} -> *Done*');
+      buffer.writeln(
+        '* $checkbox $tag**[Completed Side-Quest ${sq.id}]** ${sq.title} -> *Done*',
+      );
     } else if (sq.status == SideQuestStatus.parked) {
       final noteStr = sq.note != null ? ' -> *${sq.note}*' : '';
       buffer.writeln(
-        '* [ ] **🎒 [Parked / Tracked for Later]** ${sq.title}$noteStr',
+        '* [ ] **🎒 [Parked Side-Quest ${sq.id} / Tracked for Later]** ${sq.title}$noteStr',
       );
     } else {
-      buffer.writeln('* [ ] **[Active]** ${sq.title}');
+      buffer.writeln('* [ ] **[Active Side-Quest ${sq.id}]** ${sq.title}');
       if (sq.vcs != null) {
         buffer.writeln('  * 📝 *VCS:* ${_formatVcsInline(sq.vcs!)}');
       }
