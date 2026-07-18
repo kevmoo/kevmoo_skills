@@ -12,6 +12,7 @@ dependencies:
 
 dev_dependencies:
   sidequest:
+    workspace: true
   test: ^1.24.0
   checks: ^0.3.0
   logging: ^1.3.0

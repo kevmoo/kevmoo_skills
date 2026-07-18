@@ -4,21 +4,15 @@ import 'package:logging/logging.dart';
 import 'package:test/test.dart';
 import 'package:test_process/test_process.dart';
 
-final String _configFilePath = _getConfigFilePath();
+final String _configFilePath =
+    Directory.current.path.split(Platform.pathSeparator).last == 'tool'
+    ? 'dart_skills_lint.yaml'
+    : 'tool/dart_skills_lint.yaml';
 
-String _getConfigFilePath() {
-  if (Directory.current.path.split(Platform.pathSeparator).last == 'tool') {
-    return 'dart_skills_lint.yaml';
-  }
-  return 'tool/dart_skills_lint.yaml';
-}
-
-String _getSkillsDirPath() {
-  if (Directory.current.path.split(Platform.pathSeparator).last == 'tool') {
-    return '../skills';
-  }
-  return 'skills';
-}
+final String _skillsDirPath =
+    Directory.current.path.split(Platform.pathSeparator).last == 'tool'
+    ? '../skills'
+    : 'skills';
 
 void main() {
   test('Validate skills', () async {
@@ -43,7 +37,7 @@ void main() {
   });
 
   test('Run skill/scripts/test', () async {
-    final skillsDir = Directory(_getSkillsDirPath());
+    final skillsDir = Directory(_skillsDirPath);
     expect(
       skillsDir.existsSync(),
       isTrue,
@@ -78,7 +72,7 @@ void main() {
   }, timeout: Timeout(Duration(minutes: 3)));
 
   test('Verify formatting and analysis of all skills Dart code', () async {
-    final skillsDir = Directory(_getSkillsDirPath());
+    final skillsDir = Directory(_skillsDirPath);
     expect(
       skillsDir.existsSync(),
       isTrue,
