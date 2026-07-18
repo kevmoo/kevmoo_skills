@@ -95,9 +95,11 @@ void main() {
 
     // Ensure pub get has been run for all nested packages to prevent analysis failures
     final pubspecs = <File>[];
-    for (final dir in skillsDir.listSync().whereType<Directory>().where(
+    final directories = skillsDir.listSync().whereType<Directory>();
+    final validDirs = directories.where(
       (dir) => File('${dir.path}/SKILL.md').existsSync(),
-    )) {
+    );
+    for (final dir in validDirs) {
       final pubspec = File('${dir.path}/pubspec.yaml');
       if (pubspec.existsSync()) {
         pubspecs.add(pubspec);
