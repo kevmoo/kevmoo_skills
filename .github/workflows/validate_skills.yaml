@@ -37,7 +37,7 @@ jobs:
         if: always() && steps.pub-get.outcome == 'success'
 
       - run: dart format --output=none --set-exit-if-changed .
-        if: always() && steps.pub-get.outcome == 'success'
+        if: always() && steps.pub-get.outcome == 'success' && matrix.sdk == 'dev'
 
       - run: dart test
         if: always() && steps.pub-get.outcome == 'success'
