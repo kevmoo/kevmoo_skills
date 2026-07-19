@@ -69,11 +69,7 @@ class MarkdownEmitter {
   }
 
   static bool _isVcsDirty(VcsState? vcs) {
-    if (vcs == null) return false;
-    if (vcs.stage != VcsStage.dirty) return false;
-    return vcs.modifiedFiles.isNotEmpty ||
-        (vcs.details != null && vcs.details!.trim().isNotEmpty) ||
-        (vcs.branch != null && vcs.branch!.trim().isNotEmpty);
+    return vcs != null && vcs.stage == VcsStage.dirty;
   }
 
   static String _formatDirtyLine(String label, VcsState vcs) {
