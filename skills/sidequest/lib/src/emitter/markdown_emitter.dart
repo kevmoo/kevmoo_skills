@@ -235,7 +235,10 @@ class MarkdownEmitter {
 
   static String _formatVcsInline(VcsState vcs) {
     if (vcs.modifiedFiles.isNotEmpty) {
-      return '`${vcs.modifiedFiles.join(', ')}` (Uncommitted)';
+      final suffix = vcs.stage == VcsStage.localCommit
+          ? ' (Local Commit)'
+          : ' (Uncommitted)';
+      return '`${vcs.modifiedFiles.join(', ')}`$suffix';
     }
     final details = vcs.details?.trim();
     if (details != null && details.isNotEmpty) {
