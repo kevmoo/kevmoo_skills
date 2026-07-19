@@ -47,11 +47,19 @@ enum SideQuestStatus {
 }
 
 enum VcsStage {
-  dirty,
-  localCommit,
-  uploaded,
-  merged,
-  clean;
+  dirty('📝', 'Dirty', isCaution: true),
+  localCommit('📦', 'Local Commit', isCaution: true),
+  uploaded('🚀', 'Uploaded'),
+  merged('🎉', 'Merged / Submitted'),
+  clean('🧹', 'Clean');
+
+  const VcsStage(this.emoji, this.label, {this.isCaution = false});
+
+  final String emoji;
+  final String label;
+  final bool isCaution;
+
+  String get badge => '`$emoji $label`';
 
   String toJson() {
     switch (this) {

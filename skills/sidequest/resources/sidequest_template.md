@@ -1,7 +1,7 @@
 # 🧭 Conversation Map & Sidequests
 
 > [!CAUTION]
-> **Uncommitted Working Copy Changes:**
+> **Uncommitted & Unpushed Changes:**
 > * **Main Quest 2 (`fix-leak`):** `lib/worker.dart`
 > * **Active Side-Quest S1:** `test/debug_test.dart`
 

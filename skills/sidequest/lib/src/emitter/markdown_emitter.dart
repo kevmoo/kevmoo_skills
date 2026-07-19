@@ -60,7 +60,7 @@ class MarkdownEmitter {
 
     if (dirtyLines.isNotEmpty) {
       buffer.writeln('> [!CAUTION]');
-      buffer.writeln('> **Uncommitted Working Copy Changes:**');
+      buffer.writeln('> **Uncommitted & Unpushed Changes:**');
       for (final line in dirtyLines) {
         buffer.writeln('> * $line');
       }
@@ -68,7 +68,7 @@ class MarkdownEmitter {
     }
   }
 
-  static bool _isVcsDirty(VcsState? vcs) => vcs?.stage == VcsStage.dirty;
+  static bool _isVcsDirty(VcsState? vcs) => vcs?.stage.isCaution ?? false;
 
   static String _formatDirtyLine(String label, VcsState vcs) {
     if (vcs.modifiedFiles.isNotEmpty) {
@@ -77,6 +77,9 @@ class MarkdownEmitter {
     }
     if (vcs.details != null && vcs.details!.trim().isNotEmpty) {
       return '**$label:** ${vcs.details}';
+    }
+    if (vcs.stage == VcsStage.localCommit) {
+      return '**$label:** Unpushed local commit';
     }
     return '**$label:** Uncommitted changes';
   }
@@ -202,15 +205,7 @@ class MarkdownEmitter {
   }
 
   static String _formatVcs(VcsState vcs) {
-    final stageStr = switch (vcs.stage) {
-      VcsStage.dirty => '`📝 Dirty`',
-      VcsStage.localCommit => '`📦 Local Commit`',
-      VcsStage.uploaded => '`🚀 Uploaded`',
-      VcsStage.merged => '`🎉 Merged / Submitted`',
-      VcsStage.clean => '`🧹 Clean`',
-    };
-
-    final parts = <String>[stageStr];
+    final parts = <String>[vcs.stage.badge];
     if (vcs.branch != null) parts.add('Branch: `${vcs.branch}`');
     if (vcs.modifiedFiles.isNotEmpty) {
       parts.add('Modified: `${vcs.modifiedFiles.join(', ')}`');
