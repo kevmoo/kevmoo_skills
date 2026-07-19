@@ -7,6 +7,8 @@ class MarkdownEmitter {
     final buffer = StringBuffer();
     buffer.writeln('# 🧭 Conversation Map & Sidequests\n');
 
+    _renderCautionHeader(buffer, data);
+
     // Render Global Side Quests if any
     if (data.globalSideQuests.isNotEmpty) {
       buffer.writeln('## 🌿 Global Side Quests');
@@ -25,6 +27,64 @@ class MarkdownEmitter {
     }
 
     return buffer.toString().trimRight() + '\n';
+  }
+
+  static void _renderCautionHeader(StringBuffer buffer, SidequestData data) {
+    final dirtyLines = <String>[];
+
+    for (final sq in data.globalSideQuests) {
+      final vcs = sq.vcs;
+      if (_isVcsDirty(vcs)) {
+        dirtyLines.add(_formatDirtyLine('Global Side-Quest ${sq.id}', vcs!));
+      }
+    }
+
+    for (final quest in data.quests) {
+      final vcs = quest.vcs;
+      if (_isVcsDirty(vcs)) {
+        final branchPart = vcs!.branch != null ? ' (`${vcs.branch}`)' : '';
+        dirtyLines.add(
+          _formatDirtyLine('Main Quest ${quest.id}$branchPart', vcs),
+        );
+      }
+
+      for (final sq in quest.sideQuests) {
+        final sqVcs = sq.vcs;
+        if (_isVcsDirty(sqVcs)) {
+          dirtyLines.add(
+            _formatDirtyLine('Active Side-Quest ${sq.id}', sqVcs!),
+          );
+        }
+      }
+    }
+
+    if (dirtyLines.isNotEmpty) {
+      buffer.writeln('> [!CAUTION]');
+      buffer.writeln('> **Uncommitted Working Copy Changes:**');
+      for (final line in dirtyLines) {
+        buffer.writeln('> * $line');
+      }
+      buffer.writeln();
+    }
+  }
+
+  static bool _isVcsDirty(VcsState? vcs) {
+    if (vcs == null) return false;
+    if (vcs.stage != VcsStage.dirty) return false;
+    return vcs.modifiedFiles.isNotEmpty ||
+        (vcs.details != null && vcs.details!.trim().isNotEmpty) ||
+        (vcs.branch != null && vcs.branch!.trim().isNotEmpty);
+  }
+
+  static String _formatDirtyLine(String label, VcsState vcs) {
+    if (vcs.modifiedFiles.isNotEmpty) {
+      final files = vcs.modifiedFiles.map((f) => '`$f`').join(', ');
+      return '**$label:** $files';
+    }
+    if (vcs.details != null && vcs.details!.trim().isNotEmpty) {
+      return '**$label:** ${vcs.details}';
+    }
+    return '**$label:** Uncommitted changes';
   }
 
   static void _renderMainQuest(
