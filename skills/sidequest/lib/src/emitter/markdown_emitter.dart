@@ -78,16 +78,16 @@ class MarkdownEmitter {
   static bool _isVcsDirty(VcsState vcs) => vcs.stage.isCaution;
 
   static String _formatDirtyLine(String label, VcsState vcs) {
-    final branch = vcs.branch;
-    final hasBranch = branch != null && branch.trim().isNotEmpty;
+    final branch = vcs.branch?.trim();
+    final hasBranch = branch != null && branch.isNotEmpty;
     final branchPart = hasBranch ? ' (`$branch`)' : '';
     final prefix = '**$label$branchPart:**';
     if (vcs.modifiedFiles.isNotEmpty) {
       final files = vcs.modifiedFiles.map((f) => '`$f`').join(', ');
       return '$prefix $files';
     }
-    final details = vcs.details;
-    if (details != null && details.trim().isNotEmpty) {
+    final details = vcs.details?.trim();
+    if (details != null && details.isNotEmpty) {
       return '$prefix $details';
     }
     if (vcs.stage == VcsStage.localCommit) {
@@ -218,15 +218,15 @@ class MarkdownEmitter {
 
   static String _formatVcs(VcsState vcs) {
     final parts = <String>[vcs.stage.badge];
-    final branch = vcs.branch;
-    if (branch != null && branch.trim().isNotEmpty) {
+    final branch = vcs.branch?.trim();
+    if (branch != null && branch.isNotEmpty) {
       parts.add('Branch: `$branch`');
     }
     if (vcs.modifiedFiles.isNotEmpty) {
       parts.add('Modified: `${vcs.modifiedFiles.join(', ')}`');
     }
-    final details = vcs.details;
-    if (details != null && details.trim().isNotEmpty) {
+    final details = vcs.details?.trim();
+    if (details != null && details.isNotEmpty) {
       parts.add(details);
     }
 
@@ -237,8 +237,8 @@ class MarkdownEmitter {
     if (vcs.modifiedFiles.isNotEmpty) {
       return '`${vcs.modifiedFiles.join(', ')}` (Uncommitted)';
     }
-    final details = vcs.details;
-    if (details != null && details.trim().isNotEmpty) {
+    final details = vcs.details?.trim();
+    if (details != null && details.isNotEmpty) {
       return details;
     }
     return vcs.stage.badge;
