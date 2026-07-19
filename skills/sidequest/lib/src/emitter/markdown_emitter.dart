@@ -78,15 +78,17 @@ class MarkdownEmitter {
   static bool _isVcsDirty(VcsState vcs) => vcs.stage.isCaution;
 
   static String _formatDirtyLine(String label, VcsState vcs) {
-    final hasBranch = vcs.branch != null && vcs.branch!.trim().isNotEmpty;
-    final branchPart = hasBranch ? ' (`${vcs.branch}`)' : '';
+    final branch = vcs.branch;
+    final hasBranch = branch != null && branch.trim().isNotEmpty;
+    final branchPart = hasBranch ? ' (`$branch`)' : '';
     final prefix = '**$label$branchPart:**';
     if (vcs.modifiedFiles.isNotEmpty) {
       final files = vcs.modifiedFiles.map((f) => '`$f`').join(', ');
       return '$prefix $files';
     }
-    if (vcs.details != null && vcs.details!.trim().isNotEmpty) {
-      return '$prefix ${vcs.details}';
+    final details = vcs.details;
+    if (details != null && details.trim().isNotEmpty) {
+      return '$prefix $details';
     }
     if (vcs.stage == VcsStage.localCommit) {
       return '$prefix Unpushed local commit';
@@ -216,14 +218,16 @@ class MarkdownEmitter {
 
   static String _formatVcs(VcsState vcs) {
     final parts = <String>[vcs.stage.badge];
-    if (vcs.branch != null && vcs.branch!.trim().isNotEmpty) {
-      parts.add('Branch: `${vcs.branch}`');
+    final branch = vcs.branch;
+    if (branch != null && branch.trim().isNotEmpty) {
+      parts.add('Branch: `$branch`');
     }
     if (vcs.modifiedFiles.isNotEmpty) {
       parts.add('Modified: `${vcs.modifiedFiles.join(', ')}`');
     }
-    if (vcs.details != null && vcs.details!.trim().isNotEmpty) {
-      parts.add(vcs.details!);
+    final details = vcs.details;
+    if (details != null && details.trim().isNotEmpty) {
+      parts.add(details);
     }
 
     return '> **VCS State:** ${parts.join(' | ')}';
@@ -233,8 +237,9 @@ class MarkdownEmitter {
     if (vcs.modifiedFiles.isNotEmpty) {
       return '`${vcs.modifiedFiles.join(', ')}` (Uncommitted)';
     }
-    if (vcs.details != null && vcs.details!.trim().isNotEmpty) {
-      return vcs.details!;
+    final details = vcs.details;
+    if (details != null && details.trim().isNotEmpty) {
+      return details;
     }
     return vcs.stage.badge;
   }
