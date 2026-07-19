@@ -35,7 +35,12 @@ class MarkdownEmitter {
     for (final sq in data.globalSideQuests) {
       final vcs = sq.vcs;
       if (vcs != null && _isVcsDirty(vcs)) {
-        dirtyLines.add(_formatDirtyLine('Global Side-Quest ${sq.id}', vcs));
+        final statusLabel = switch (sq.status) {
+          SideQuestStatus.active => 'Global Side-Quest',
+          SideQuestStatus.parked => 'Parked Global Side-Quest',
+          SideQuestStatus.completed => 'Completed Global Side-Quest',
+        };
+        dirtyLines.add(_formatDirtyLine('$statusLabel ${sq.id}', vcs));
       }
     }
 
@@ -228,7 +233,9 @@ class MarkdownEmitter {
     if (vcs.modifiedFiles.isNotEmpty) {
       return '`${vcs.modifiedFiles.join(', ')}` (Uncommitted)';
     }
-    if (vcs.details != null) return vcs.details!;
+    if (vcs.details != null && vcs.details!.trim().isNotEmpty) {
+      return vcs.details!;
+    }
     return vcs.stage.badge;
   }
 }
