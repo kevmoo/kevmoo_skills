@@ -34,15 +34,15 @@ class MarkdownEmitter {
 
     for (final sq in data.globalSideQuests) {
       final vcs = sq.vcs;
-      if (_isVcsDirty(vcs)) {
-        dirtyLines.add(_formatDirtyLine('Global Side-Quest ${sq.id}', vcs!));
+      if (vcs != null && _isVcsDirty(vcs)) {
+        dirtyLines.add(_formatDirtyLine('Global Side-Quest ${sq.id}', vcs));
       }
     }
 
     for (final quest in data.quests) {
       final vcs = quest.vcs;
-      if (_isVcsDirty(vcs)) {
-        final branchPart = vcs!.branch != null ? ' (`${vcs.branch}`)' : '';
+      if (vcs != null && _isVcsDirty(vcs)) {
+        final branchPart = vcs.branch != null ? ' (`${vcs.branch}`)' : '';
         dirtyLines.add(
           _formatDirtyLine('Main Quest ${quest.id}$branchPart', vcs),
         );
@@ -50,10 +50,8 @@ class MarkdownEmitter {
 
       for (final sq in quest.sideQuests) {
         final sqVcs = sq.vcs;
-        if (_isVcsDirty(sqVcs)) {
-          dirtyLines.add(
-            _formatDirtyLine('Active Side-Quest ${sq.id}', sqVcs!),
-          );
+        if (sqVcs != null && _isVcsDirty(sqVcs)) {
+          dirtyLines.add(_formatDirtyLine('Active Side-Quest ${sq.id}', sqVcs));
         }
       }
     }
@@ -68,7 +66,7 @@ class MarkdownEmitter {
     }
   }
 
-  static bool _isVcsDirty(VcsState? vcs) => vcs?.stage.isCaution ?? false;
+  static bool _isVcsDirty(VcsState vcs) => vcs.stage.isCaution;
 
   static String _formatDirtyLine(String label, VcsState vcs) {
     if (vcs.modifiedFiles.isNotEmpty) {
