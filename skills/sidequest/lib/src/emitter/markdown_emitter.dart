@@ -83,8 +83,13 @@ class MarkdownEmitter {
     final branchPart = hasBranch ? ' (`$branch`)' : '';
     final prefix = '**$label$branchPart:**';
     if (vcs.modifiedFiles.isNotEmpty) {
-      final files = vcs.modifiedFiles.map((f) => '`$f`').join(', ');
-      return '$prefix $files';
+      const maxFiles = 5;
+      final truncated = vcs.modifiedFiles.take(maxFiles);
+      final files = truncated.map((f) => '`$f`').join(', ');
+      final extra = vcs.modifiedFiles.length > maxFiles
+          ? ' (+${vcs.modifiedFiles.length - maxFiles} more)'
+          : '';
+      return '$prefix $files$extra';
     }
     final details = vcs.details?.trim();
     if (details != null && details.isNotEmpty) {
