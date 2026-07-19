@@ -48,7 +48,14 @@ class MarkdownEmitter {
       for (final sq in quest.sideQuests) {
         final sqVcs = sq.vcs;
         if (sqVcs != null && _isVcsDirty(sqVcs)) {
-          dirtyLines.add(_formatDirtyLine('Active Side-Quest ${sq.id}', sqVcs));
+          final statusLabel = switch (sq.status) {
+            SideQuestStatus.active => 'Active',
+            SideQuestStatus.parked => 'Parked',
+            SideQuestStatus.completed => 'Completed',
+          };
+          dirtyLines.add(
+            _formatDirtyLine('$statusLabel Side-Quest ${sq.id}', sqVcs),
+          );
         }
       }
     }
@@ -66,7 +73,8 @@ class MarkdownEmitter {
   static bool _isVcsDirty(VcsState vcs) => vcs.stage.isCaution;
 
   static String _formatDirtyLine(String label, VcsState vcs) {
-    final branchPart = vcs.branch != null ? ' (`${vcs.branch}`)' : '';
+    final hasBranch = vcs.branch != null && vcs.branch!.trim().isNotEmpty;
+    final branchPart = hasBranch ? ' (`${vcs.branch}`)' : '';
     final prefix = '**$label$branchPart:**';
     if (vcs.modifiedFiles.isNotEmpty) {
       final files = vcs.modifiedFiles.map((f) => '`$f`').join(', ');
@@ -203,11 +211,15 @@ class MarkdownEmitter {
 
   static String _formatVcs(VcsState vcs) {
     final parts = <String>[vcs.stage.badge];
-    if (vcs.branch != null) parts.add('Branch: `${vcs.branch}`');
+    if (vcs.branch != null && vcs.branch!.trim().isNotEmpty) {
+      parts.add('Branch: `${vcs.branch}`');
+    }
     if (vcs.modifiedFiles.isNotEmpty) {
       parts.add('Modified: `${vcs.modifiedFiles.join(', ')}`');
     }
-    if (vcs.details != null) parts.add(vcs.details!);
+    if (vcs.details != null && vcs.details!.trim().isNotEmpty) {
+      parts.add(vcs.details!);
+    }
 
     return '> **VCS State:** ${parts.join(' | ')}';
   }
