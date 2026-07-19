@@ -8,6 +8,11 @@ description: >-
   Use when the user invokes `/sidequest`, asks where we are, what we were doing,
   or what's on our stack, or when the conversation branches across multiple
   topics, blockers, or digressions. Don't use for simple one-off questions.
+key_features:
+  - Conversation mapping
+  - Task hierarchy & numbering
+  - VCS state tracking
+  - Subagent history audits
 ---
 
 # 🧭 Sidequest (`/sidequest`)
