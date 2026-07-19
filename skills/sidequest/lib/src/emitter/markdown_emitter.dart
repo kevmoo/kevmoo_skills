@@ -7,6 +7,8 @@ class MarkdownEmitter {
     final buffer = StringBuffer();
     buffer.writeln('# 🧭 Conversation Map & Sidequests\n');
 
+    _renderCautionHeader(buffer, data);
+
     // Render Global Side Quests if any
     if (data.globalSideQuests.isNotEmpty) {
       buffer.writeln('## 🌿 Global Side Quests');
@@ -25,6 +27,78 @@ class MarkdownEmitter {
     }
 
     return buffer.toString().trimRight() + '\n';
+  }
+
+  static void _renderCautionHeader(StringBuffer buffer, SidequestData data) {
+    final dirtyLines = <String>[];
+
+    for (final sq in data.globalSideQuests) {
+      final vcs = sq.vcs;
+      if (vcs != null && _isVcsDirty(vcs)) {
+        final statusLabel = switch (sq.status) {
+          SideQuestStatus.active => 'Global Side-Quest',
+          SideQuestStatus.parked => 'Parked Global Side-Quest',
+          SideQuestStatus.completed => 'Completed Global Side-Quest',
+        };
+        dirtyLines.add(_formatDirtyLine('$statusLabel ${sq.id}', vcs));
+      }
+    }
+
+    for (final quest in data.quests) {
+      final vcs = quest.vcs;
+      if (vcs != null && _isVcsDirty(vcs)) {
+        dirtyLines.add(_formatDirtyLine('Main Quest ${quest.id}', vcs));
+      }
+
+      for (final sq in quest.sideQuests) {
+        final sqVcs = sq.vcs;
+        if (sqVcs != null && _isVcsDirty(sqVcs)) {
+          final statusLabel = switch (sq.status) {
+            SideQuestStatus.active => 'Active',
+            SideQuestStatus.parked => 'Parked',
+            SideQuestStatus.completed => 'Completed',
+          };
+          dirtyLines.add(
+            _formatDirtyLine('$statusLabel Side-Quest ${sq.id}', sqVcs),
+          );
+        }
+      }
+    }
+
+    if (dirtyLines.isNotEmpty) {
+      buffer.writeln('> [!CAUTION]');
+      buffer.writeln('> **Uncommitted & Unpushed Changes:**');
+      for (final line in dirtyLines) {
+        buffer.writeln('> * $line');
+      }
+      buffer.writeln();
+    }
+  }
+
+  static bool _isVcsDirty(VcsState vcs) => vcs.stage.isCaution;
+
+  static String _formatDirtyLine(String label, VcsState vcs) {
+    final branch = vcs.branch?.trim();
+    final hasBranch = branch != null && branch.isNotEmpty;
+    final branchPart = hasBranch ? ' (`$branch`)' : '';
+    final prefix = '**$label$branchPart:**';
+    if (vcs.modifiedFiles.isNotEmpty) {
+      const maxFiles = 5;
+      final truncated = vcs.modifiedFiles.take(maxFiles);
+      final files = truncated.map((f) => '`$f`').join(', ');
+      final extra = vcs.modifiedFiles.length > maxFiles
+          ? ' (+${vcs.modifiedFiles.length - maxFiles} more)'
+          : '';
+      return '$prefix $files$extra';
+    }
+    final details = vcs.details?.trim();
+    if (details != null && details.isNotEmpty) {
+      return '$prefix $details';
+    }
+    if (vcs.stage == VcsStage.localCommit) {
+      return '$prefix Unpushed local commit';
+    }
+    return '$prefix Uncommitted changes';
   }
 
   static void _renderMainQuest(
@@ -148,29 +222,33 @@ class MarkdownEmitter {
   }
 
   static String _formatVcs(VcsState vcs) {
-    final stageStr = switch (vcs.stage) {
-      VcsStage.dirty => '`📝 Dirty`',
-      VcsStage.localCommit => '`📦 Local Commit`',
-      VcsStage.uploaded => '`🚀 Uploaded`',
-      VcsStage.merged => '`🎉 Merged / Submitted`',
-      VcsStage.clean => '`🧹 Clean`',
-    };
-
-    final parts = <String>[stageStr];
-    if (vcs.branch != null) parts.add('Branch: `${vcs.branch}`');
+    final parts = <String>[vcs.stage.badge];
+    final branch = vcs.branch?.trim();
+    if (branch != null && branch.isNotEmpty) {
+      parts.add('Branch: `$branch`');
+    }
     if (vcs.modifiedFiles.isNotEmpty) {
       parts.add('Modified: `${vcs.modifiedFiles.join(', ')}`');
     }
-    if (vcs.details != null) parts.add(vcs.details!);
+    final details = vcs.details?.trim();
+    if (details != null && details.isNotEmpty) {
+      parts.add(details);
+    }
 
     return '> **VCS State:** ${parts.join(' | ')}';
   }
 
   static String _formatVcsInline(VcsState vcs) {
     if (vcs.modifiedFiles.isNotEmpty) {
-      return '`${vcs.modifiedFiles.join(', ')}` (Uncommitted)';
+      final suffix = vcs.stage == VcsStage.localCommit
+          ? ' (Local Commit)'
+          : ' (Uncommitted)';
+      return '`${vcs.modifiedFiles.join(', ')}`$suffix';
     }
-    if (vcs.details != null) return vcs.details!;
-    return vcs.stage.toJson();
+    final details = vcs.details?.trim();
+    if (details != null && details.isNotEmpty) {
+      return details;
+    }
+    return vcs.stage.badge;
   }
 }

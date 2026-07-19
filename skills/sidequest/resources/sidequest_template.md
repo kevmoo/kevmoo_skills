@@ -1,5 +1,10 @@
 # 🧭 Conversation Map & Sidequests
 
+> [!CAUTION]
+> **Uncommitted & Unpushed Changes:**
+> * **Main Quest 2 (`fix-leak`):** `lib/worker.dart`
+> * **Active Side-Quest S1:** `test/debug_test.dart`
+
 ## 🏆 [COMPLETED] Main Quest 1: Migrate `UserService` to `v2` API
 > **VCS State:** `🧹 Clean` -> PR #142 (Merged upstream, local workspace synced)
 * [x] [#1] 🛡️ **Sub-Quest 1.1:** Identify callers across repository -> *Done*

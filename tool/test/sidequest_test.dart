@@ -199,10 +199,58 @@ void main() {
       // Pending Step styling
       check(markdown).contains('👣 *Step 2.1.2:* Run profiling');
 
+      // Caution header rendering for uncommitted & unpushed files
+      check(markdown).contains('> [!CAUTION]');
+      check(markdown).contains('> **Uncommitted & Unpushed Changes:**');
+      check(
+        markdown,
+      ).contains('> * **Main Quest 2 (`fix-leak`):** `lib/worker.dart`');
+
       // VCS state rendering
       check(markdown).contains(
         '> **VCS State:** `📝 Dirty` | Branch: `fix-leak` | Modified: `lib/worker.dart`',
       );
+    });
+
+    test('renders CAUTION header for local commit', () {
+      final data = SidequestData(
+        version: 1,
+        quests: [
+          MainQuest(
+            id: '1',
+            title: 'Local Commit Quest',
+            status: QuestStatus.active,
+            vcs: const VcsState(
+              stage: VcsStage.localCommit,
+              branch: 'feat/test',
+            ),
+          ),
+        ],
+      );
+
+      final markdown = MarkdownEmitter.emit(data);
+      check(markdown).contains('> [!CAUTION]');
+      check(markdown).contains('> **Uncommitted & Unpushed Changes:**');
+      check(
+        markdown,
+      ).contains('> * **Main Quest 1 (`feat/test`):** Unpushed local commit');
+    });
+
+    test('omits CAUTION header when workspace is clean', () {
+      final data = SidequestData(
+        version: 1,
+        quests: [
+          MainQuest(
+            id: '1',
+            title: 'Clean Quest',
+            status: QuestStatus.active,
+            vcs: const VcsState(stage: VcsStage.clean),
+          ),
+        ],
+      );
+
+      final markdown = MarkdownEmitter.emit(data);
+      check(markdown).not((c) => c.contains('> [!CAUTION]'));
     });
   });
 
