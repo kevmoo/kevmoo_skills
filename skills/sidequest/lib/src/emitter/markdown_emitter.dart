@@ -42,10 +42,7 @@ class MarkdownEmitter {
     for (final quest in data.quests) {
       final vcs = quest.vcs;
       if (vcs != null && _isVcsDirty(vcs)) {
-        final branchPart = vcs.branch != null ? ' (`${vcs.branch}`)' : '';
-        dirtyLines.add(
-          _formatDirtyLine('Main Quest ${quest.id}$branchPart', vcs),
-        );
+        dirtyLines.add(_formatDirtyLine('Main Quest ${quest.id}', vcs));
       }
 
       for (final sq in quest.sideQuests) {
@@ -69,17 +66,19 @@ class MarkdownEmitter {
   static bool _isVcsDirty(VcsState vcs) => vcs.stage.isCaution;
 
   static String _formatDirtyLine(String label, VcsState vcs) {
+    final branchPart = vcs.branch != null ? ' (`${vcs.branch}`)' : '';
+    final prefix = '**$label$branchPart:**';
     if (vcs.modifiedFiles.isNotEmpty) {
       final files = vcs.modifiedFiles.map((f) => '`$f`').join(', ');
-      return '**$label:** $files';
+      return '$prefix $files';
     }
     if (vcs.details != null && vcs.details!.trim().isNotEmpty) {
-      return '**$label:** ${vcs.details}';
+      return '$prefix ${vcs.details}';
     }
     if (vcs.stage == VcsStage.localCommit) {
-      return '**$label:** Unpushed local commit';
+      return '$prefix Unpushed local commit';
     }
-    return '**$label:** Uncommitted changes';
+    return '$prefix Uncommitted changes';
   }
 
   static void _renderMainQuest(
@@ -218,6 +217,6 @@ class MarkdownEmitter {
       return '`${vcs.modifiedFiles.join(', ')}` (Uncommitted)';
     }
     if (vcs.details != null) return vcs.details!;
-    return vcs.stage.toJson();
+    return vcs.stage.badge;
   }
 }
