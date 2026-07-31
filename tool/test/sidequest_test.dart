@@ -408,5 +408,14 @@ void main() {
       check(data.quests[0].vcs?.stage).equals(VcsStage.dirty);
       check(data.quests[0].vcs?.branch).equals('feat/test');
     });
+
+    test('returns exit code 0 for help arguments and empty input', () async {
+      final runner = SidequestCliRunner(store: store);
+
+      check(await runner.run([])).equals(0);
+      check(await runner.run(['--help'])).equals(0);
+      check(await runner.run(['-h'])).equals(0);
+      check(await runner.run(['help'])).equals(0);
+    });
   });
 }

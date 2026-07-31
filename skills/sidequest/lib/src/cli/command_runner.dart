@@ -15,9 +15,9 @@ class SidequestCliRunner {
   SidequestCliRunner({required this.store});
 
   Future<int> run(List<String> args) async {
-    if (args.isEmpty) {
+    if (args.isEmpty || args.contains('--help') || args.contains('-h')) {
       _printUsage();
-      return 1;
+      return 0;
     }
 
     final command = args[0];
@@ -25,6 +25,9 @@ class SidequestCliRunner {
 
     try {
       switch (command) {
+        case 'help':
+          _printUsage();
+          return 0;
         case 'init':
           return await _handleInit(subArgs);
         case 'quest':
@@ -687,7 +690,31 @@ class SidequestCliRunner {
   }
 
   void _printUsage() {
-    stdout.writeln('sidequest CLI - Deterministic session map manager');
-    stdout.writeln('Usage: sidequest <command> [args] [--dir=path]');
+    stdout.writeln('''
+sidequest CLI - Deterministic session map manager
+
+Usage:
+  sidequest <command> [args] [--dir=path]
+
+Global Options:
+  --dir=<path>            Path to session artifact directory containing sidequest.json
+
+Subcommands:
+  init [title]            Initialize sidequest session map (default: "Main Quest 1")
+  quest add <title>       Add a new main quest
+  quest activate <id>     Activate a main quest
+  quest pause <id>        Pause a main quest (--reason=...)
+  subquest add <qId> <t>  Add a sub-quest under main quest <qId>
+  step add <subId> <t>    Add a planned step under sub-quest <subId>
+  blocker add <subId> <t> Add an unplanned blocker under sub-quest <subId>
+  sidequest add <t>       Add a side quest (--quest=<qId>, --global, --parked, --note=<n>)
+  complete <id>           Mark item (quest, subquest, step, blocker, sidequest) completed
+  reopen <id>             Reopen a completed item
+  remove <id>             Remove an item from the session map
+  vcs <qId>               Update VCS state (--stage=dirty|local_commit|uploaded|merged|clean)
+  batch <json>            Execute multiple mutations in a single call
+  render                  Re-render sidequest.md from sidequest.json
+  merge-audit --input=<f> Merge audited delta JSON into session map
+  help, --help, -h        Show this help message''');
   }
 }
