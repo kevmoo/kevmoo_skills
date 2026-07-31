@@ -55,6 +55,14 @@ Synthesizes task hierarchies and context drift into a visual session map.
 
 When `/sidequest` triggers (via `/sidequest`, "where are we?", or context drift):
 
+### 🏁 First-Run Protocol (Session Initialization)
+Before performing updates or displaying map status, check if session state exists:
+1. **Check for state file:** Verify if `sidequest.json` exists in the conversation artifact directory (`<session_artifact_dir>`).
+2. **If NO state exists (First Run):** Immediately initialize the session map by executing:
+   `dart run skills/sidequest/bin/sidequest.dart init "<Current Main Task Title>" --dir="<session_artifact_dir>"`
+3. **If state exists:** Proceed directly to CLI mutations, rendering, or summaries.
+4. **DO NOT run `--help` or bare CLI commands on startup:** All valid subcommands and parameters are defined below.
+
 ### Mode A: In-Session CLI Mutation (Default `O(1)`)
 Run the Dart CLI tool via `run_command` (`dart run skills/sidequest/bin/sidequest.dart <cmd> --dir="<session_artifact_dir>"`):
 - `init "Quest Title"`: Initialize session map.
@@ -65,6 +73,7 @@ Run the Dart CLI tool via `run_command` (`dart run skills/sidequest/bin/sideques
 - `complete <id>`: Mark item done (auto-updates `lastCompletionOrder`, sets `[#N ⭐]`, emits `sidequest.md`).
 - `vcs <quest_id> --stage=dirty|local_commit|uploaded|merged|clean [--branch=B] [--files=F]`: Update VCS state.
 - `batch '<json_payload>'`: Perform multiple mutations in 1 turn.
+- `help`, `--help`, `-h`: Print CLI subcommand catalog.
 
 **User Output:** Output a brief, punchy chat summary covering active `⚔️ Main Quest`, current `🛡️ Sub-Quest`, VCS status, and recommended next step.
 
