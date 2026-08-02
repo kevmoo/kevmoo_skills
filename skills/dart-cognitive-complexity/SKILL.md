@@ -1,7 +1,7 @@
 ---
 name: dart-cognitive-complexity
 description: |-
-  Evaluates and reduces Cognitive Complexity in Dart and Flutter code using concrete mathematical scoring rules, exhaustive pattern matching, guard clauses, and method decomposition. Use when reviewing codebase readability, refactoring convoluted methods, or analyzing structural code health.
+  Evaluates and reduces Cognitive Complexity in Dart and Flutter code using concrete mathematical scoring rules, exhaustive pattern matching, guard clauses, and method decomposition. Use when reviewing codebase readability, refactoring convoluted methods, or analyzing structural code health. Don't use for general code formatting, simple syntactic lints, or non-Dart/Flutter repositories.
 license: Apache-2.0
 key_features:
   - Cognitive complexity scoring
@@ -18,6 +18,19 @@ Specifically, target methods and classes matching these indicators:
 *   **Convoluted Conditional Trees**: Functions employing verbose `if-else if-else` chains instead of modern Dart 3 exhaustive pattern matching or table-driven switches.
 *   **Monolithic Method Bodies**: Functions scoring **> 15 cognitive complexity points** (or **> 40 points** for unit test methods).
 *   **God Classes**: Logic classes exceeding **150 lines of non-comment, non-import code** (excluding declarative Flutter `build` methods).
+
+### Discovery Commands (Targeting Hot-Spots)
+Run these read-only inspection commands to isolate complex control flows and deep structural indentation across Dart source files before initiating deep scoring ledgers:
+
+```bash
+# Locate functions with deeply nested conditionals (4+ levels of indentation on flow-breaking statements)
+grep -rnE '^\s{8,}(if|for|while|switch)\s*\(' lib/
+
+# Locate verbose if-else ladders ripe for Dart 3 switch expression refactoring
+grep -rnE '^\s*\} else if \(' lib/
+```
+
+---
 
 ## 2. Algorithmic Scoring Rules for Dart
 
