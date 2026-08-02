@@ -41,6 +41,12 @@ Whenever a flow-breaking structure (from Rule 2) is nested inside another struct
 *   `for` loop nested inside that `if` ($D=1$): $+1$ base $+ 1$ depth $= \mathbf{+2 \text{ points}}$
 *   Inner `if` inside the `for` ($D=2$): $+1$ base $+ 2$ depth $= \mathbf{+3 \text{ points}}$
 
+### Execution Ergonomics: Adaptive Delegation (Token Protection)
+Line-by-line cognitive complexity arithmetic consumes significant token bandwidth and generates verbose reasoning ledgers. To protect the primary conversation window from token bloat, apply an **Adaptive Delegation Strategy**:
+*   **Subagent by Default (Files, Libraries, PRs)**: When evaluating entire files, directories, or multi-class architectures, **must invoke a read-only subagent** (`Complexity Auditor`) to handle the file reads and scoring calculations. Instruct the subagent to return *only* an aggregated scoreboard listing methods that breach complexity thresholds, along with their exact line ranges and failing control constructs.
+*   **Inline Computation (Micro-Scope)**: Calculate complexity scores directly in the primary context window solely when inspecting tiny code snippets ($< 50$ lines) pasted directly in chat or during immediate post-refactoring verification of an individual modified method block.
+*   **Immutability Guardrail**: Subagent complexity evaluators must operate strictly in read-only mode to prevent unintended workspace mutations during audit sweeps.
+
 ---
 
 ## 3. Actionable Thresholds & Calibration
