@@ -1,19 +1,18 @@
 ---
 name: new-worktree
-description: |-
-  Creates and initializes a new Git worktree using specialized sibling location
-  and naming rules. (Triggers on "/new-worktree")
+description: >-
+  Creates and initializes a new Git worktree as a sibling directory with automated
+  branching and naming rules based on the latest remote default branch. Use when
+  invoking /new-worktree or requesting a new Git worktree for parallel development,
+  feature work, or bug fixes in external repositories under ~/github. Don't use for
+  the Dart SDK (~/github/dart-sdk), non-Git repositories, or repositories outside
+  ~/github.
 key_features:
-  - Git worktree setup
+  - Git worktree setup off latest origin/main or origin/master
   - Sibling directory placement
   - Hard boundary checks for non-Git, outside ~/github, and Dart SDK
   - Automated branch and folder naming
 ---
-
-## When to use this skill
-
-Activate this skill when the user invokes `/new-worktree` or requests creating a
-new Git worktree for parallel development, bug fixes, or new features.
 
 ## Pre-Flight & Hard Boundaries
 
@@ -28,13 +27,16 @@ against the following boundaries:
    - Repositories must reside under `~/github` (arbitrarily deep, such as
      `~/github/kevmoo/kevmoo_skills` or `~/github/repo`).
    - **Hard Block**: If the repository is located anywhere else, stop and issue
-     a warning asking for explicit human confirmation before proceeding.
+     a warning asking for explicit human confirmation before proceeding. This
+     prevents mutating internal corporate repositories or bare-repo dotfiles.
 3. **Dart SDK Exception**:
    - Check if the repository maps to the Dart SDK
      (`https://github.com/dart-lang/sdk`, e.g., located at `~/github/dart-sdk`).
    - **Hard Block**: If operating in the Dart SDK repository, stop immediately
      and ask if the user wants to use their specialized Dart SDK flow instead
-     (e.g., `dart-sdk-bootstrap`). Do not proceed without clarification.
+     (e.g., `dart-sdk-bootstrap`). Do not proceed without clarification. The Dart
+     SDK relies on specialized toolchains, `gclient` checkouts, and dedicated
+     bootstrap workflows that standard Git worktree operations break.
 
 ## Location & Naming Conventions
 
@@ -50,7 +52,7 @@ When creating a worktree, observe strict placement and naming rules:
 ### Examples
 
 - In `~/github/flutter`, invoking `/new-worktree to fix flutter issue #12345`:
-  - Creates branch: `issue-12345` (or similar clean identifier based on request)
+  - Creates branch: `issue-12345`
   - Creates worktree at: `~/github/_flutter-issue-12345`
 - In `~/github/kevmoo/kevmoo_skills`, invoking `/new-worktree add lint check`:
   - Creates branch: `add-lint-check`
@@ -58,10 +60,19 @@ When creating a worktree, observe strict placement and naming rules:
 
 ## Execution Steps
 
-1. Verify pre-flight boundaries and git cleanliness.
-2. Formulate the recommended target branch name and sibling directory path.
-3. Execute the worktree creation command:
+1. **Verify Pre-Flight Boundaries**: Confirm location under `~/github`, confirm
+   Git repository status, and ensure the repo is not the Dart SDK. Do not require
+   a clean working directory; worktrees allow branching safely from a dirty tree.
+2. **Fetch Latest Remote State**: Run `git fetch origin` to ensure local tracking
+   branches are up to date. Always base new branches on the latest public default
+   branch (`origin/main`, `origin/master`, or `origin/HEAD`).
+3. **Formulate Target Names**: Determine `{branch_name}` and sibling directory
+   path `{sibling_worktree_path}` based on naming rules.
+4. **Execute Worktree Creation**:
    ```bash
-   git worktree add -b <branch-name> <sibling-worktree-path>
+   git worktree add -b {branch_name} {sibling_worktree_path} origin/main
    ```
-4. Output a clickable link to the newly initialized worktree directory in chat.
+   *(Substitute `origin/master` or `origin/HEAD` if appropriate for the repo).*
+5. **Output Clickable Link**: Provide the user with a clickable link to the new
+   worktree using the precise scheme `[link text](file:///absolute/path/to/worktree)`.
+   Never wrap link text or syntax in backticks.
