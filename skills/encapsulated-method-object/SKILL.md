@@ -1,7 +1,7 @@
 ---
 name: encapsulated-method-object
 description: |-
-  Apply the "Encapsulated Method Object" refactoring pattern to simplify functions with deeply nested scopes, bloated closures, and heavy shared local state.
+  Apply the "Encapsulated Method Object" refactoring pattern to simplify functions with deeply nested scopes, bloated closures, and heavy shared local state. Don't use for simple sequential functions, pure stateless transformations, or straightforward refactorings where extracting standard private helper methods suffices.
 license: Apache-2.0
 key_features:
   - Method Object extraction
@@ -23,6 +23,24 @@ functions matching these criteria:
     is difficult to unit test in isolation, or has high cyclomatic complexity.
 *   **Parameter Bloat**: If you try to extract local functions to separate
     methods, you must pass large amounts of state as parameters.
+
+### When NOT to use (Overuse Guardrails)
+
+Do NOT apply Method Object extraction when any of the following
+contraindications exist:
+
+*   **Simpler Refactoring Preference**: Rely on standard private helper methods
+    when state can be cleanly passed via parameters without bloating method
+    signatures or duplicating code.
+*   **Stateless & Sequential Logic**: Never convert pure linear pipelines,
+    simple scripts, or stateless transformations into runner classes.
+    Encapsulation resolves *shared mutable state* and *nested scope bloat*, not
+    line length.
+*   **Over-engineering Prevention**: Avoid introducing runner classes if the
+    target function does not exhibit dense inner closure capturing. The
+    cognitive and structural overhead of class boilerplate (private classes,
+    constructors, explicit state fields) must be justified by significantly
+    reducing scope complexity.
 
 ### Core Concepts
 
