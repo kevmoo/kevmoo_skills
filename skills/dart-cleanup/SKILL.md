@@ -42,31 +42,31 @@ If a target `SKILL.md` is selected but missing from the local filesystem, output
 
 ### A. Refactoring & Code Quality
 * **`dart-cognitive-complexity`**: Reduces cognitive complexity, nested loops, and deep conditionals via pattern matching & guard clauses.
-  * *Path*: [SKILL.md](file:///usr/local/google/home/kevmoo/github/kevmoo/kevmoo_skills/skills/dart-cognitive-complexity/SKILL.md)
+  * *Path*: [SKILL.md](file://~/github/kevmoo/kevmoo_skills/skills/dart-cognitive-complexity/SKILL.md)
 * **`encapsulated-method-object`**: Refactors scope-heavy functions, bloated closures, and shared local state into encapsulated helper objects.
-  * *Path*: [SKILL.md](file:///usr/local/google/home/kevmoo/github/kevmoo/kevmoo_skills/skills/encapsulated-method-object/SKILL.md)
+  * *Path*: [SKILL.md](file://~/github/kevmoo/kevmoo_skills/skills/encapsulated-method-object/SKILL.md)
 * **`dart-build-cli-app`**: CLI entrypoint structure, argument parsing, cross-platform scripts, exit codes.
-  * *Path*: [SKILL.md](file:///usr/local/google/home/kevmoo/.agents/skills/dart-build-cli-app/SKILL.md)
+  * *Path*: [SKILL.md](file://~/.agents/skills/dart-build-cli-app/SKILL.md)
 
 ### B. Language Modernization & Formatting
 * **`dart-best-practices`**: Effective Dart guidelines, class design, null safety, and general style.
-  * *Path*: [SKILL.md](file:///usr/local/google/home/kevmoo/github/kevmoo/dash_skills/skills/dart-best-practices/SKILL.md)
+  * *Path*: [SKILL.md](file://~/github/kevmoo/dash_skills/skills/dart-best-practices/SKILL.md)
 * **`dart-modern-features`**: Records, pattern matching, switch expressions, extension types, class modifiers.
-  * *Path*: [SKILL.md](file:///usr/local/google/home/kevmoo/github/kevmoo/dash_skills/skills/dart-modern-features/SKILL.md)
+  * *Path*: [SKILL.md](file://~/github/kevmoo/dash_skills/skills/dart-modern-features/SKILL.md)
 * **`dart-multiline-strings`**: Converts consecutive print statements & string concatenations into triple-quoted strings.
-  * *Path*: [SKILL.md](file:///usr/local/google/home/kevmoo/github/kevmoo/dash_skills/skills/dart-multiline-strings/SKILL.md)
+  * *Path*: [SKILL.md](file://~/github/kevmoo/dash_skills/skills/dart-multiline-strings/SKILL.md)
 * **`dart-long-lines`**: Formats code to adhere to the 80-column line limit (`lines_longer_than_80_chars`).
-  * *Path*: [SKILL.md](file:///usr/local/google/home/kevmoo/github/kevmoo/dash_skills/skills/dart-long-lines/SKILL.md)
+  * *Path*: [SKILL.md](file://~/github/kevmoo/dash_skills/skills/dart-long-lines/SKILL.md)
 
 ### C. Testing & Assertions
 * **`dart-migrate-to-checks-package`**: Converts legacy `expect(a, equals(b))` matchers to modern `package:checks` syntax (`check(a).equals(b)`).
-  * *Path*: [SKILL.md](file:///usr/local/google/home/kevmoo/.agents/skills/dart-migrate-to-checks-package/SKILL.md)
+  * *Path*: [SKILL.md](file://~/.agents/skills/dart-migrate-to-checks-package/SKILL.md)
 * **`dart-use-pattern-matching`**: Refactors complex conditionals and destructuring to idiomatic Dart 3 pattern matching.
-  * *Path*: [SKILL.md](file:///usr/local/google/home/kevmoo/.agents/skills/dart-use-pattern-matching/SKILL.md)
+  * *Path*: [SKILL.md](file://~/.agents/skills/dart-use-pattern-matching/SKILL.md)
 * **`dart-test-fundamentals`**: Core `package:test` practices, grouping, `setUp`/`tearDown` lifecycles, and `dart_test.yaml`.
-  * *Path*: [SKILL.md](file:///usr/local/google/home/kevmoo/github/kevmoo/dash_skills/skills/dart-test-fundamentals/SKILL.md)
+  * *Path*: [SKILL.md](file://~/github/kevmoo/dash_skills/skills/dart-test-fundamentals/SKILL.md)
 * **`dart-matcher-best-practices`**: Best practices for legacy `package:matcher` assertions.
-  * *Path*: [SKILL.md](file:///usr/local/google/home/kevmoo/github/kevmoo/dash_skills/skills/dart-matcher-best-practices/SKILL.md)
+  * *Path*: [SKILL.md](file://~/github/kevmoo/dash_skills/skills/dart-matcher-best-practices/SKILL.md)
 * **`dart-collect-coverage`**: Collecting coverage using `package:coverage` and creating LCOV reports.
-  * *Path*: [SKILL.md](file:///usr/local/google/home/kevmoo/.agents/skills/dart-collect-coverage/SKILL.md)
+  * *Path*: [SKILL.md](file://~/.agents/skills/dart-collect-coverage/SKILL.md)
 
