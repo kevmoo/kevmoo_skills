@@ -1,9 +1,9 @@
 ---
-name: dart-toolkit
+name: dart-cleanup
 description: Orchestrates specialized Dart refactoring, code quality, testing, and modern language features on demand. Use when cleaning up, modernizing, refactoring, or optimizing Dart code.
 ---
 
-# 🎯 Dart Toolkit & Refactoring Router
+# 🎯 Dart Cleanup & Refactoring Router
 
 Orchestrates specialized Dart workflows from local GitHub checkouts without pre-loading heavy individual skills into static prompt memory.
 
