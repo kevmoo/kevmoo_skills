@@ -11,17 +11,29 @@ Orchestrates specialized Dart workflows from local GitHub checkouts without pre-
 
 ## 🛠️ Operating Protocol
 
-### 1. Invocation with Arguments (`/dart-toolkit <args...>` or prompt context)
-When invoked with specific text (e.g. `convert expect matchers to checks`, `reduce cognitive complexity`, `convert prints to multiline strings`):
+### 1. Intent Evaluation & Confidence Matching (Strict Single-Skill Target)
 
-1. **Evaluate Intent**: Match the requested transformation against the [Skill Catalog](#-skill-catalog) below.
-2. **Locate Target Skill**: Check for the target `SKILL.md` at its candidate local path.
-3. **Missing Checkout Safety Net**: If the file does not exist at `~/github/`, stop and output:
-   > ⚠️ **Missing local checkout**: Target skill `<skill-name>` was not found at `~/github/...`. Please ensure `https://github.com/<org>/<repo>` is cloned into `~/github/`.
-4. **Hydration & Execution**: If present, call `view_file` on the target `SKILL.md`, hydrate its untruncated instructions into active context, and execute the refactoring.
+When invoked with text (e.g. `/dart-cleanup convert expect matchers to checks`), evaluate the input against the [Skill Catalog](#-skill-catalog) using this 3-tier confidence decision tree:
 
-### 2. Bare Invocation (`/dart-toolkit`)
-When invoked with no arguments, display the categorized menu below so the user can choose or inspect individual skills.
+* **Tier 1: Unambiguous Clear Match (High Confidence / 90%+ sure)**
+  * Exactly 1 skill in the catalog clearly maps to the requested transformation.
+  * *Action*:
+    1. Check for the target `SKILL.md` at its candidate path in `~/github/`.
+    2. If missing, output the [Missing Checkout Safety Net](#missing-checkout-safety-net).
+    3. If present, call `view_file` on the target `SKILL.md`, hydrate its untruncated instructions into active context, and execute the refactoring immediately.
+* **Tier 2: Uncertain / Close Match (Medium Confidence)**
+  * A skill seems close or relevant, but there is ambiguity.
+  * *Action*: Stop and ask the user for confirmation before hydrating:
+    > *"I think you might mean **`<skill-name>`** ([`SKILL.md`](file:///path/to/SKILL.md)). Would you like me to load and run this workflow?"*
+* **Tier 3: No Clear Match or Bare Invocation (Low Confidence / Empty Input)**
+  * No skill matches the prompt, or `/dart-cleanup` was invoked with no arguments.
+  * *Action*: Output:
+    > *"I couldn't find an unambiguous skill match for your request. Here is the catalog of available specialized Dart skills:"*
+    Render the categorized [Skill Catalog](#-skill-catalog) with clickable `file://` links so the user can choose.
+
+### 2. Missing Checkout Safety Net
+If a target `SKILL.md` is selected but missing from the local filesystem, output:
+> ⚠️ **Missing local checkout**: Target skill `<skill-name>` was not found at `~/github/...`. Please ensure `https://github.com/<org>/<repo>` is cloned into `~/github/`.
 
 ---
 
