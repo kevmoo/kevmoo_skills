@@ -32,15 +32,14 @@ contraindications exist:
 *   **Simpler Refactoring Preference**: Rely on standard private helper methods
     when state can be cleanly passed via parameters without bloating method
     signatures or duplicating code.
-*   **Stateless & Sequential Logic**: Never convert pure linear pipelines,
-    simple scripts, or stateless transformations into runner classes.
-    Encapsulation resolves *shared mutable state* and *nested scope bloat*, not
-    line length.
-*   **Over-engineering Prevention**: Avoid introducing runner classes if the
-    target function does not exhibit dense inner closure capturing. The
-    cognitive and structural overhead of class boilerplate (private classes,
-    constructors, explicit state fields) must be justified by significantly
-    reducing scope complexity.
+*   **Sequential Pipelines & Transformations**: Never convert pure linear pipelines,
+    simple scripts, or validation routines into runner classes. State in these
+    should be passed strictly via arguments and returned via Dart 3 records or
+    `Result` classes. Encapsulation resolves *shared mutable state* and *nested scope bloat*, NOT line length.
+*   **The Trampoline Heuristic (Over-engineering)**: Avoid introducing runner classes if the
+    target function does not exhibit dense inner closure capturing. Method Objects are reserved
+    exclusively for deep closures where standard method extraction results in heavy "data trampolining"
+    (passing the same 3+ variables through multiple private helpers).
 
 ### Core Concepts
 
@@ -135,7 +134,7 @@ Result processOrder(Order order, User user, PaymentDetails payment) {
 
   validate();
   charge();
-  
+
   return Result(success: true, logs: auditLogs);
 }
 ```
@@ -151,7 +150,7 @@ class _ProcessOrderRunner {
   final Order _order;
   final User _user;
   final PaymentDetails _payment;
-  
+
   // Local variables promoted to private instance fields
   bool _isValidated = false;
   final List<String> _auditLogs = [];
@@ -315,6 +314,18 @@ To verify safe, high-fidelity operations, always obey the following guardrails:
     the state of a single invocation. Instance properties are transient state.
     Do NOT store the runner instance long-term or call `run()` more than
     once on the same instance.
+*   **Refined `late final` Guardrail**: Ban uninitialized `late final` fields for
+    intermediate state dependencies. Only permit `late final` fields for asynchronous
+    configuration or dependencies initialized exclusively and sequentially at the very
+    start of the single-use `run()` method.
+*   **Command-Query Separation**: Require lookup, search, and resolver methods on runner
+    classes to be pure and side-effect free. State mutations must occur only in the
+    orchestrator execution methods upon confirmed resolution success.
+*   **Testability Demotion**: If a purely computational or parsing subroutine inside the
+    method object is complex enough to require dedicated unit tests, it **must not** live
+    inside the private runner class. It must be extracted entirely into a top-level function
+    or public utility class (e.g., `IsoDateValidator`), since private classes (`_Runner`)
+    are inaccessible to external test files.
 *   **Constructor Purity**: Constructors should only map inputs and perform
     lightweight, non-throwing field initialization. Complex logic,
     asynchronous operations, or side effects MUST live in `run()`.
