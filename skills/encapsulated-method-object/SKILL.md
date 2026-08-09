@@ -314,10 +314,7 @@ To verify safe, high-fidelity operations, always obey the following guardrails:
     the state of a single invocation. Instance properties are transient state.
     Do NOT store the runner instance long-term or call `run()` more than
     once on the same instance.
-*   **Refined `late final` Guardrail**: Ban uninitialized `late final` fields for
-    intermediate state dependencies. Only permit `late final` fields for asynchronous
-    configuration or dependencies initialized exclusively and sequentially at the very
-    start of the single-use `run()` method.
+*   **Strict `late final` Ban (Constructor Unpacking)**: Never use `late final` for constructor property unpacking (e.g., extracting values from a `Command` or `ArgResults` object in the constructor body). Always use a **private generative constructor** paired with a **public factory constructor**. The factory extracts the values (e.g. `results.option('project')`) and passes them as `final` initialized values to the private generative constructor (`_Runner._({required this.project, ...})`).
 *   **Command-Query Separation**: Require lookup, search, and resolver methods on runner
     classes to be pure and side-effect free. State mutations must occur only in the
     orchestrator execution methods upon confirmed resolution success.
@@ -333,7 +330,66 @@ To verify safe, high-fidelity operations, always obey the following guardrails:
     `dart format`, pass static checks (`dart analyze`) with zero diagnostics,
     and execute all tests successfully (`dart test`).
 
-## 5. Strategies for Discovery
+## 5. Anti-Patterns & Mandatory Idioms
+
+### 🚫 Anti-Pattern: `late final` Constructor Unpacking
+When decomposing a method that receives a complex input object (like `Command` or `ArgResults`), do **NOT** reflexively mark all instance fields `late final` and unpack them in the `{ ... }` constructor body to avoid dealing with initializer lists.
+
+**❌ BANNED: `late final` with constructor body unpacking**
+```dart
+final class _ScanRunner {
+  final ScanCommand command;
+
+  late final ArgResults results;
+  late final String? project;
+  late final bool detailed;
+  late final String? target;
+
+  _ScanRunner({required this.command}) {
+    results = command.argResults!;
+    project = results.option('project');
+    detailed = results.flag('detailed');
+    target = results.option('target');
+  }
+}
+```
+
+**✅ MANDATORY: Private Generative Constructor + Factory Unpacking**
+Runner classes must use a **private generative constructor** paired with a **factory constructor**:
+```dart
+final class _ScanRunner {
+  final ArgResults results;
+  final String? project;
+  final bool detailed;
+  final String? target;
+
+  const _ScanRunner._({
+    required this.results,
+    required this.project,
+    required this.detailed,
+    required this.target,
+  });
+
+  factory _ScanRunner(ScanCommand command) {
+    final results = command.argResults!;
+    return _ScanRunner._(
+      results: results,
+      project: results.option('project'),
+      detailed: results.flag('detailed'),
+      target: results.option('target'),
+    );
+  }
+}
+```
+
+This idiom guarantees true immutability (all fields are `final` instead of `late final`), eliminating runtime `LateInitializationError` hazards, and allows for hermetic unit testability (tests can call `_ScanRunner._(...)` directly with mock primitives without constructing the full object hierarchies).
+
+### 🚫 Anti-Pattern: "Global-in-a-Box" & Parameterless Voids
+Never use a Method Object just to avoid passing arguments. A Method Object must not become a dumping ground of mutable `this.*` state.
+* **The `void` Ban**: Private methods inside your Runner class should almost never be parameterless `void` methods that silently mutate instance fields.
+* **Explicit Data Flow**: Subroutines must accept explicit parameters and return explicit values. Modifying internal state should be done explicitly (e.g. `this.currentCount = _calculateNewCount(this.currentCount);`).
+
+## 6. Strategies for Discovery
 
 Use the following techniques and tools to discover bloated closures:
 
