@@ -41,10 +41,8 @@ If a target `SKILL.md` is selected but missing from the local filesystem, output
 ## 📋 Skill Catalog & Path Priority
 
 ### A. Refactoring & Code Quality
-* **`dart-cognitive-complexity`**: Reduces cognitive complexity, nested loops, and deep conditionals via pattern matching & guard clauses.
-  * *Path*: [SKILL.md](file://~/github/kevmoo/kevmoo_skills/skills/dart-cognitive-complexity/SKILL.md)
-* **`encapsulated-method-object`**: Refactors scope-heavy functions, bloated closures, and shared local state into encapsulated helper objects.
-  * *Path*: [SKILL.md](file://~/github/kevmoo/kevmoo_skills/skills/encapsulated-method-object/SKILL.md)
+* **`dart-cognitive-complexity`**: Reduces cognitive complexity, nested loops, and deep conditionals via pattern matching & guard clauses. Includes a gated Tier 3 method-object reference for extreme cases.
+  * *Path*: [SKILL.md](file://~/github/kevmoo/cognitive_complexity.dart/skills/dart-cognitive-complexity/SKILL.md)
 * **`dart-build-cli-app`**: CLI entrypoint structure, argument parsing, cross-platform scripts, exit codes.
   * *Path*: [SKILL.md](file://~/github/dart-lang/skills/skills/dart-build-cli-app/SKILL.md)
 
