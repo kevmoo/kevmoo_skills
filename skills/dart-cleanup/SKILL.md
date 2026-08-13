@@ -2,9 +2,15 @@
 name: dart-cleanup
 description: >-
   Orchestrates specialized Dart refactoring, code quality, testing, and modern language features on demand. Use when cleaning up, modernizing, refactoring, or optimizing Dart code. Don't use for non-Dart projects or general codebase search.
+author: kevmoo
+target_environment: personal
+compatibility: "Requires local checkouts in ~/github/kevmoo and ~/github/dart-lang"
 ---
 
 # 🎯 Dart Cleanup & Refactoring Router
+
+> [!NOTE]
+> **Personal Environment Router**: This skill is optimized for `@kevmoo`'s local development environment and assumes specialized skills are checked out under `~/github/kevmoo/` and `~/github/dart-lang/`. Other users should clone the required repositories or adapt the catalog paths in [Skill Catalog](#-skill-catalog) to match their local layout.
 
 Orchestrates specialized Dart workflows from local GitHub checkouts without pre-loading heavy individual skills into static prompt memory.
 
@@ -43,6 +49,8 @@ If a target `SKILL.md` is selected but missing from the local filesystem, output
 ### A. Refactoring & Code Quality
 * **`dart-cognitive-complexity`**: Reduces cognitive complexity, nested loops, and deep conditionals via pattern matching & guard clauses. Includes a gated Tier 3 method-object reference for extreme cases.
   * *Path*: [SKILL.md](file://~/github/kevmoo/cognitive_complexity.dart/skills/dart-cognitive-complexity/SKILL.md)
+* **`deslop-duplication-audit`**: Detects, audits, and remediates structural code duplication across Dart and Flutter repositories using the standalone Deslop CLI tool and empirical test gating.
+  * *Path*: [SKILL.md](file://~/github/kevmoo/kevmoo_skills/skills/deslop-duplication-audit/SKILL.md)
 * **`dart-build-cli-app`**: CLI entrypoint structure, argument parsing, cross-platform scripts, exit codes.
   * *Path*: [SKILL.md](file://~/github/dart-lang/skills/skills/dart-build-cli-app/SKILL.md)
 
