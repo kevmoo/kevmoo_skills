@@ -1,107 +1,110 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:args/args.dart';
+
 import '../lib/deslop_report.dart';
 
-void _printUsage() {
-  print('''
-Deslop Duplication Audit Report Generator
-
-Usage:
-  dart run skills/deslop-duplication-audit/bin/deslop_report.dart [options] [target_dir]
-
-Options:
-  -C, --dir=<path>        Target repository directory to scan (defaults to current directory)
-  --report=<path>         Path to an existing report.json (skips running Deslop CLI)
-  --top=<count>           Number of top duplicate clusters to display (default: 10)
-  --min-nodes=<count>     Minimum AST subtree node count passed to Deslop (default: 30)
-  --out-dir=<path>        Custom directory to store rendered Deslop reports
-  --category=<cat>        Filter clusters by category: all, logic, data (default: all)
-  --bucket=<bucket>       Filter clusters by bucket: all, identical, nearly_identical, structural_only (default: all)
-  --no-files              Omit the per-file duplication table from output
-  --no-clusters           Omit the clusters list from output
-  --json                  Output filtered report as machine-readable JSON instead of Markdown
-  -h, --help              Show this help message
-''');
+ArgParser _buildParser() {
+  return ArgParser()
+    ..addOption('dir', abbr: 'C', help: 'Target repository directory to scan.')
+    ..addOption(
+      'report',
+      help: 'Path to an existing report.json (skips running Deslop CLI).',
+    )
+    ..addOption(
+      'top',
+      defaultsTo: '10',
+      help: 'Number of top duplicate clusters to display.',
+    )
+    ..addOption(
+      'min-nodes',
+      defaultsTo: '30',
+      help: 'Minimum AST subtree node count passed to Deslop.',
+    )
+    ..addOption(
+      'out-dir',
+      help: 'Custom directory to store rendered Deslop reports.',
+    )
+    ..addOption(
+      'category',
+      defaultsTo: 'all',
+      allowed: ['all', 'logic', 'data'],
+      help: 'Filter clusters by category.',
+    )
+    ..addOption(
+      'bucket',
+      defaultsTo: 'all',
+      allowed: [
+        'all',
+        'identical',
+        'nearly_identical',
+        'structural_only',
+        'loosely_similar',
+        'same_behavior',
+      ],
+      help: 'Filter clusters by bucket.',
+    )
+    ..addFlag(
+      'files',
+      defaultsTo: true,
+      negatable: true,
+      help: 'Include the per-file duplication table in output.',
+    )
+    ..addFlag(
+      'clusters',
+      defaultsTo: true,
+      negatable: true,
+      help: 'Include the clusters list in output.',
+    )
+    ..addFlag(
+      'json',
+      defaultsTo: false,
+      negatable: false,
+      help:
+          'Output filtered report as machine-readable JSON instead of Markdown.',
+    )
+    ..addFlag(
+      'help',
+      abbr: 'h',
+      negatable: false,
+      help: 'Show this help message.',
+    );
 }
 
 void main(List<String> args) async {
-  String targetDir = Directory.current.path;
-  String? reportJsonPath;
-  var topCount = 10;
-  var minNodes = 30;
-  String? outDir;
-  var categoryFilter = 'all';
-  var bucketFilter = 'all';
-  var includeFileTable = true;
-  var includeClusters = true;
-  var outputJson = false;
-
-  for (var i = 0; i < args.length; i++) {
-    final arg = args[i];
-    if (arg == '-h' || arg == '--help') {
-      _printUsage();
-      exit(0);
-    } else if (arg == '-C' || arg == '--dir') {
-      if (i + 1 < args.length) {
-        targetDir = args[++i];
-      } else {
-        stderr.writeln('Error: Missing value for $arg');
-        exit(1);
-      }
-    } else if (arg.startsWith('--dir=')) {
-      targetDir = arg.substring('--dir='.length);
-    } else if (arg == '--report') {
-      if (i + 1 < args.length) {
-        reportJsonPath = args[++i];
-      } else {
-        stderr.writeln('Error: Missing value for --report');
-        exit(1);
-      }
-    } else if (arg.startsWith('--report=')) {
-      reportJsonPath = arg.substring('--report='.length);
-    } else if (arg == '--top') {
-      if (i + 1 < args.length) {
-        topCount = int.tryParse(args[++i]) ?? topCount;
-      }
-    } else if (arg.startsWith('--top=')) {
-      topCount = int.tryParse(arg.substring('--top='.length)) ?? topCount;
-    } else if (arg == '--min-nodes') {
-      if (i + 1 < args.length) {
-        minNodes = int.tryParse(args[++i]) ?? minNodes;
-      }
-    } else if (arg.startsWith('--min-nodes=')) {
-      minNodes = int.tryParse(arg.substring('--min-nodes='.length)) ?? minNodes;
-    } else if (arg == '--out-dir') {
-      if (i + 1 < args.length) {
-        outDir = args[++i];
-      }
-    } else if (arg.startsWith('--out-dir=')) {
-      outDir = arg.substring('--out-dir='.length);
-    } else if (arg == '--category') {
-      if (i + 1 < args.length) {
-        categoryFilter = args[++i];
-      }
-    } else if (arg.startsWith('--category=')) {
-      categoryFilter = arg.substring('--category='.length);
-    } else if (arg == '--bucket') {
-      if (i + 1 < args.length) {
-        bucketFilter = args[++i];
-      }
-    } else if (arg.startsWith('--bucket=')) {
-      bucketFilter = arg.substring('--bucket='.length);
-    } else if (arg == '--no-files') {
-      includeFileTable = false;
-    } else if (arg == '--no-clusters') {
-      includeClusters = false;
-    } else if (arg == '--json') {
-      outputJson = true;
-    } else if (!arg.startsWith('-')) {
-      targetDir = arg;
-    } else {
-      stderr.writeln('Warning: Unrecognized option "$arg"');
-    }
+  final parser = _buildParser();
+  ArgResults results;
+  try {
+    results = parser.parse(args);
+  } on FormatException catch (e) {
+    stderr.writeln('Error: ${e.message}\n');
+    stderr.writeln(parser.usage);
+    exit(1);
   }
+
+  if (results.flag('help')) {
+    print('Deslop Duplication Audit Report Generator\n');
+    print(
+      'Usage: dart run skills/deslop-duplication-audit/bin/deslop_report.dart [options] [target_dir]\n',
+    );
+    print(parser.usage);
+    exit(0);
+  }
+
+  final targetDir =
+      results.option('dir') ??
+      (results.rest.isNotEmpty ? results.rest.first : Directory.current.path);
+
+  final reportJsonPath = results.option('report');
+  final topCount = int.tryParse(results.option('top') ?? '10') ?? 10;
+  final minNodes = int.tryParse(results.option('min-nodes') ?? '30') ?? 30;
+  final outDir = results.option('out-dir');
+  final categoryFilter = results.option('category') ?? 'all';
+  final bucketFilter = results.option('bucket') ?? 'all';
+  final includeFileTable = results.flag('files');
+  final includeClusters = results.flag('clusters');
+  final outputJson = results.flag('json');
 
   try {
     DeslopReport report;
