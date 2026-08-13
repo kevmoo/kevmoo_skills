@@ -6,13 +6,14 @@ import 'dart:io';
 import 'models.dart';
 
 String _resolveAbsolutePath(String baseDir, String relativePath) {
-  if (relativePath.startsWith(Platform.pathSeparator)) {
-    return Uri.file(relativePath).normalizePath().toFilePath();
+  final file = File(relativePath);
+  if (file.isAbsolute) {
+    return file.absolute.path;
   }
   final combined = baseDir.endsWith(Platform.pathSeparator)
       ? '$baseDir$relativePath'
       : '$baseDir${Platform.pathSeparator}$relativePath';
-  return Uri.file(combined).normalizePath().toFilePath();
+  return File(combined).absolute.path;
 }
 
 /// Formats a [DeslopReport] into a high-density, token-efficient Markdown document.
@@ -76,10 +77,7 @@ String formatDeslopMarkdown({
   buffer.writeln('* **Total Clusters**: $totalClusters$breakdownText');
 
   if (htmlReportPath != null && File(htmlReportPath).existsSync()) {
-    final absHtmlPath = Uri.file(
-      File(htmlReportPath).absolute.path,
-    ).normalizePath().toFilePath();
-    final htmlUri = 'file://$absHtmlPath';
+    final htmlUri = Uri.file(File(htmlReportPath).absolute.path).toString();
     buffer.writeln('* **Interactive HTML Report**: [report.html]($htmlUri)');
   }
 
@@ -87,7 +85,7 @@ String formatDeslopMarkdown({
 
   // 2. Top Duplication Clusters
   if (includeClusters) {
-    var filteredClusters = report.clusters;
+    var filteredClusters = List<DeslopCluster>.of(report.clusters);
 
     if (categoryFilter != 'all') {
       filteredClusters = filteredClusters
@@ -134,7 +132,7 @@ String formatDeslopMarkdown({
           final absFilePath = _resolveAbsolutePath(absTargetDir, relPath);
           final lineSuffix = occ.lineSpan;
           final linkText = '$relPath:$lineSuffix';
-          final targetUrl = 'file://$absFilePath#$lineSuffix';
+          final targetUrl = '${Uri.file(absFilePath)}#$lineSuffix';
           buffer.writeln('* [$linkText]($targetUrl)');
         }
         buffer.writeln();
@@ -169,7 +167,7 @@ String formatDeslopMarkdown({
         final relPath = file.path;
         final absFilePath = _resolveAbsolutePath(absTargetDir, relPath);
         final linkText = relPath;
-        final targetUrl = 'file://$absFilePath';
+        final targetUrl = Uri.file(absFilePath).toString();
         final filePercent = file.duplicationPercent.toStringAsFixed(1);
 
         buffer.writeln(
