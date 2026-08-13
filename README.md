@@ -1,8 +1,8 @@
 <a href="https://agentskills.io"><img src="https://img.shields.io/badge/Compliance-Standard%20Agent%20Skills-brightgreen.svg" alt="Standard Agent Skills"></a>
 
-
-This is my personal repository for specialized **Agent Skills**. These skills provide
-procedural, actionable instructions to AI assistants for specific domains or tasks.
+This is my personal repository for specialized **Agent Skills**. These skills
+provide procedural, actionable instructions to AI assistants for specific
+domains or tasks.
 
 ## Skills Inventory
 
@@ -29,4 +29,3 @@ npx skills add kevmoo/kevmoo_skills --skill <skill-name>
 | **[sem-semantic-diff](skills/sem-semantic-diff/SKILL.md)** | Use the `sem` CLI to view semantic codebase diffs, evaluate dependency graphs, perform impact analysis, and investigate code history without formatting noise. Use instead of standard git diff/log when analyzing structural code changes. | Semantic diffs, impact analysis, dependency graphs |
 | **[sidequest](skills/sidequest/SKILL.md)** | Synthesizes conversation history and active tasks into a visual hierarchy map (`sidequest.md`) backed by a deterministic JSON state file (`sidequest.json`). Supports multiple sequential and concurrent main quests, sub-quests, and side-quests with automatic hierarchical numbering and completion sequencing. Use when the user invokes `/sidequest`, asks where we are, what we were doing, or what's on our stack, or when the conversation branches across multiple topics, blockers, or digressions. Don't use for simple one-off questions. | Conversation mapping, Task hierarchy & numbering, VCS state tracking, Subagent history audits |
 <!-- SKILLS_LIST_END -->
-
