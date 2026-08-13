@@ -127,6 +127,36 @@ class SidequestCliRunner {
     }
   }
 
+  int _nextSuffixNumber(Iterable<String> ids) =>
+      ids.map((id) => int.tryParse(id.split('.').last) ?? 0).fold(0, max) + 1;
+
+  Future<int> _handleTaskItem({
+    required List<String> args,
+    required TaskType type,
+    required String commandName,
+    required String label,
+    required TaskStatus defaultStatus,
+  }) async {
+    if (args.length < 3 || args[0] != 'add') {
+      stderr.writeln('Usage: $commandName add <subquest-id> <title>');
+      return 1;
+    }
+    final subId = args[1];
+    final title = args.sublist(2).join(' ');
+    final data = await _requireData();
+    final sub = _findSubQuest(data, subId);
+    if (sub == null) return 1;
+
+    final nextItemNumber = _nextSuffixNumber(sub.items.map((item) => item.id));
+    final itemId = '$subId.$nextItemNumber';
+    sub.items.add(
+      TaskItem(id: itemId, type: type, title: title, status: defaultStatus),
+    );
+    await store.save(data);
+    stdout.writeln('✔ Added $label $itemId: "$title"');
+    return 0;
+  }
+
   Future<int> _handleSubQuest(List<String> args) async {
     if (args.length < 3 || args[0] != 'add') {
       stderr.writeln('Usage: subquest add <quest-id> <title>');
@@ -138,11 +168,7 @@ class SidequestCliRunner {
     final quest = _findQuest(data, questId);
     if (quest == null) return 1;
 
-    final nextSubNumber =
-        quest.subQuests
-            .map((sq) => int.tryParse(sq.id.split('.').last) ?? 0)
-            .fold(0, max) +
-        1;
+    final nextSubNumber = _nextSuffixNumber(quest.subQuests.map((sq) => sq.id));
     final subId = '$questId.$nextSubNumber';
     quest.subQuests.add(
       SubQuest(id: subId, title: title, status: TaskStatus.inProgress),
@@ -152,65 +178,21 @@ class SidequestCliRunner {
     return 0;
   }
 
-  Future<int> _handleStep(List<String> args) async {
-    if (args.length < 3 || args[0] != 'add') {
-      stderr.writeln('Usage: step add <subquest-id> <title>');
-      return 1;
-    }
-    final subId = args[1];
-    final title = args.sublist(2).join(' ');
-    final data = await _requireData();
-    final sub = _findSubQuest(data, subId);
-    if (sub == null) return 1;
+  Future<int> _handleStep(List<String> args) => _handleTaskItem(
+    args: args,
+    type: TaskType.step,
+    commandName: 'step',
+    label: 'Step',
+    defaultStatus: TaskStatus.pending,
+  );
 
-    final nextItemNumber =
-        sub.items
-            .map((item) => int.tryParse(item.id.split('.').last) ?? 0)
-            .fold(0, max) +
-        1;
-    final itemId = '$subId.$nextItemNumber';
-    sub.items.add(
-      TaskItem(
-        id: itemId,
-        type: TaskType.step,
-        title: title,
-        status: TaskStatus.pending,
-      ),
-    );
-    await store.save(data);
-    stdout.writeln('✔ Added Step $itemId: "$title"');
-    return 0;
-  }
-
-  Future<int> _handleBlocker(List<String> args) async {
-    if (args.length < 3 || args[0] != 'add') {
-      stderr.writeln('Usage: blocker add <subquest-id> <title>');
-      return 1;
-    }
-    final subId = args[1];
-    final title = args.sublist(2).join(' ');
-    final data = await _requireData();
-    final sub = _findSubQuest(data, subId);
-    if (sub == null) return 1;
-
-    final nextItemNumber =
-        sub.items
-            .map((item) => int.tryParse(item.id.split('.').last) ?? 0)
-            .fold(0, max) +
-        1;
-    final itemId = '$subId.$nextItemNumber';
-    sub.items.add(
-      TaskItem(
-        id: itemId,
-        type: TaskType.blocker,
-        title: title,
-        status: TaskStatus.inProgress,
-      ),
-    );
-    await store.save(data);
-    stdout.writeln('✔ Added Blocker $itemId: "$title"');
-    return 0;
-  }
+  Future<int> _handleBlocker(List<String> args) => _handleTaskItem(
+    args: args,
+    type: TaskType.blocker,
+    commandName: 'blocker',
+    label: 'Blocker',
+    defaultStatus: TaskStatus.inProgress,
+  );
 
   Future<int> _handleSideQuest(List<String> args) async {
     if (args.isEmpty || args[0] != 'add') {
@@ -532,11 +514,9 @@ class SidequestCliRunner {
       final qId = map['quest'] as String? ?? '1';
       final quest = _findQuest(data, qId);
       if (quest != null) {
-        final nextSubNumber =
-            quest.subQuests
-                .map((sq) => int.tryParse(sq.id.split('.').last) ?? 0)
-                .fold(0, max) +
-            1;
+        final nextSubNumber = _nextSuffixNumber(
+          quest.subQuests.map((sq) => sq.id),
+        );
         final subId = '$qId.$nextSubNumber';
         quest.subQuests.add(
           SubQuest(
