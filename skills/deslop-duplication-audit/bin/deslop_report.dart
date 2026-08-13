@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:args/args.dart';
 
-import '../lib/deslop_report.dart';
+import 'package:deslop_duplication_audit/deslop_report.dart';
 
 ArgParser _buildParser() {
   return ArgParser()
