@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:args/args.dart';
+
 final _digitsOnly = RegExp(r'^\d+$');
 final _prUrlRegExp = RegExp(r'github\.com/([^/]+)/([^/]+)/pull/(\d+)');
 
@@ -53,36 +55,50 @@ Future<String> runCommand(
   return result.stdout.toString();
 }
 
+ArgParser buildPrContextArgParser() {
+  return ArgParser()
+    ..addOption('pr', abbr: 'p', help: 'PR number or GitHub PR URL')
+    ..addOption(
+      'dir',
+      abbr: 'C',
+      help: 'Path to target git repository directory',
+    );
+}
+
 /// Parses CLI arguments and resolves the [PrContext] for git operations.
 Future<PrContext> resolvePrContext(
   List<String> args, {
   required Never Function(String message) onFail,
   CommandRunner runCommand = runCommand,
 }) async {
-  String? prInput;
-  String? targetDir;
-
-  for (var i = 0; i < args.length; i++) {
-    final arg = args[i];
-    if (arg == '--pr' || arg == '-p') {
-      if (i + 1 < args.length) {
-        prInput = args[++i];
-      } else {
-        onFail('Missing value for option "$arg"');
-      }
-    } else if (arg == '--dir' || arg == '-C') {
-      if (i + 1 < args.length) {
-        targetDir = args[++i];
-      } else {
-        onFail('Missing value for option "$arg"');
-      }
-    } else if (arg.startsWith('-')) {
-      onFail('Unknown option "$arg"');
-    } else {
-      prInput = arg;
-    }
+  final parser = buildPrContextArgParser();
+  ArgResults results;
+  try {
+    results = parser.parse(args);
+  } on FormatException catch (e) {
+    onFail(e.message);
   }
 
+  final targetDir = results.option('dir');
+  final prInput =
+      results.option('pr') ??
+      (results.rest.isNotEmpty ? results.rest.first : null);
+
+  return resolvePrContextFromArgs(
+    prInput: prInput,
+    targetDir: targetDir,
+    onFail: onFail,
+    runCommand: runCommand,
+  );
+}
+
+/// Resolves [PrContext] from pre-parsed CLI inputs.
+Future<PrContext> resolvePrContextFromArgs({
+  String? prInput,
+  String? targetDir,
+  required Never Function(String message) onFail,
+  CommandRunner runCommand = runCommand,
+}) async {
   final workingDir = targetDir != null
       ? Directory(targetDir).absolute.path
       : Directory.current.absolute.path;

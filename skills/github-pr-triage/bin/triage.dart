@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:args/args.dart';
+
 import '../lib/github_cli.dart';
 
 /// Main entry point for the PR triage tool.
@@ -8,58 +10,41 @@ import '../lib/github_cli.dart';
 /// This script retrieves the status, unresolved review comments, and CI check
 /// run failures for a specific GitHub Pull Request and outputs a structured
 /// markdown triage report.
-///
-/// ### CLI Arguments:
-/// - `-p`, `--pr` (or positional): The PR number (e.g., `123`) or a GitHub PR URL
-///   (e.g., `https://github.com/owner/repo/pull/123`).
-/// - `-C`, `--dir`: Path to the target git repository directory to run git/gh against.
-///   Defaults to the current working directory.
-///
-/// ### Workflow Lifecycle:
-/// 1. **Parse Arguments**: Resolves target directory and PR input.
-/// 2. **Auto-detection**: If no PR is explicitly specified, it detects the current
-///    git branch and queries GitHub for any associated open pull request.
-/// 3. **Repo Verification**: If a PR URL is provided, it validates that the URL
-///    matches the local repository configured in the target directory (exits on mismatch).
-/// 4. **Details Fetching**: Retrieves PR title, state, mergeable status, etc.
-/// 5. **Branch Verification**: Warns the user/agent if the active local branch does not
-///    match the PR's source branch, suggesting how to checkout the correct branch.
-/// 6. **Unresolved Comments Fetching**: Uses a GitHub GraphQL query to extract only
-///    unresolved threads and comments.
-/// 7. **CI/CD Checks Triage**: Identifies failed status checks and uses `gh run view`
-///    to fetch logs for the failed steps (if they are GitHub Actions).
-/// 8. **Report Generation**: Consolidates the results into a markdown format printed to stdout.
-(List<String>, List<String>) _extractContextArgs(List<String> rawArgs) {
-  final contextArgs = <String>[];
-  final positionalArgs = <String>[];
-  for (var i = 0; i < rawArgs.length; i++) {
-    final arg = rawArgs[i];
-    if (arg == '--pr' || arg == '-p' || arg == '--dir' || arg == '-C') {
-      if (i + 1 < rawArgs.length) {
-        contextArgs.add(arg);
-        contextArgs.add(rawArgs[++i]);
-      } else {
-        stderr.writeln('Error: Missing value for option "$arg"');
-        exit(1);
-      }
-    } else {
-      positionalArgs.add(arg);
-    }
-  }
-  return (contextArgs, positionalArgs);
+ArgParser _buildParser() {
+  final parser = ArgParser()
+    ..addOption('pr', abbr: 'p', help: 'PR number or GitHub PR URL')
+    ..addOption(
+      'dir',
+      abbr: 'C',
+      help: 'Path to target git repository directory',
+    );
+
+  final resolveParser = ArgParser()
+    ..addOption('pr', abbr: 'p', help: 'PR number or GitHub PR URL')
+    ..addOption(
+      'dir',
+      abbr: 'C',
+      help: 'Path to target git repository directory',
+    );
+  parser.addCommand('resolve', resolveParser);
+
+  return parser;
 }
 
 void main(List<String> args) async {
+  final parser = _buildParser();
+  ArgResults results;
   try {
-    final (contextArgs, remainingArgs) = _extractContextArgs(args);
+    results = parser.parse(args);
+  } on FormatException catch (e) {
+    stderr.writeln('Error: ${e.message}');
+    exit(1);
+  }
 
-    final resolveIndex = remainingArgs.indexOf('resolve');
-    if (resolveIndex != -1) {
-      final (subContext, resolvePositional) = _extractContextArgs(
-        remainingArgs.sublist(resolveIndex + 1),
-      );
-      contextArgs.addAll(remainingArgs.sublist(0, resolveIndex));
-      contextArgs.addAll(subContext);
+  try {
+    final resolveCmd = results.command;
+    if (resolveCmd != null && resolveCmd.name == 'resolve') {
+      final resolvePositional = resolveCmd.rest;
 
       if (resolvePositional.length != 1 && resolvePositional.length != 3) {
         stderr.writeln(
@@ -87,8 +72,12 @@ void main(List<String> args) async {
         exit(1);
       }
 
-      final context = await resolvePrContext(
-        contextArgs,
+      final targetDir = resolveCmd.option('dir') ?? results.option('dir');
+      final prInput = resolveCmd.option('pr') ?? results.option('pr');
+
+      final context = await resolvePrContextFromArgs(
+        prInput: prInput,
+        targetDir: targetDir,
         onFail: (msg) {
           stderr.writeln('Error: $msg');
           exit(1);
@@ -113,8 +102,14 @@ void main(List<String> args) async {
       return;
     }
 
-    final context = await resolvePrContext(
-      args,
+    final targetDir = results.option('dir');
+    final prInput =
+        results.option('pr') ??
+        (results.rest.isNotEmpty ? results.rest.first : null);
+
+    final context = await resolvePrContextFromArgs(
+      prInput: prInput,
+      targetDir: targetDir,
       onFail: (msg) {
         stderr.writeln('Error: $msg');
         exit(1);
