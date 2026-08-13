@@ -79,7 +79,7 @@ interactive confirmation gate:
    - **Current Working Copy / Branch**: Apply changes directly in the active
      branch (e.g. `main`, `master`, or current working branch).
    - **Feature Branch**: Create a dedicated working branch (e.g.
-     `git checkout -b refactor/dedup-{topic}`).
+     `git switch -c refactor/dedup-{topic}`).
    - **Git Worktree**: Create an isolated worktree if preferred for parallel
      development (e.g. via `git worktree add` or the `new-worktree` skill if
      available).
@@ -156,4 +156,4 @@ verification:
 6. **Teardown & Cleanup:** If changes are aborted or rejected:
    - For worktrees:
      `git worktree remove --force "{worktree_path}" && git branch -D {branch_name}`.
-   - For temporary branches: `git checkout - && git branch -D {branch_name}`.
+   - For temporary branches: `git switch - && git branch -D {branch_name}`.
