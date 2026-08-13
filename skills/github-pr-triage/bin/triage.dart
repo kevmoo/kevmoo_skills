@@ -11,23 +11,8 @@ import '../lib/github_cli.dart';
 /// run failures for a specific GitHub Pull Request and outputs a structured
 /// markdown triage report.
 ArgParser _buildParser() {
-  final parser = ArgParser()
-    ..addOption('pr', abbr: 'p', help: 'PR number or GitHub PR URL')
-    ..addOption(
-      'dir',
-      abbr: 'C',
-      help: 'Path to target git repository directory',
-    );
-
-  final resolveParser = ArgParser()
-    ..addOption('pr', abbr: 'p', help: 'PR number or GitHub PR URL')
-    ..addOption(
-      'dir',
-      abbr: 'C',
-      help: 'Path to target git repository directory',
-    );
-  parser.addCommand('resolve', resolveParser);
-
+  final parser = buildPrContextArgParser();
+  parser.addCommand('resolve', buildPrContextArgParser());
   return parser;
 }
 
