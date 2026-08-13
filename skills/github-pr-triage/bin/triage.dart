@@ -29,45 +29,37 @@ import '../lib/github_cli.dart';
 /// 7. **CI/CD Checks Triage**: Identifies failed status checks and uses `gh run view`
 ///    to fetch logs for the failed steps (if they are GitHub Actions).
 /// 8. **Report Generation**: Consolidates the results into a markdown format printed to stdout.
+(List<String>, List<String>) _extractContextArgs(List<String> rawArgs) {
+  final contextArgs = <String>[];
+  final positionalArgs = <String>[];
+  for (var i = 0; i < rawArgs.length; i++) {
+    final arg = rawArgs[i];
+    if (arg == '--pr' || arg == '-p' || arg == '--dir' || arg == '-C') {
+      if (i + 1 < rawArgs.length) {
+        contextArgs.add(arg);
+        contextArgs.add(rawArgs[++i]);
+      } else {
+        stderr.writeln('Error: Missing value for option "$arg"');
+        exit(1);
+      }
+    } else {
+      positionalArgs.add(arg);
+    }
+  }
+  return (contextArgs, positionalArgs);
+}
+
 void main(List<String> args) async {
   try {
-    final contextArgs = <String>[];
-    final remainingArgs = <String>[];
-    for (var i = 0; i < args.length; i++) {
-      final arg = args[i];
-      if (arg == '--pr' || arg == '-p' || arg == '--dir' || arg == '-C') {
-        if (i + 1 < args.length) {
-          contextArgs.add(arg);
-          contextArgs.add(args[++i]);
-        } else {
-          stderr.writeln('Error: Missing value for option "$arg"');
-          exit(1);
-        }
-      } else {
-        remainingArgs.add(arg);
-      }
-    }
+    final (contextArgs, remainingArgs) = _extractContextArgs(args);
 
     final resolveIndex = remainingArgs.indexOf('resolve');
     if (resolveIndex != -1) {
+      final (subContext, resolvePositional) = _extractContextArgs(
+        remainingArgs.sublist(resolveIndex + 1),
+      );
       contextArgs.addAll(remainingArgs.sublist(0, resolveIndex));
-      final subArgs = remainingArgs.sublist(resolveIndex + 1);
-      final resolvePositional = <String>[];
-
-      for (var i = 0; i < subArgs.length; i++) {
-        final arg = subArgs[i];
-        if (arg == '--pr' || arg == '-p' || arg == '--dir' || arg == '-C') {
-          if (i + 1 < subArgs.length) {
-            contextArgs.add(arg);
-            contextArgs.add(subArgs[++i]);
-          } else {
-            stderr.writeln('Error: Missing value for option "$arg"');
-            exit(1);
-          }
-        } else {
-          resolvePositional.add(arg);
-        }
-      }
+      contextArgs.addAll(subContext);
 
       if (resolvePositional.length != 1 && resolvePositional.length != 3) {
         stderr.writeln(
