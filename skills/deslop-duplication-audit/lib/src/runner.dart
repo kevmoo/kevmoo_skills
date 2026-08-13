@@ -4,6 +4,7 @@ library;
 import 'dart:convert';
 import 'dart:io';
 
+import 'diff_parser.dart';
 import 'models.dart';
 
 /// Result from executing a Deslop CLI scan.
@@ -165,4 +166,57 @@ Future<DeslopReport> loadReportJson(String filePath) async {
     throw const FormatException('Expected JSON object root in Deslop report');
   }
   return DeslopReport.fromJson(parsed);
+}
+
+/// Resolves changed line ranges from a diff command, diff file, literal diff string, or list of touched files.
+Future<Map<String, List<LineSpan>>> resolveDiffRanges({
+  String? diffCmd,
+  String? diffFilePath,
+  String? diffString,
+  String? touchedFilesString,
+  String? workingDir,
+}) async {
+  if (diffCmd != null && diffCmd.trim().isNotEmpty) {
+    final parts = diffCmd.trim().split(RegExp(r'\s+'));
+    final exe = parts.first;
+    final cmdArgs = parts.sublist(1);
+    final res = await Process.run(
+      exe,
+      cmdArgs,
+      workingDirectory: workingDir,
+      runInShell: true,
+    );
+    if (res.exitCode != 0) {
+      throw ProcessException(
+        exe,
+        cmdArgs,
+        'diff command failed with exit code ${res.exitCode}:\n${res.stderr}',
+        res.exitCode,
+      );
+    }
+    return parseUnifiedDiff(res.stdout as String);
+  }
+
+  if (diffFilePath != null && diffFilePath.trim().isNotEmpty) {
+    final file = File(diffFilePath);
+    if (!file.existsSync()) {
+      throw FileSystemException('Diff file does not exist', diffFilePath);
+    }
+    return parseUnifiedDiff(await file.readAsString());
+  }
+
+  if (diffString != null && diffString.trim().isNotEmpty) {
+    return parseUnifiedDiff(diffString);
+  }
+
+  if (touchedFilesString != null && touchedFilesString.trim().isNotEmpty) {
+    final files = touchedFilesString
+        .split(',')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+    return createTouchedFilesMap(files);
+  }
+
+  return {};
 }

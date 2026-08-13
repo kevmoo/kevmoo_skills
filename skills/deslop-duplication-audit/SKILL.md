@@ -44,13 +44,40 @@ Execute the bundled Dart helper script (`deslop_report.dart`) to run Deslop in
 strictly read-only mode and emit an instant, token-efficient Markdown summary
 with clickable source and HTML links:
 
+### A. Full Repository / Directory Scan
 ```bash
 dart run skills/deslop-duplication-audit/bin/deslop_report.dart --dir {target_dir} [--top 10]
 ```
 
 - If Deslop was already executed manually, parse an existing report directly:
   `dart run skills/deslop-duplication-audit/bin/deslop_report.dart --report {path_to_report.json} --dir {target_dir}`
+
+### B. PR / CL Delta Scan (Changed Code Focus)
+To avoid noisy legacy duplicate reports and focus strictly on code modified in
+a Pull Request or Google3 Changelist, pass a diff command or changed files:
+
+```bash
+# In Google3 (Jujutsu):
+dart run skills/deslop-duplication-audit/bin/deslop_report.dart \
+  --dir {package_dir} \
+  --diff-cmd "jj diff" \
+  --only-changed
+
+# In Git checkouts:
+dart run skills/deslop-duplication-audit/bin/deslop_report.dart \
+  --dir {repo_dir} \
+  --diff-cmd "git diff main...HEAD" \
+  --only-changed
+
+# Explicit diff file or touched file list:
+dart run skills/deslop-duplication-audit/bin/deslop_report.dart \
+  --dir {target_dir} \
+  --diff-file {path_to_diff.patch} \
+  --only-changed
+```
+
 - Target working trees remain untouched (zero `.deslop/` cache directory bloat or dirty git status).
+- Note: Tracking upstream feature request [Nimblesite/Deslop#364](https://github.com/Nimblesite/Deslop/issues/364) for native diff ingestion.
 - If scanning multiple repositories across a workspace or portfolio, deploy
   parallel investigative subagents (`invoke_subagent`) to execute read-only
   scans concurrently and consolidate the reporting matrix in chat.
