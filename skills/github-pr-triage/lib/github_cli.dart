@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:args/args.dart';
+
 final _digitsOnly = RegExp(r'^\d+$');
 final _prUrlRegExp = RegExp(r'github\.com/([^/]+)/([^/]+)/pull/(\d+)');
 
@@ -53,36 +55,50 @@ Future<String> runCommand(
   return result.stdout.toString();
 }
 
+ArgParser buildPrContextArgParser() {
+  return ArgParser()
+    ..addOption('pr', abbr: 'p', help: 'PR number or GitHub PR URL')
+    ..addOption(
+      'dir',
+      abbr: 'C',
+      help: 'Path to target git repository directory',
+    );
+}
+
 /// Parses CLI arguments and resolves the [PrContext] for git operations.
 Future<PrContext> resolvePrContext(
   List<String> args, {
   required Never Function(String message) onFail,
   CommandRunner runCommand = runCommand,
 }) async {
-  String? prInput;
-  String? targetDir;
-
-  for (var i = 0; i < args.length; i++) {
-    final arg = args[i];
-    if (arg == '--pr' || arg == '-p') {
-      if (i + 1 < args.length) {
-        prInput = args[++i];
-      } else {
-        onFail('Missing value for option "$arg"');
-      }
-    } else if (arg == '--dir' || arg == '-C') {
-      if (i + 1 < args.length) {
-        targetDir = args[++i];
-      } else {
-        onFail('Missing value for option "$arg"');
-      }
-    } else if (arg.startsWith('-')) {
-      onFail('Unknown option "$arg"');
-    } else {
-      prInput = arg;
-    }
+  final parser = buildPrContextArgParser();
+  ArgResults results;
+  try {
+    results = parser.parse(args);
+  } on FormatException catch (e) {
+    onFail(e.message);
   }
 
+  final targetDir = results.option('dir');
+  final prInput =
+      results.option('pr') ??
+      (results.rest.isNotEmpty ? results.rest.first : null);
+
+  return resolvePrContextFromArgs(
+    prInput: prInput,
+    targetDir: targetDir,
+    onFail: onFail,
+    runCommand: runCommand,
+  );
+}
+
+/// Resolves [PrContext] from pre-parsed CLI inputs.
+Future<PrContext> resolvePrContextFromArgs({
+  String? prInput,
+  String? targetDir,
+  required Never Function(String message) onFail,
+  CommandRunner runCommand = runCommand,
+}) async {
   final workingDir = targetDir != null
       ? Directory(targetDir).absolute.path
       : Directory.current.absolute.path;
@@ -559,13 +575,15 @@ Future<String> fetchFailedCheckLog(
 
   final annotations = <String>[];
 
+  Future<String> ghRepoApi(String subpath) => runCommand('gh', [
+    ...repoArgs,
+    'api',
+    'repos/${context.owner}/${context.repo}/$subpath',
+  ], workingDirectory: context.workingDir);
+
   if (checkRunId != null) {
     try {
-      final annOutput = await runCommand('gh', [
-        ...repoArgs,
-        'api',
-        'repos/${context.owner}/${context.repo}/check-runs/$checkRunId/annotations',
-      ], workingDirectory: context.workingDir);
+      final annOutput = await ghRepoApi('check-runs/$checkRunId/annotations');
       final annList = jsonDecode(annOutput) as List<dynamic>;
       for (final ann in annList.whereType<Map>()) {
         final path = ann['path']?.toString() ?? '';
@@ -587,11 +605,7 @@ Future<String> fetchFailedCheckLog(
 
   if (runId != null) {
     try {
-      final jobsOutput = await runCommand('gh', [
-        ...repoArgs,
-        'api',
-        'repos/${context.owner}/${context.repo}/actions/runs/$runId/jobs',
-      ], workingDirectory: context.workingDir);
+      final jobsOutput = await ghRepoApi('actions/runs/$runId/jobs');
       final jobsJson = jsonDecode(jobsOutput) as Map<String, dynamic>;
       final jobsList = (jobsJson['jobs'] as List<dynamic>? ?? [])
           .whereType<Map>()
@@ -610,11 +624,7 @@ Future<String> fetchFailedCheckLog(
           final jobName = job['name']?.toString() ?? 'Job';
           if (jobId != null && jobId.isNotEmpty) {
             try {
-              final jobLog = await runCommand('gh', [
-                ...repoArgs,
-                'api',
-                'repos/${context.owner}/${context.repo}/actions/jobs/$jobId/logs',
-              ], workingDirectory: context.workingDir);
+              final jobLog = await ghRepoApi('actions/jobs/$jobId/logs');
               if (jobLog.trim().isNotEmpty) {
                 logBuffers.add('--- Job: $jobName (ID: $jobId) ---\n$jobLog');
               }
@@ -730,24 +740,21 @@ Future<PrGraphData> fetchPrGraphQLData(
     throw Exception('Pull request data not found in GraphQL response');
   }
 
-  final comments = (prData['comments']?['nodes'] as List<dynamic>? ?? [])
-      .whereType<Map>()
-      .map(_parsePrComment)
-      .toList();
+  List<T> extractNodes<T>(Map? parent, String field, T Function(Map) mapper) {
+    return (parent?[field]?['nodes'] as List<dynamic>? ?? [])
+        .whereType<Map>()
+        .map(mapper)
+        .toList();
+  }
 
-  final reviews = (prData['reviews']?['nodes'] as List<dynamic>? ?? [])
-      .whereType<Map>()
-      .map(_parsePrReview)
-      .toList();
+  final comments = extractNodes(prData, 'comments', _parsePrComment);
+  final reviews = extractNodes(prData, 'reviews', _parsePrReview);
 
   final threads = <PrReviewThread>[];
   final rawThreads = prData['reviewThreads']?['nodes'] as List<dynamic>? ?? [];
   for (final t in rawThreads) {
     if (t is Map) {
-      final threadComments = (t['comments']?['nodes'] as List<dynamic>? ?? [])
-          .whereType<Map>()
-          .map(_parsePrComment)
-          .toList();
+      final threadComments = extractNodes(t, 'comments', _parsePrComment);
       threads.add((
         id: t['id']?.toString() ?? '',
         isResolved: t['isResolved'] == true,
