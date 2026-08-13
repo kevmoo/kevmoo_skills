@@ -9,7 +9,7 @@ description: >-
   lints.
 key_features:
   - Read-only Deslop CLI structural scanning
-  - Git worktree isolation via new-worktree
+  - User confirmation gate & isolation options
   - Actionable vs Necessary architectural verification gates
   - Empirical baseline and post-refactor test suite validation
 ---
@@ -63,21 +63,28 @@ deslop {target_dir} \
   parallel investigative subagents (`invoke_subagent`) to execute read-only
   scans concurrently and consolidate the reporting matrix in chat.
 
-## 3. Phase 2: Worktree Isolation (`new-worktree`)
+## 3. Phase 2: Discovery Presentation & Isolation Confirmation (Hard Stop)
 
-When instructed to evaluate fixes or apply refactorings, never modify primary
-repository trunk branches directly.
+After completing the discovery scan, present a high-density summary of the
+findings directly to the user (top duplicate clusters, candidate files, and
+potential savings).
 
-1. Consult and follow the **`new-worktree` skill** if available.
-2. Inside the target repository root, fetch origin and create an isolated
-   sibling worktree branched from the latest public base revision:
-   ```bash
-   git fetch origin
-   git worktree add -b refactor-deslop "{parent_dir}/_{repo_name}-refactor-deslop" origin/main
-   ```
-   _(Substitute `origin/master` or `origin/HEAD` when applicable)._
-3. Perform all inspection, compilation, editing, and test verification inside
-   the isolated worktree directory.
+**Do not start editing files or refactoring code immediately.** Enforce an
+interactive confirmation gate:
+
+1. **Confirm Intent**: Inquire whether the user wants to proceed with
+   remediating any of the flagged duplication clusters.
+2. **Inquire Isolation Preference**: Ask how the user wants to isolate the work:
+   - **Feature Branch**: Create a dedicated working branch (e.g.,
+     `git checkout -b refactor/dedup-{topic}`).
+   - **Git Worktree**: Create an isolated worktree if preferred for parallel
+     development (e.g., via `git worktree add` or the `new-worktree` skill if
+     available).
+   - **Current Working Copy**: Continue in the active branch (if already on an
+     isolated feature branch).
+3. **Hard Stop Gate**: Pause and await explicit user confirmation and
+   branch/worktree direction before creating branches, worktrees, or making code
+   modifications.
 
 ## 4. Phase 3: The "Actionable vs. Necessary" Architectural Gate
 
@@ -136,20 +143,17 @@ verification:
    (e.g. `dart analyze --fatal-infos`, `cargo clippy`, `npm run lint`) and unit
    tests. Confirm **zero errors, zero warnings/infos, and 100% test pass rate**
    with zero regressions.
-4. **Local Staging:** Stage verified diffs locally inside the worktree
-   (`git add .`).
+4. **Local Staging:** Stage verified diffs locally (`git add .`).
 5. **Report & Await Instructions:** Present a high-density, bulleted summary
    directly in chat containing:
-   - Clickable file link to the sibling worktree.
+   - Target branch or worktree location.
    - Actionability Verdict and technical rationale for each inspected cluster.
    - Exact test suite pass confirmations (before and after).
    - Net lines of code delta and summary of staged diffs
      (`git diff --cached --stat`).
    - Yield the floor cleanly without committing, pushing, or submitting Pull
      Requests until the user authorizes version control execution.
-6. **Teardown & Cleanup:** If refactoring is aborted, rejected, or completed and
-   merged, remove the worktree cleanly:
-   ```bash
-   git worktree remove --force "{parent_dir}/_{repo_name}-refactor-deslop"
-   git branch -D refactor-deslop
-   ```
+6. **Teardown & Cleanup:** If changes are aborted or rejected:
+   - For worktrees:
+     `git worktree remove --force "{worktree_path}" && git branch -D {branch_name}`.
+   - For temporary branches: `git checkout - && git branch -D {branch_name}`.
