@@ -45,6 +45,28 @@ ArgParser _buildParser() {
       ],
       help: 'Filter clusters by bucket.',
     )
+    ..addOption(
+      'diff-cmd',
+      help:
+          'Command to execute to obtain unified diff (e.g. "jj diff" or "git diff").',
+    )
+    ..addOption('diff-file', help: 'Path to a file containing a unified diff.')
+    ..addOption(
+      'diff',
+      help: 'Literal unified diff string to filter clusters against.',
+    )
+    ..addOption(
+      'touched-files',
+      help:
+          'Comma-separated list of modified file paths to filter clusters against.',
+    )
+    ..addFlag(
+      'only-changed',
+      defaultsTo: false,
+      negatable: true,
+      help:
+          'Only report clusters that intersect with changed lines or touched files in the diff.',
+    )
     ..addFlag(
       'files',
       defaultsTo: true,
@@ -72,6 +94,86 @@ ArgParser _buildParser() {
     );
 }
 
+Future<(DeslopReport, String?)> _resolveReport({
+  required String? reportJsonPath,
+  required String targetDir,
+  required String? outDir,
+  required int minNodes,
+}) async {
+  if (reportJsonPath != null) {
+    final report = await loadReportJson(reportJsonPath);
+    final htmlCandidate = reportJsonPath.replaceAll(
+      RegExp(r'\.json$'),
+      '.html',
+    );
+    final htmlReportPath = File(htmlCandidate).existsSync()
+        ? htmlCandidate
+        : null;
+    return (report, htmlReportPath);
+  }
+
+  String? outputPrefix;
+  if (outDir != null) {
+    final dir = Directory(outDir);
+    if (!dir.existsSync()) dir.createSync(recursive: true);
+    outputPrefix = '${dir.path}${Platform.pathSeparator}report';
+  }
+
+  final result = await runDeslopScan(
+    targetDir: targetDir,
+    outputPrefix: outputPrefix,
+    minNodes: minNodes,
+  );
+
+  return (result.report, result.htmlPath);
+}
+
+void _emitOutput({
+  required DeslopReport report,
+  required String? htmlReportPath,
+  required String targetDir,
+  required Map<String, List<LineSpan>> changedRanges,
+  required bool onlyChanged,
+  required ArgResults results,
+}) {
+  final outputJson = results.flag('json');
+
+  if (outputJson) {
+    var outputReport = report;
+    if (onlyChanged && changedRanges.isNotEmpty) {
+      final filtered = report.clusters
+          .where((c) => c.intersectsDiff(changedRanges))
+          .toList();
+      outputReport = DeslopReport(
+        toolVersion: report.toolVersion,
+        minNodes: report.minNodes,
+        filesAnalysed: report.filesAnalysed,
+        clustersHidden: report.clustersHidden,
+        metrics: report.metrics,
+        actionHints: report.actionHints,
+        clusters: filtered,
+      );
+    }
+    const encoder = JsonEncoder.withIndent('  ');
+    print(encoder.convert(outputReport.toJson()));
+    return;
+  }
+
+  final markdown = formatDeslopMarkdown(
+    report: report,
+    targetDir: targetDir,
+    htmlReportPath: htmlReportPath,
+    topCount: int.tryParse(results.option('top') ?? '10') ?? 10,
+    categoryFilter: results.option('category') ?? 'all',
+    bucketFilter: results.option('bucket') ?? 'all',
+    includeFileTable: results.flag('files'),
+    includeClusters: results.flag('clusters'),
+    changedRanges: changedRanges,
+    onlyChangedCode: onlyChanged,
+  );
+  print(markdown);
+}
+
 void main(List<String> args) async {
   final parser = _buildParser();
   ArgResults results;
@@ -96,63 +198,42 @@ void main(List<String> args) async {
       results.option('dir') ??
       (results.rest.isNotEmpty ? results.rest.first : Directory.current.path);
 
-  final reportJsonPath = results.option('report');
-  final topCount = int.tryParse(results.option('top') ?? '10') ?? 10;
-  final minNodes = int.tryParse(results.option('min-nodes') ?? '30') ?? 30;
-  final outDir = results.option('out-dir');
-  final categoryFilter = results.option('category') ?? 'all';
-  final bucketFilter = results.option('bucket') ?? 'all';
-  final includeFileTable = results.flag('files');
-  final includeClusters = results.flag('clusters');
-  final outputJson = results.flag('json');
+  final explicitOnlyChanged = results.wasParsed('only-changed')
+      ? results.flag('only-changed')
+      : null;
 
   try {
-    DeslopReport report;
-    String? htmlReportPath;
+    final changedRanges = await resolveDiffRanges(
+      diffCmd: results.option('diff-cmd'),
+      diffFilePath: results.option('diff-file'),
+      diffString: results.option('diff'),
+      touchedFilesString: results.option('touched-files'),
+      workingDir: targetDir,
+    );
 
-    if (reportJsonPath != null) {
-      report = await loadReportJson(reportJsonPath);
-      final htmlCandidate = reportJsonPath.replaceAll(
-        RegExp(r'\.json$'),
-        '.html',
-      );
-      if (File(htmlCandidate).existsSync()) {
-        htmlReportPath = htmlCandidate;
-      }
-    } else {
-      String? outputPrefix;
-      if (outDir != null) {
-        final dir = Directory(outDir);
-        if (!dir.existsSync()) dir.createSync(recursive: true);
-        outputPrefix = '${dir.path}${Platform.pathSeparator}report';
-      }
+    final hasDiffArg =
+        results.wasParsed('diff-cmd') ||
+        results.wasParsed('diff-file') ||
+        results.wasParsed('diff') ||
+        results.wasParsed('touched-files');
+    final onlyChanged =
+        explicitOnlyChanged ?? (hasDiffArg || changedRanges.isNotEmpty);
 
-      final result = await runDeslopScan(
-        targetDir: targetDir,
-        outputPrefix: outputPrefix,
-        minNodes: minNodes,
-      );
+    final (report, htmlReportPath) = await _resolveReport(
+      reportJsonPath: results.option('report'),
+      targetDir: targetDir,
+      outDir: results.option('out-dir'),
+      minNodes: int.tryParse(results.option('min-nodes') ?? '30') ?? 30,
+    );
 
-      report = result.report;
-      htmlReportPath = result.htmlPath;
-    }
-
-    if (outputJson) {
-      final encoder = const JsonEncoder.withIndent('  ');
-      print(encoder.convert(report.toJson()));
-    } else {
-      final markdown = formatDeslopMarkdown(
-        report: report,
-        targetDir: targetDir,
-        htmlReportPath: htmlReportPath,
-        topCount: topCount,
-        categoryFilter: categoryFilter,
-        bucketFilter: bucketFilter,
-        includeFileTable: includeFileTable,
-        includeClusters: includeClusters,
-      );
-      print(markdown);
-    }
+    _emitOutput(
+      report: report,
+      htmlReportPath: htmlReportPath,
+      targetDir: targetDir,
+      changedRanges: changedRanges,
+      onlyChanged: onlyChanged,
+      results: results,
+    );
   } catch (e, st) {
     stderr.writeln('Error: $e');
     if (Platform.environment['DEBUG'] == 'true') {

@@ -1,6 +1,8 @@
 /// Data models representing Deslop duplicate code analysis reports.
 library;
 
+import 'diff_parser.dart';
+
 /// Represents the top-level Deslop JSON report structure.
 class DeslopReport {
   final String toolVersion;
@@ -228,6 +230,25 @@ class DeslopCluster {
       _ => bucket,
     };
   }
+
+  /// Checks if any occurrence in this cluster intersects with the given diff line ranges.
+  bool intersectsDiff(Map<String, List<LineSpan>> changedRanges) {
+    if (changedRanges.isEmpty) return false;
+    return occurrences.any((occ) => occ.intersectsDiff(changedRanges));
+  }
+
+  /// Counts how many occurrences in this cluster intersect with the given diff line ranges.
+  int occurrencesIntersectingDiff(Map<String, List<LineSpan>> changedRanges) {
+    if (changedRanges.isEmpty) return 0;
+    return occurrences.where((occ) => occ.intersectsDiff(changedRanges)).length;
+  }
+
+  /// Returns true if all occurrences in this cluster are within modified diff hunks.
+  bool isNewlyIntroduced(Map<String, List<LineSpan>> changedRanges) {
+    if (changedRanges.isEmpty) return false;
+    final intersecting = occurrencesIntersectingDiff(changedRanges);
+    return intersecting >= 2 && intersecting == occurrences.length;
+  }
 }
 
 /// A specific file and line-range occurrence within a duplication cluster.
@@ -271,4 +292,17 @@ class ClusterOccurrence {
   /// Returns the line span as a string, e.g. `L10-25` or `L10`.
   String get lineSpan =>
       startLine == endLine ? 'L$startLine' : 'L$startLine-$endLine';
+
+  /// Checks if this occurrence intersects with any changed line spans in [changedRanges].
+  bool intersectsDiff(Map<String, List<LineSpan>> changedRanges) {
+    if (changedRanges.isEmpty) return false;
+    for (final entry in changedRanges.entries) {
+      if (pathsMatch(path, entry.key)) {
+        if (entry.value.any((span) => span.overlaps(startLine, endLine))) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
 }

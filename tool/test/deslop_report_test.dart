@@ -108,7 +108,89 @@ const _sampleDeslopJson = '''
 }
 ''';
 
+const _sampleGitDiff = '''
+diff --git a/lib/foo.dart b/lib/foo.dart
+index 1234567..89abcdef 100644
+--- a/lib/foo.dart
++++ b/lib/foo.dart
+@@ -8,5 +8,15 @@ void existing() {}
++void newHelper() {
++  print('hello');
++}
+''';
+
+const _sampleJjDiff = '''
+Modified regular file lib/bar.dart:
+--- a/lib/bar.dart
++++ b/lib/bar.dart
+@@ -12,4 +12,8 @@
++void another() {
++  print('world');
++}
+''';
+
 void main() {
+  group('Diff Parser', () {
+    test('parses git unified diff and extracts line spans', () {
+      final spans = parseUnifiedDiff(_sampleGitDiff);
+      check(spans.containsKey('lib/foo.dart')).isTrue();
+      final fooSpans = spans['lib/foo.dart']!;
+      check(fooSpans.length).equals(1);
+      check(fooSpans.first).equals(const LineSpan(8, 22));
+    });
+
+    test('parses jujutsu diff format and extracts line spans', () {
+      final spans = parseUnifiedDiff(_sampleJjDiff);
+      check(spans.containsKey('lib/bar.dart')).isTrue();
+      final barSpans = spans['lib/bar.dart']!;
+      check(barSpans.length).equals(1);
+      check(barSpans.first).equals(const LineSpan(12, 19));
+    });
+
+    test('LineSpan overlap and containment tests', () {
+      const span = LineSpan(10, 20);
+      check(span.contains(10)).isTrue();
+      check(span.contains(15)).isTrue();
+      check(span.contains(20)).isTrue();
+      check(span.contains(9)).isFalse();
+      check(span.contains(21)).isFalse();
+
+      check(span.overlaps(5, 9)).isFalse();
+      check(span.overlaps(5, 10)).isTrue();
+      check(span.overlaps(15, 25)).isTrue();
+      check(span.overlaps(20, 30)).isTrue();
+      check(span.overlaps(21, 30)).isFalse();
+    });
+
+    test(
+      'pathsMatch handles prefixes, relative paths, and rejects partial directory matches',
+      () {
+        check(pathsMatch('lib/foo.dart', 'lib/foo.dart')).isTrue();
+        check(pathsMatch('lib/foo.dart', 'a/lib/foo.dart')).isTrue();
+        check(pathsMatch('lib/foo.dart', 'b/lib/foo.dart')).isTrue();
+        check(pathsMatch('foo.dart', 'lib/foo.dart')).isTrue();
+        check(pathsMatch('lib/foo.dart', 'lib/bar.dart')).isFalse();
+        // Partial directory substring rejection
+        check(
+          pathsMatch('feature_login/view.dart', 'login/view.dart'),
+        ).isFalse();
+        check(
+          pathsMatch('login/view.dart', 'feature_login/view.dart'),
+        ).isFalse();
+      },
+    );
+
+    test(
+      'normalizeFilePath handles git prefixes, leading slashes, and backslashes',
+      () {
+        check(normalizeFilePath('a/lib/foo.dart')).equals('lib/foo.dart');
+        check(normalizeFilePath('b/lib/foo.dart')).equals('lib/foo.dart');
+        check(normalizeFilePath('/lib/foo.dart')).equals('lib/foo.dart');
+        check(normalizeFilePath(r'lib\foo.dart')).equals('lib/foo.dart');
+      },
+    );
+  });
+
   group('DeslopReport model parsing', () {
     test('parses sample report JSON correctly', () {
       final dynamic decoded = jsonDecode(_sampleDeslopJson);
@@ -131,6 +213,36 @@ void main() {
       check(c1.occurrences).has((o) => o.length, 'length').equals(2);
       check(c1.occurrences.first.lineSpan).equals('L10-20');
     });
+
+    test('evaluates cluster diff intersection correctly', () {
+      final dynamic decoded = jsonDecode(_sampleDeslopJson);
+      final report = DeslopReport.fromJson(decoded as Map<String, dynamic>);
+      final c1 =
+          report.clusters.first; // lib/foo.dart:10-20, lib/bar.dart:15-25
+      final c2 = report.clusters.last; // lib/foo.dart:30-35, lib/bar.dart:40-45
+
+      final diffRanges = {
+        'lib/foo.dart': [const LineSpan(12, 15)],
+      };
+
+      check(c1.intersectsDiff(diffRanges)).isTrue();
+      check(c2.intersectsDiff(diffRanges)).isFalse();
+    });
+
+    test(
+      'evaluates cluster and occurrence diff intersection as false on empty diff',
+      () {
+        final dynamic decoded = jsonDecode(_sampleDeslopJson);
+        final report = DeslopReport.fromJson(decoded as Map<String, dynamic>);
+        final c1 = report.clusters.first;
+        final occ = c1.occurrences.first;
+
+        check(c1.intersectsDiff({})).isFalse();
+        check(c1.occurrencesIntersectingDiff({})).equals(0);
+        check(c1.isNewlyIntroduced({})).isFalse();
+        check(occ.intersectsDiff({})).isFalse();
+      },
+    );
   });
 
   group('formatDeslopMarkdown', () {
@@ -171,6 +283,60 @@ void main() {
       check(md).contains('Nearly Identical [Type-3]');
       check(md).not((s) => s.contains('[Data Table]'));
     });
+
+    test('supports diff-aware delta filtering', () {
+      final dynamic decoded = jsonDecode(_sampleDeslopJson);
+      final report = DeslopReport.fromJson(decoded as Map<String, dynamic>);
+
+      final diffRanges = {
+        'lib/foo.dart': [const LineSpan(12, 15)],
+      };
+
+      final md = formatDeslopMarkdown(
+        report: report,
+        targetDir: '/fake/repo',
+        changedRanges: diffRanges,
+        onlyChangedCode: true,
+      );
+
+      check(md).contains('### 🔬 Deslop Code Duplication Report (CL Delta)');
+      check(md).contains('1 cluster(s)** intersect modified code');
+      check(md).contains('`[CL Modified]`');
+      check(md).contains('`[Existing Code]`');
+    });
+
+    test('returns clean status when zero clusters intersect diff', () {
+      final dynamic decoded = jsonDecode(_sampleDeslopJson);
+      final report = DeslopReport.fromJson(decoded as Map<String, dynamic>);
+
+      final diffRanges = {
+        'lib/other.dart': [const LineSpan(1, 50)],
+      };
+
+      final md = formatDeslopMarkdown(
+        report: report,
+        targetDir: '/fake/repo',
+        changedRanges: diffRanges,
+        onlyChangedCode: true,
+      );
+
+      check(md).contains('✅ **Clean** — 0 duplicate code clusters detected');
+    });
+
+    test('handles empty diff (0 modified lines) gracefully in delta mode', () {
+      final dynamic decoded = jsonDecode(_sampleDeslopJson);
+      final report = DeslopReport.fromJson(decoded as Map<String, dynamic>);
+
+      final md = formatDeslopMarkdown(
+        report: report,
+        targetDir: '/fake/repo',
+        changedRanges: {},
+        onlyChangedCode: true,
+      );
+
+      check(md).contains('### 🔬 Deslop Code Duplication Report (CL Delta)');
+      check(md).contains('✅ **Clean** — 0 duplicate code clusters detected');
+    });
   });
 
   group('runner and CLI', () {
@@ -181,10 +347,18 @@ void main() {
       }
     });
 
+    String resolveRepoRoot() {
+      final current = Directory.current.path;
+      return current.endsWith('tool') ? Directory.current.parent.path : current;
+    }
+
     test('CLI prints help on -h', () async {
+      final repoRoot = resolveRepoRoot();
+      final scriptPath =
+          '$repoRoot/skills/deslop-duplication-audit/bin/deslop_report.dart';
       final process = await Process.run(Platform.resolvedExecutable, [
         'run',
-        '../skills/deslop-duplication-audit/bin/deslop_report.dart',
+        scriptPath,
         '-h',
       ]);
       check(process.exitCode).equals(0);
@@ -198,9 +372,13 @@ void main() {
       final tempJson = File('${tempDir.path}/test_report.json');
       await tempJson.writeAsString(_sampleDeslopJson);
 
+      final repoRoot = resolveRepoRoot();
+      final scriptPath =
+          '$repoRoot/skills/deslop-duplication-audit/bin/deslop_report.dart';
+
       final process = await Process.run(Platform.resolvedExecutable, [
         'run',
-        '../skills/deslop-duplication-audit/bin/deslop_report.dart',
+        scriptPath,
         '--report=${tempJson.path}',
         '--dir=/sample/target',
       ]);
@@ -209,6 +387,35 @@ void main() {
       final stdoutStr = process.stdout as String;
       check(stdoutStr).contains('### 🔬 Deslop Code Duplication Report');
       check(stdoutStr).contains('lib/foo.dart:L10-20');
+
+      tempDir.deleteSync(recursive: true);
+    });
+
+    test('CLI supports --diff string and --only-changed', () async {
+      final tempDir = Directory.systemTemp.createTempSync('deslop_test_');
+      final tempJson = File('${tempDir.path}/test_report.json');
+      await tempJson.writeAsString(_sampleDeslopJson);
+
+      final repoRoot = resolveRepoRoot();
+      final scriptPath =
+          '$repoRoot/skills/deslop-duplication-audit/bin/deslop_report.dart';
+
+      final process = await Process.run(Platform.resolvedExecutable, [
+        'run',
+        scriptPath,
+        '--report=${tempJson.path}',
+        '--dir=/sample/target',
+        '--diff',
+        _sampleGitDiff,
+        '--only-changed',
+      ]);
+
+      check(process.exitCode).equals(0);
+      final stdoutStr = process.stdout as String;
+      check(
+        stdoutStr,
+      ).contains('### 🔬 Deslop Code Duplication Report (CL Delta)');
+      check(stdoutStr).contains('`[CL Modified]`');
 
       tempDir.deleteSync(recursive: true);
     });
