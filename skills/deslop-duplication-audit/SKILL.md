@@ -19,23 +19,46 @@ key_features:
 This skill provides an empirical, architecturally disciplined workflow for identifying and refactoring duplicated code using Deslop (a tree-sitter structural duplicate code detection engine).
 
 ## 1. Toolchain & Execution Setup
-- **Deslop Binary Location:** Use the standalone native executable deployed in userspace at `~/.local/bin/deslop` (or via `~/.local/share/mise/shims/deslop`). It is installed and tracked via `mise` (`ubi:Nimblesite/deslop = "latest"`) and audited by `upkeep check`. Never download or build Rust toolchains from source.
-- **Dart Tooling & Sandbox Rules:** When executing Dart CLI tooling (`dart test`, `dart analyze`, `pub get`) across repositories under `~/github/` (excluding `~/github/dart-sdk`), always invoke Dart via `~/github/flutter/bin/dart` (or prepend `~/github/flutter/bin:$HOME/.local/bin` to `PATH`). Never invoke the system `/usr/bin/dart` (Google3 edge build). In restricted sandbox environments, if pub pre-compilation fails with atomic rename exceptions (`PathNotFoundException`, `errno = 2`), pass `--no-precompile` (e.g. `dart test --no-precompile`).
+- **Deslop Binary Location:** Use the standalone native executable deployed in
+  userspace at `~/.local/bin/deslop` (or via
+  `~/.local/share/mise/shims/deslop`). It is installed and tracked via `mise`
+  (`github:Nimblesite/deslop@latest`) and can be executed via
+  `mise exec -- deslop` (or `~/.local/bin/deslop`). Never download or build
+  Rust toolchains from source.
+- **Dart Tooling & Sandbox Rules:** When executing Dart CLI tooling (`dart test`,
+  `dart analyze`, `pub get`) across repositories under `~/github/` (excluding
+  `~/github/dart-sdk`), always invoke Dart via `~/github/flutter/bin/dart` (or
+  prepend `~/github/flutter/bin:$HOME/.local/bin` to `PATH`). Never invoke the
+  system `/usr/bin/dart` (Google3 edge build). In restricted sandbox
+  environments, if pub pre-compilation fails with atomic rename exceptions
+  (`PathNotFoundException`, `errno = 2`), pass `--no-precompile` (e.g.
+  `dart test --no-precompile`).
 
 ## 2. Phase 1: Read-Only Discovery Scans
-When asked to scan single or multiple repositories for duplication, execute Deslop in strictly read-only mode so target Git working trees remain untouched (zero `.deslop/` cache directory bloat or dirty git status):
+When asked to scan single or multiple repositories for duplication, execute
+Deslop in strictly read-only mode so target Git working trees remain untouched
+(zero `.deslop/` cache directory bloat or dirty git status). Output reports
+should target the active conversation's scratch directory
+(`<appDataDir>/brain/<conversation-id>/scratch/`):
 
 ```bash
+mkdir -p <scratch-dir>/deslop_reports/<repo-name>
 deslop <path-to-target-directory> \
-  --output /tmp/deslop-reports/<repo-name>/report \
+  --output <scratch-dir>/deslop_reports/<repo-name>/report \
   --no-incremental \
   --no-fail-over \
   --log-to-console \
   --log-level warn
 ```
 
-- Read the generated summary at `/tmp/deslop-reports/<repo-name>/report.txt` or parse `/tmp/deslop-reports/<repo-name>/report.json` using `jq` to rank top offending clusters.
-- If scanning multiple repositories across a portfolio (e.g. `~/github/kevmoo/`), deploy parallel investigative subagents (`invoke_subagent`) to execute read-only scans concurrently and consolidate the reporting matrix in chat.
+- Read the generated summary at
+  `<scratch-dir>/deslop_reports/<repo-name>/report.txt` or parse
+  `<scratch-dir>/deslop_reports/<repo-name>/report.json` using `jq` to rank top
+  offending clusters.
+- If scanning multiple repositories across a portfolio (e.g.
+  `~/github/kevmoo/`), deploy parallel investigative subagents
+  (`invoke_subagent`) to execute read-only scans concurrently and consolidate
+  the reporting matrix in chat.
 
 ## 3. Phase 2: Worktree Isolation (`new-worktree`)
 When instructed to evaluate fixes or apply refactorings, never modify primary repository trunk branches directly.
