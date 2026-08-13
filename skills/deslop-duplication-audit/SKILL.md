@@ -63,7 +63,7 @@ deslop {target_dir} \
   parallel investigative subagents (`invoke_subagent`) to execute read-only
   scans concurrently and consolidate the reporting matrix in chat.
 
-## 3. Phase 2: Discovery Presentation & Isolation Confirmation (Hard Stop)
+## 3. Phase 2: Discovery Presentation & User Alignment (Hard Stop)
 
 After completing the discovery scan, present a high-density summary of the
 findings directly to the user (top duplicate clusters, candidate files, and
@@ -74,17 +74,17 @@ interactive confirmation gate:
 
 1. **Confirm Intent**: Inquire whether the user wants to proceed with
    remediating any of the flagged duplication clusters.
-2. **Inquire Isolation Preference**: Ask how the user wants to isolate the work:
-   - **Feature Branch**: Create a dedicated working branch (e.g.,
+2. **Inquire Where to Apply Changes**: Inquire how the user prefers to apply the
+   refactoring:
+   - **Current Working Copy / Branch**: Apply changes directly in the active
+     branch (e.g. `main`, `master`, or current working branch).
+   - **Feature Branch**: Create a dedicated working branch (e.g.
      `git checkout -b refactor/dedup-{topic}`).
    - **Git Worktree**: Create an isolated worktree if preferred for parallel
-     development (e.g., via `git worktree add` or the `new-worktree` skill if
+     development (e.g. via `git worktree add` or the `new-worktree` skill if
      available).
-   - **Current Working Copy**: Continue in the active branch (if already on an
-     isolated feature branch).
-3. **Hard Stop Gate**: Pause and await explicit user confirmation and
-   branch/worktree direction before creating branches, worktrees, or making code
-   modifications.
+3. **Hard Stop Gate**: Pause and await explicit user confirmation and location
+   direction before creating branches, worktrees, or making code modifications.
 
 ## 4. Phase 3: The "Actionable vs. Necessary" Architectural Gate
 
