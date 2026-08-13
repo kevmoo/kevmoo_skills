@@ -24,12 +24,12 @@ structural duplicate code detection engine).
 
 - **Locating or Installing Deslop:**
   - Verify if `deslop` is available on `$PATH` (`which deslop`).
-  - **Via mise:** If using `mise`, activate via
-    `mise use -g github:Nimblesite/deslop@latest` or invoke directly with
-    `mise exec -- deslop`.
-  - **Via GitHub Releases:** Download the latest pre-compiled platform binary
-    from [Nimblesite/Deslop Releases](https://github.com/Nimblesite/Deslop/releases/latest).
-  - **Via Cargo:** Run `cargo binstall deslop` or `cargo install deslop`.
+  - **Default**: Install via Cargo:
+    `cargo binstall deslop || cargo install deslop`
+  - **Fallback (mise / binary releases)**: Run
+    `mise use -g github:Nimblesite/deslop@latest` (or `mise exec -- deslop`),
+    or download the pre-compiled platform binary from
+    [Nimblesite/Deslop Releases](https://github.com/Nimblesite/Deslop/releases/latest).
 - **Environment & Tooling Verification:**
   - Ensure the repository's native toolchains (e.g. `dart`, `flutter`, `cargo`,
     `npm`, `go`, `pytest`) are accessible on `$PATH`.
@@ -46,9 +46,9 @@ Deslop in strictly read-only mode so target Git working trees remain untouched
 should target a dedicated scratch or temporary directory:
 
 ```bash
-mkdir -p <scratch-dir>/deslop_reports/<repo-name>
-deslop <path-to-target-directory> \
-  --output <scratch-dir>/deslop_reports/<repo-name>/report \
+mkdir -p {scratch_dir}/deslop_reports/{repo_name}
+deslop {target_dir} \
+  --output {scratch_dir}/deslop_reports/{repo_name}/report \
   --no-incremental \
   --no-fail-over \
   --log-to-console \
@@ -56,8 +56,8 @@ deslop <path-to-target-directory> \
 ```
 
 - Read the generated summary at
-  `<scratch-dir>/deslop_reports/<repo-name>/report.txt` or parse
-  `<scratch-dir>/deslop_reports/<repo-name>/report.json` using `jq` to rank top
+  `{scratch_dir}/deslop_reports/{repo_name}/report.txt` or parse
+  `{scratch_dir}/deslop_reports/{repo_name}/report.json` using `jq` to rank top
   offending clusters.
 - If scanning multiple repositories across a workspace or portfolio, deploy
   parallel investigative subagents (`invoke_subagent`) to execute read-only scans
@@ -72,7 +72,7 @@ repository trunk branches directly.
    sibling worktree branched from the latest public base revision:
    ```bash
    git fetch origin
-   git worktree add -b refactor-deslop "/absolute/path/to/_<repo_name>-refactor-deslop" origin/main
+   git worktree add -b refactor-deslop "{parent_dir}/_{repo_name}-refactor-deslop" origin/main
    ```
    *(Substitute `origin/master` or `origin/HEAD` when applicable).*
 3. Perform all inspection, compilation, editing, and test verification inside
@@ -80,7 +80,7 @@ repository trunk branches directly.
 
 ## 4. Phase 3: The "Actionable vs. Necessary" Architectural Gate
 
-**Do NOT treat every duplicate finding as a bug or mandatory refactoring
+**Do not treat every duplicate finding as a bug or mandatory refactoring
 target.** Deslop compares tree-sitter AST shapes, which can flag legitimate
 structural patterns. Before making any code edits, evaluate each candidate
 cluster against these criteria:
@@ -142,3 +142,9 @@ verification:
    - Net lines of code delta and summary of staged diffs (`git diff --cached --stat`).
    - Yield the floor cleanly without committing, pushing, or submitting Pull
      Requests until the user authorizes version control execution.
+6. **Teardown & Cleanup:** If refactoring is aborted, rejected, or completed
+   and merged, remove the worktree cleanly:
+   ```bash
+   git worktree remove --force "{parent_dir}/_{repo_name}-refactor-deslop"
+   git branch -D refactor-deslop
+   ```
