@@ -62,7 +62,8 @@ ArgParser buildPrContextArgParser() {
       'dir',
       abbr: 'C',
       help: 'Path to target git repository directory',
-    );
+    )
+    ..addFlag('help', abbr: 'h', negatable: false, help: 'Show CLI usage.');
 }
 
 /// Parses CLI arguments and resolves the [PrContext] for git operations.

@@ -26,6 +26,18 @@ void main(List<String> args) async {
     exit(1);
   }
 
+  if (results.flag('help') || results.command?.flag('help') == true) {
+    stdout.writeln('GitHub PR Triage Tool\n');
+    stdout.writeln(
+      'Usage:\n'
+      '  dart triage.dart [options]\n'
+      '  dart triage.dart resolve <thread_id> [<comment_id> "<body_text>"]\n',
+    );
+    stdout.writeln('Options:');
+    stdout.writeln(parser.usage);
+    exit(0);
+  }
+
   try {
     final resolveCmd = results.command;
     if (resolveCmd != null && resolveCmd.name == 'resolve') {
