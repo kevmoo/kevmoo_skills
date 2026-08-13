@@ -38,27 +38,19 @@ using Deslop (a tree-sitter structural duplicate code detection engine).
     exceptions (`PathNotFoundException`, `errno = 2`), pass `--no-precompile`
     (e.g., `dart test --no-precompile`).
 
-## 2. Phase 1: Read-Only Discovery Scans
+## 2. Phase 1: Read-Only Discovery Scans & Reporting
 
-When asked to scan single or multiple repositories for duplication, execute
-Deslop in strictly read-only mode so target Git working trees remain untouched
-(zero `.deslop/` cache directory bloat or dirty git status). Output reports
-should target a dedicated scratch or temporary directory:
+Execute the bundled Dart helper script (`deslop_report.dart`) to run Deslop in
+strictly read-only mode and emit an instant, token-efficient Markdown summary
+with clickable source and HTML links:
 
 ```bash
-mkdir -p {scratch_dir}/deslop_reports/{repo_name}
-deslop {target_dir} \
-  --output {scratch_dir}/deslop_reports/{repo_name}/report \
-  --no-incremental \
-  --no-fail-over \
-  --log-to-console \
-  --log-level warn
+dart run skills/deslop-duplication-audit/bin/deslop_report.dart --dir {target_dir} [--top 10]
 ```
 
-- Read the generated summary at
-  `{scratch_dir}/deslop_reports/{repo_name}/report.txt` or parse
-  `{scratch_dir}/deslop_reports/{repo_name}/report.json` using `jq` to rank top
-  offending clusters.
+- If Deslop was already executed manually, parse an existing report directly:
+  `dart run skills/deslop-duplication-audit/bin/deslop_report.dart --report {path_to_report.json} --dir {target_dir}`
+- Target working trees remain untouched (zero `.deslop/` cache directory bloat or dirty git status).
 - If scanning multiple repositories across a workspace or portfolio, deploy
   parallel investigative subagents (`invoke_subagent`) to execute read-only
   scans concurrently and consolidate the reporting matrix in chat.
