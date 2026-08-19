@@ -209,5 +209,3 @@ To reproduce or re-run this duplication scan locally:
 ### 3. Version Resolution
 Determine the Deslop binary version dynamically:
 * Run `deslop --version` to extract the active engine release version.
-
-
