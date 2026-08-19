@@ -12,6 +12,7 @@ key_features:
   - User confirmation gate & isolation options
   - Actionable vs Necessary architectural verification gates
   - Empirical baseline and post-refactor test suite validation
+  - Reproducible PR provenance injection
 ---
 
 # Deslop Duplication Audit Protocol
@@ -176,3 +177,33 @@ verification:
    - For worktrees:
      `git worktree remove --force "{worktree_path}" && git branch -D {branch_name}`.
    - For temporary branches: `git switch - && git branch -D {branch_name}`.
+
+## 6. Phase 5: Pull Request & Commit Provenance Protocol
+
+When staging deduplicated code and preparing a commit message or Pull Request:
+
+### 1. User Confirmation Gate (Prompt-Gated Offer)
+Before writing the PR description or commit body, explicitly prompt the user
+(e.g. via `ask_question` or interactive confirmation) whether to include a
+**Tool Provenance & Reproduction block**.
+
+### 2. Standardized Provenance Block Format
+When confirmed, append the following markdown block to the PR description or
+commit body so reviewers understand where the deduplication originated and can
+rerun the audit locally:
+
+```markdown
+### 🤖 Tool Provenance & Reproduction
+
+Structural duplication analysis performed with [`deslop`](https://github.com/Nimblesite/Deslop) (v`<version>`).
+
+To reproduce or re-run this duplication scan locally:
+```bash
+<exact command line used, e.g. deslop src/ --diff - --only-changed or dart run skills/deslop-duplication-audit/bin/deslop_report.dart --dir . --diff-cmd "git diff main...HEAD" --only-changed>
+```
+```
+
+### 3. Version Resolution
+Determine the Deslop binary version dynamically:
+* Run `deslop --version` to extract the active engine release version.
+
