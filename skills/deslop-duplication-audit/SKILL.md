@@ -192,16 +192,16 @@ When confirmed, append the following markdown block to the PR description or
 commit body so reviewers understand where the deduplication originated and can
 rerun the audit locally:
 
-```markdown
+````markdown
 ### 🤖 Tool Provenance & Reproduction
 
-Structural duplication analysis performed with [`deslop`](https://github.com/Nimblesite/Deslop) (v`<version>`).
+Structural duplication analysis performed with [`deslop`](https://github.com/Nimblesite/Deslop) (`v{version}`).
 
 To reproduce or re-run this duplication scan locally:
 ```bash
-<exact command line used, e.g. deslop src/ --diff - --only-changed or dart run skills/deslop-duplication-audit/bin/deslop_report.dart --dir . --diff-cmd "git diff main...HEAD" --only-changed>
+{exact_command_line}
 ```
-```
+````
 
 ### 3. Version Resolution
 Determine the Deslop binary version dynamically:
