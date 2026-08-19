@@ -30,8 +30,8 @@ void main(List<String> args) async {
     stdout.writeln('GitHub PR Triage Tool\n');
     stdout.writeln(
       'Usage:\n'
-      '  dart triage.dart [options]\n'
-      '  dart triage.dart resolve <thread_id> [<comment_id> "<body_text>"]\n',
+      '  dart run triage.dart [options]\n'
+      '  dart run triage.dart resolve <thread_id> [<comment_id> "<body_text>"]\n',
     );
     stdout.writeln('Options:');
     stdout.writeln(parser.usage);
@@ -47,8 +47,8 @@ void main(List<String> args) async {
         stderr.writeln(
           'Error: Invalid arguments for resolve subcommand.\n'
           'Usage:\n'
-          '  dart triage.dart resolve <thread_id>\n'
-          '  dart triage.dart resolve <thread_id> <comment_id> "<body_text>"',
+          '  dart run triage.dart resolve <thread_id>\n'
+          '  dart run triage.dart resolve <thread_id> <comment_id> "<body_text>"',
         );
         exit(1);
       }

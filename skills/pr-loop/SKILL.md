@@ -93,7 +93,7 @@ which are bypassed in favor of autonomous execution):
 
 ### 2. [START] Immediate Status Check & Polling Timer
 * **Immediate Initial Check**: Before scheduling a background timer, execute an
-  immediate check of PR status (`dart <path-to-pr-loop-skill>/bin/pr_status.dart --dir .` or `gh pr view`).
+  immediate check of PR status (`dart run <path-to-pr-loop-skill>/bin/pr_status.dart --dir .` or `gh pr view`).
   * If actionable review comments or failed CI checks already exist, **bypass the initial timer** and proceed directly to Step 3/4.
   * If review feedback or CI checks are still in progress, proceed to schedule the background wakeup timer.
 * **Transition to Wait State**:
@@ -133,7 +133,7 @@ which are bypassed in favor of autonomous execution):
   Run the `pr_status.dart` helper script to evaluate whether the PR is ready for
   termination or requires further triage:
   ```bash
-  dart <path-to-pr-loop-skill>/bin/pr_status.dart --dir .
+  dart run <path-to-pr-loop-skill>/bin/pr_status.dart --dir .
   ```
 * **Strict Termination Rules ([STOP])**:
   A PR is ONLY clean and ready for loop termination when `pr_status.dart`
@@ -182,7 +182,7 @@ which are bypassed in favor of autonomous execution):
   failed CI runs exist (`"can_terminate": false`), run `triage.dart` as defined
   in `github-pr-triage`:
   ```bash
-  dart <path-to-github-pr-triage-skill>/bin/triage.dart --dir .
+  dart run <path-to-github-pr-triage-skill>/bin/triage.dart --dir .
   ```
 
 ### 4. Critical Assessment, Empirical Verification & Loop Convergence
@@ -233,7 +233,7 @@ which are bypassed in favor of autonomous execution):
   For every addressed review thread, you MUST execute thread resolution (thread resolution is explicit, mandatory, and un-skippable).
   Use the `resolve` subcommand in `triage.dart`:
   ```bash
-  dart <path-to-github-pr-triage-skill>/bin/triage.dart resolve <thread_id> <comment_id> "<your concise explanation>"
+  dart run <path-to-github-pr-triage-skill>/bin/triage.dart resolve <thread_id> <comment_id> "<your concise explanation>"
   ```
 
 * **Pre-Timer Verification Gate (MANDATORY)**:
