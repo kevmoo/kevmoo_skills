@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import '../../github-pr-triage/lib/github_cli.dart';
+import 'package:github_pr_triage/github_cli.dart';
 
 /// Main entry point for the PR status verification tool (`pr_status.dart`).
 ///

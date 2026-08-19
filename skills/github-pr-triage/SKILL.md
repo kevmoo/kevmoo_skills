@@ -63,11 +63,11 @@ key_features:
    underlying `git` and `gh` commands resolve to the correct repository and
    branch:
    ```bash
-   dart <path-to-github-pr-triage-skill>/bin/triage.dart --dir <path-to-target-repository>
+   dart run <path-to-github-pr-triage-skill>/bin/triage.dart --dir <path-to-target-repository>
    ```
    *Note*: If you need to target a specific PR or URL, you can also pass `--pr`:
    ```bash
-   dart <path-to-github-pr-triage-skill>/bin/triage.dart --dir <path-to-target-repository> --pr <pr-number-or-url>
+   dart run <path-to-github-pr-triage-skill>/bin/triage.dart --dir <path-to-target-repository> --pr <pr-number-or-url>
    ```
    **Save the raw stdout of this script** as a new markdown artifact named
    `raw_triage_output.md` in the artifacts directory (using the `write_to_file`
@@ -203,10 +203,10 @@ Use the `resolve` subcommand in `triage.dart` to programmatically reply to comme
 
 ```bash
 # Reply to a comment and resolve its thread:
-dart <path-to-github-pr-triage-skill>/bin/triage.dart resolve <thread_graphql_id> <comment_database_id> "<your reply body>"
+dart run <path-to-github-pr-triage-skill>/bin/triage.dart resolve <thread_graphql_id> <comment_database_id> "<your reply body>"
 
 # Or resolve a thread without posting a reply:
-dart <path-to-github-pr-triage-skill>/bin/triage.dart resolve <thread_graphql_id>
+dart run <path-to-github-pr-triage-skill>/bin/triage.dart resolve <thread_graphql_id>
 ```
 
 
