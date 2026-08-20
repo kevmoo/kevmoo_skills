@@ -182,15 +182,18 @@ verification:
 
 When staging deduplicated code and preparing a commit message or Pull Request:
 
-### 1. User Confirmation Gate (Prompt-Gated Offer)
-Before writing the PR description or commit body, explicitly prompt the user
-(e.g. via `ask_question` or interactive confirmation) whether to include a
-**Tool Provenance & Reproduction block**.
+### 1. User Confirmation Gate & Headless Defaults
+* **Interactive Sessions**: Before writing the PR description or commit body,
+  explicitly prompt the user in chat or via the harness confirmation tool (e.g.
+  `ask_question`) whether to include a **Tool Provenance & Reproduction block**.
+* **Headless / Autonomous Fallback**: In non-interactive contexts (e.g.
+  subagents, automated eval suites like `evalin`, or headless CI), default to
+  including the block automatically without blocking on user confirmation.
 
 ### 2. Standardized Provenance Block Format
-When confirmed, append the following markdown block to the PR description or
-commit body so reviewers understand where the deduplication originated and can
-rerun the audit locally:
+When confirmed (or running headlessly), append the following markdown block to
+the PR description or commit body so reviewers understand where the
+deduplication originated and can rerun the audit locally:
 
 ````markdown
 ### 🤖 Tool Provenance & Reproduction
@@ -206,4 +209,3 @@ To reproduce or re-run this duplication scan locally:
 ### 3. Version Resolution
 Determine the Deslop binary version dynamically:
 * Run `deslop --version` to extract the active engine release version.
-
