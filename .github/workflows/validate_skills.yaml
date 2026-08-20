@@ -6,14 +6,14 @@ on:
       - 'pubspec.yaml'
       - 'skills/**'
       - 'tool/**'
-      - '.github/workflows/validate_skills.yaml'
+      - '.github/workflows/**'
   push:
     branches: [ main ]
     paths:
       - 'pubspec.yaml'
       - 'skills/**'
       - 'tool/**'
-      - '.github/workflows/validate_skills.yaml'
+      - '.github/workflows/**'
 
 jobs:
   validate:
