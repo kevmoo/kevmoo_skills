@@ -221,18 +221,7 @@ class SidequestCliRunner {
         (results['quest'] == null && data.quests.isEmpty);
 
     if (isGlobal || results['quest'] == null) {
-      final nextGlobalNumber =
-          data.globalSideQuests
-              .map(
-                (sq) =>
-                    int.tryParse(
-                      sq.id.startsWith('G') ? sq.id.substring(1) : sq.id,
-                    ) ??
-                    0,
-              )
-              .fold(0, max) +
-          1;
-      final id = 'G$nextGlobalNumber';
+      final id = data.generateNextGlobalSideQuestId();
       data.globalSideQuests.add(
         SideQuest(id: id, title: title, status: status, note: note),
       );
@@ -242,18 +231,7 @@ class SidequestCliRunner {
       final qId = results['quest'] as String;
       final quest = _findQuest(data, qId);
       if (quest == null) return 1;
-      final nextSideNumber =
-          quest.sideQuests
-              .map(
-                (sq) =>
-                    int.tryParse(
-                      sq.id.startsWith('S') ? sq.id.substring(1) : sq.id,
-                    ) ??
-                    0,
-              )
-              .fold(0, max) +
-          1;
-      final id = 'S$nextSideNumber';
+      final id = data.generateNextSideQuestId(quest);
       quest.sideQuests.add(
         SideQuest(id: id, title: title, status: status, note: note),
       );
