@@ -577,8 +577,8 @@ Future<String> fetchFailedCheckLog(
   final annotations = <String>[];
 
   Future<String> ghRepoApi(String subpath) => runCommand('gh', [
-    ...repoArgs,
     'api',
+    '--allow-escape-sequences',
     'repos/${context.owner}/${context.repo}/$subpath',
   ], workingDirectory: context.workingDir);
 
