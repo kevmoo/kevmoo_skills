@@ -1,59 +1,85 @@
 ---
 name: clarify-confirm-continue
-description: |-
-  Intake multi-step tasks by clarifying ambiguities, summarizing understanding,
-  and confirming readiness via ask_question before executing code changes.
-key_features:
-  - Task intake and scope verification
-  - Shorthand ccc and pre-flight triggers
-  - Compositional grilling for ambiguity resolution
-  - Fast-tracking for VERY obvious assumptions
-  - In-modal structured understanding summary
-  - On-demand artifact generation for complex iteration
-  - Single-click readiness confirmation gate
+description: >-
+  Orchestrates a disciplined task intake workflow across code, docs, and project
+  files by autonomously fact-checking the workspace, resolving genuine decision
+  forks, and confirming execution readiness via ask_question before making
+  modifications. Use when starting multi-step tasks, refactorings, ambiguous
+  feature requests, broad documentation updates, or when invoked via
+  /clarify-confirm-continue or "ccc". Don't use for trivial single-turn lookups,
+  straightforward single-line edits where intent is unambiguous, or emergency
+  rollbacks.
 ---
 
-# Clarify-Confirm-Continue (`ccc` / Pre-Flight)
+# Clarify-Confirm-Continue (`ccc`)
 
-This skill defines a disciplined task intake and pre-flight check workflow for
-multi-step or complex user requests. It ensures the agent and user are fully
-aligned before any codebase modification or extensive execution begins.
+Disciplined task intake workflow for multi-step or complex user requests across
+codebases, document trees, and project workspaces. Ensures the agent and user
+are fully aligned before any modification or extensive execution begins.
 
-## 📦 Prerequisites & Skill Dependencies
-- **REQUIRED SKILL**: `grilling` MUST be installed alongside
-  `clarify-confirm-continue` for Tier 2 ambiguity resolution.
+## Composability
 
-## When to use this skill
-Activate when the user assigns a task and requests a pre-flight check, or uses
-trigger phrases like:
-- `"ccc"` / `"clarify-confirm-continue"`
-- `"pre-flight"` / `"check with me first"` / `"before you start"`
-- `"make sure you understand"` / `"confirm before proceeding"`
+- **Design Interviews**: Works seamlessly alongside the `grilling` skill when an
+  extended multi-turn architectural interrogation is warranted before drafting
+  the plan.
 
 ## Procedural Workflow
 
-### Phase 1: Clarification & Fact-Finding
-1. **Investigate Facts First**: Use read-only tools (`grep_search`, `view_file`,
-   `list_dir`) to check existing code patterns, architecture, or definitions.
-   Never ask the user for verifiable facts that the codebase can answer
-   directly.
-2. **Assess Ambiguity (Two-Tier Check)**:
-   - **Tier 1 (VERY Obvious)**: If the task is straightforward and any
-     assumptions or inferences are **VERY obvious** (things that do not require
-     interactive debate, but are simply worth mentioning for transparency),
-     proceed directly to Phase 2.
-   - **Tier 2 (Ambiguous / Decisions Needed)**: If major architectural
-     decisions, multiple interpretations, or non-obvious trade-offs exist,
-     apply the Q&A pattern from `grilling`:
-     - Ask clarifying questions **one at a time**.
-     - Provide your recommended answer for each question.
-     - Wait for user feedback on each question before continuing.
-     *(Do not present the final summary or readiness confirmation until all
-     questions are answered).*
+### Phase 1: Fact-Checking & Fork-Hunting
+
+#### 1. Fact-Check the Workspace First (Zero-User-Burden)
+Before asking any questions, inspect the environment autonomously using
+read-only tools (`grep_search`, `view_file`, `list_dir`, `code_search`,
+`moma_search`):
+- **Codebases**: Check function signatures, type definitions, conventions, and
+  existing test suites.
+- **Documents & Project Files**: Read relevant Markdown files (`*.md`), design
+  docs (`g3doc/`, `docs/`), notes, specifications, references, and schemas.
+- **Rule**: Never ask the user for verifiable facts that already exist in the
+  workspace files or documentation.
+
+#### 2. Fork-Hunting (Genuine Decisions vs. Fake Dilemmas)
+Evaluate the task for unresolved decisions by categorizing them:
+
+<!-- mdformat off(prevent table wrapping) -->
+| Category | Definition | Action |
+| :--- | :--- | :--- |
+| **Workspace Facts** | Verifiable via inspection tools. | **Never ask**; inspect autonomously. |
+| **Fake Dilemmas** | Obvious right choice vs obviously broken choices; asking permission for standard best practices. | **Never ask**; execute the obvious right choice. |
+| **Genuine Decision Forks** | 2+ viable, defensible paths with real trade-offs (API design, document framing, breaking changes). | **Clarify** before summarizing. |
+<!-- mdformat on -->
+
+* **Examples of Fake Dilemmas (Do not ask—execute standard best practices)**:
+  - *"Should I write tests for the new feature?"* (Always write tests).
+  - *"Should I fix the syntax error or leave it broken?"* (Obvious brownie vs.
+    kick-in-the-face).
+  - *"Should I format the code to comply with style rules?"* (Standard hygiene).
+
+* **Examples of Genuine Decision Forks (Clarification required)**:
+  - **API & Architecture**: Breaking change vs. deprecation shim; synchronous
+    vs. streaming response; choosing between two existing architectural patterns.
+  - **Documentation & Non-Code**: High-level executive summary vs. deep technical
+    breakdown; standalone doc vs. appending to an existing guide; choosing between
+    competing taxonomies.
+  - **Scope Boundaries**: Inclusions vs. exclusions when both are reasonable and
+    defensible.
+
+#### 3. Interrogate Unsettled Forks
+If one or more **Genuine Decision Forks** exist:
+- Present independent decision forks in a single focused `ask_question` call; ask
+  dependent/sequential forks one at a time.
+- State the trade-offs clearly.
+- **Always provide your recommended choice** with rationale.
+- Wait for user feedback before drafting the final execution summary.
+- **Anti-Smuggling Rule**: Never convert unresolved decision forks into
+  unverified "assumptions" to skip this interrogation step.
+
+---
 
 ### Phase 2: In-Modal Structured Summary & Readiness Gate (`ask_question`)
-Once all ambiguities are resolved (or immediately if Tier 1 applies), invoke the
-`ask_question` tool with a single, mandatory confirmation gate.
+
+Once all genuine decision forks are settled (or immediately if zero genuine
+forks exist), invoke the `ask_question` tool with a single readiness gate.
 
 > [!IMPORTANT]
 > **Preventing UI Collapse:** In many agentic harnesses (e.g., Jetski,
@@ -66,8 +92,8 @@ Once all ambiguities are resolved (or immediately if Tier 1 applies), invoke the
 Structure the `question` argument in `ask_question` using markdown:
 - **🎯 Goals**: What will be accomplished.
 - **🛡️ Non-Goals / Scope Boundaries**: What will explicitly be left untouched.
-- **📌 Assumptions**: Verifiable facts or VERY obvious inferences worth
-  mentioning.
+- **📌 Settled Decisions & Invariants**: Agreed choices from Phase 1 and verified
+  workspace facts (no unresolved questions or speculative assumptions).
 - **🛠️ Execution Plan**: High-level steps to be performed once approved.
 - Conclude with: `*How would you like to proceed?*`
 
@@ -76,27 +102,32 @@ Configure the `options` array with:
 - `"Open in artifact"`
 - `"No, adjust in chat"`
 
+---
+
 ### Phase 3: Handling Gate Selection
-- **If "(Recommended) Yes, proceed"**: Transition immediately to task
-  execution.
-- **If "Open in artifact"**: Use `write_to_file` to save the structured
-  summary and execution plan as a markdown artifact (`.md` file) in the
-  session's artifact directory. Configure the file to request interactive
+
+- **If "(Recommended) Yes, proceed"**: Transition immediately to task execution.
+- **If "Open in artifact"**: Use `write_to_file` to save the structured summary
+  and execution plan as a markdown artifact (`.md` file) in the session's
+  artifact directory. Configure the file to request interactive
   approval/feedback (e.g., set `RequestFeedback: true` in Antigravity's
   `ArtifactMetadata` to render a 'Proceed' button). If the harness does not
   support interactive gates, instruct the user in chat to review the file and
-  reply 'Proceed' when they are ready. In either case, stop calling tools and
-  go idle to await reactive wakeup.
-- **If "No, adjust in chat"**: Ask what needs adjustment or loop back to
-  Phase 1.
+  reply 'Proceed' when they are ready. Stop calling tools and go idle to await
+  reactive wakeup.
+- **If "No, adjust in chat" or Custom Write-In**: Apply user feedback, adjust
+  the scope or plan accordingly, and re-confirm if substantial changes were
+  made.
 
-## Critical Rule: Zero Execution Before Approval & Global Rules
-- **NO CODE MODIFICATIONS**: Do not edit project files, create branches, or run
-  mutating commands during Phase 1 or 2.
-- **STRICT GATING**: You must receive explicit approval via `ask_question` (or
-  clear write-in approval) before transitioning to task execution.
-- **GLOBAL RULES UNCHANGED**: Approval at the confirmation gate simply confirms
-  that you understand the task and authorizes you to begin researching or
-  drafting code. **Nothing changes about global Git/GitHub write restrictions
-  or commit rules in `AGENTS.md`**—all standard outward-facing write approvals
-  remain strictly and independently enforced during execution.
+---
+
+## Execution Safety Invariants
+
+- **No Pre-Approval Modifications**: Do not edit workspace files, create branches,
+  or run mutating commands during Phase 1 or Phase 2.
+- **Explicit Approval Gate**: You must receive confirmation via `ask_question`
+  (or write-in approval) before transitioning to execution.
+- **Global Guardrails Preserved**: Approval at the confirmation gate authorizes
+  that you understand the task and authorizes you to begin drafting changes. All
+  standard version control, push, PR, and landing approval gates in `AGENTS.md`
+  remain independently and strictly enforced during execution.
