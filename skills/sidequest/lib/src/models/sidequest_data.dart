@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 import 'enums.dart';
 import 'vcs_state.dart';
 
@@ -269,5 +270,35 @@ class SidequestData {
     return pretty
         ? const JsonEncoder.withIndent('  ').convert(toJson())
         : jsonEncode(toJson());
+  }
+
+  String generateNextGlobalSideQuestId() {
+    final nextNumber =
+        globalSideQuests
+            .map(
+              (sq) =>
+                  int.tryParse(
+                    sq.id.startsWith('G') ? sq.id.substring(1) : sq.id,
+                  ) ??
+                  0,
+            )
+            .fold(0, max) +
+        1;
+    return 'G$nextNumber';
+  }
+
+  String generateNextSideQuestId(MainQuest quest) {
+    final nextNumber =
+        quest.sideQuests
+            .map(
+              (sq) =>
+                  int.tryParse(
+                    sq.id.startsWith('S') ? sq.id.substring(1) : sq.id,
+                  ) ??
+                  0,
+            )
+            .fold(0, max) +
+        1;
+    return 'S$nextNumber';
   }
 }

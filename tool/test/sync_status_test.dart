@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
+import 'test_utils.dart';
 import '../../skills/github-pr-triage/lib/github_cli.dart';
 
 void main() {
@@ -23,42 +23,10 @@ void main() {
       'returns in_sync when local and remote SHAs match in git repo',
       () async {
         // Initialize git repo in tempDir
-        await runCommand('git', ['init'], workingDirectory: tempDir.path);
-        await runCommand('git', [
-          'config',
-          'user.name',
-          'Test User',
-        ], workingDirectory: tempDir.path);
-        await runCommand('git', [
-          'config',
-          'user.email',
-          'test@example.com',
-        ], workingDirectory: tempDir.path);
-
-        File(p.join(tempDir.path, 'file.txt')).writeAsStringSync('hello');
-        await runCommand('git', ['add', '.'], workingDirectory: tempDir.path);
-        await runCommand('git', [
-          'commit',
-          '-m',
-          'initial commit',
-        ], workingDirectory: tempDir.path);
-
-        final headSha = (await runCommand('git', [
-          'rev-parse',
-          'HEAD',
-        ], workingDirectory: tempDir.path)).trim();
-        final currentBranch = (await runCommand('git', [
-          'symbolic-ref',
-          '--short',
-          'HEAD',
-        ], workingDirectory: tempDir.path)).trim();
-
-        final context = PrContext(
-          workingDir: tempDir.path,
-          prNumber: '1',
-          owner: 'testowner',
-          repo: 'testrepo',
-        );
+        final setup = await setupTestGitRepo(tempDir);
+        final headSha = setup.headSha;
+        final currentBranch = setup.branch;
+        final context = setup.context;
 
         final status = await fetchPrSyncStatus(
           context,
@@ -77,42 +45,10 @@ void main() {
     test(
       'returns branch_mismatch when active local branch differs from remote PR branch',
       () async {
-        await runCommand('git', ['init'], workingDirectory: tempDir.path);
-        await runCommand('git', [
-          'config',
-          'user.name',
-          'Test User',
-        ], workingDirectory: tempDir.path);
-        await runCommand('git', [
-          'config',
-          'user.email',
-          'test@example.com',
-        ], workingDirectory: tempDir.path);
-
-        File(p.join(tempDir.path, 'file.txt')).writeAsStringSync('hello');
-        await runCommand('git', ['add', '.'], workingDirectory: tempDir.path);
-        await runCommand('git', [
-          'commit',
-          '-m',
-          'initial commit',
-        ], workingDirectory: tempDir.path);
-
-        final headSha = (await runCommand('git', [
-          'rev-parse',
-          'HEAD',
-        ], workingDirectory: tempDir.path)).trim();
-        final currentBranch = (await runCommand('git', [
-          'symbolic-ref',
-          '--short',
-          'HEAD',
-        ], workingDirectory: tempDir.path)).trim();
-
-        final context = PrContext(
-          workingDir: tempDir.path,
-          prNumber: '1',
-          owner: 'testowner',
-          repo: 'testrepo',
-        );
+        final setup = await setupTestGitRepo(tempDir);
+        final headSha = setup.headSha;
+        final currentBranch = setup.branch;
+        final context = setup.context;
 
         final status = await fetchPrSyncStatus(
           context,
@@ -136,41 +72,9 @@ void main() {
     test(
       'returns ahead_of_remote when local repo has unpushed commits',
       () async {
-        await runCommand('git', ['init'], workingDirectory: tempDir.path);
-        await runCommand('git', [
-          'config',
-          'user.name',
-          'Test User',
-        ], workingDirectory: tempDir.path);
-        await runCommand('git', [
-          'config',
-          'user.email',
-          'test@example.com',
-        ], workingDirectory: tempDir.path);
-
-        File(p.join(tempDir.path, 'file1.txt')).writeAsStringSync('first');
-        await runCommand('git', ['add', '.'], workingDirectory: tempDir.path);
-        await runCommand('git', [
-          'commit',
-          '-m',
-          'commit 1',
-        ], workingDirectory: tempDir.path);
-        final firstCommitSha = (await runCommand('git', [
-          'rev-parse',
-          'HEAD',
-        ], workingDirectory: tempDir.path)).trim();
-
-        File(p.join(tempDir.path, 'file2.txt')).writeAsStringSync('second');
-        await runCommand('git', ['add', '.'], workingDirectory: tempDir.path);
-        await runCommand('git', [
-          'commit',
-          '-m',
-          'commit 2',
-        ], workingDirectory: tempDir.path);
-        final secondCommitSha = (await runCommand('git', [
-          'rev-parse',
-          'HEAD',
-        ], workingDirectory: tempDir.path)).trim();
+        final setup = await setupTestGitRepo(tempDir, commits: 2);
+        final firstCommitSha = setup.commitShas[0];
+        final secondCommitSha = setup.commitShas[1];
 
         final currentBranch = (await runCommand('git', [
           'symbolic-ref',
@@ -178,12 +82,7 @@ void main() {
           'HEAD',
         ], workingDirectory: tempDir.path)).trim();
 
-        final context = PrContext(
-          workingDir: tempDir.path,
-          prNumber: '1',
-          owner: 'testowner',
-          repo: 'testrepo',
-        );
+        final context = setup.context;
 
         // Local is at secondCommitSha, remote PR is at firstCommitSha
         final status = await fetchPrSyncStatus(
@@ -203,41 +102,9 @@ void main() {
     test(
       'returns behind_remote when local repo is behind remote PR commit',
       () async {
-        await runCommand('git', ['init'], workingDirectory: tempDir.path);
-        await runCommand('git', [
-          'config',
-          'user.name',
-          'Test User',
-        ], workingDirectory: tempDir.path);
-        await runCommand('git', [
-          'config',
-          'user.email',
-          'test@example.com',
-        ], workingDirectory: tempDir.path);
-
-        File(p.join(tempDir.path, 'file1.txt')).writeAsStringSync('first');
-        await runCommand('git', ['add', '.'], workingDirectory: tempDir.path);
-        await runCommand('git', [
-          'commit',
-          '-m',
-          'commit 1',
-        ], workingDirectory: tempDir.path);
-        final firstCommitSha = (await runCommand('git', [
-          'rev-parse',
-          'HEAD',
-        ], workingDirectory: tempDir.path)).trim();
-
-        File(p.join(tempDir.path, 'file2.txt')).writeAsStringSync('second');
-        await runCommand('git', ['add', '.'], workingDirectory: tempDir.path);
-        await runCommand('git', [
-          'commit',
-          '-m',
-          'commit 2',
-        ], workingDirectory: tempDir.path);
-        final secondCommitSha = (await runCommand('git', [
-          'rev-parse',
-          'HEAD',
-        ], workingDirectory: tempDir.path)).trim();
+        final setup = await setupTestGitRepo(tempDir, commits: 2);
+        final firstCommitSha = setup.commitShas[0];
+        final secondCommitSha = setup.commitShas[1];
 
         // Reset local repo back to first commit
         await runCommand('git', [
@@ -252,12 +119,7 @@ void main() {
           'HEAD',
         ], workingDirectory: tempDir.path)).trim();
 
-        final context = PrContext(
-          workingDir: tempDir.path,
-          prNumber: '1',
-          owner: 'testowner',
-          repo: 'testrepo',
-        );
+        final context = setup.context;
 
         // Local is at firstCommitSha, remote PR is at secondCommitSha
         final status = await fetchPrSyncStatus(
@@ -275,38 +137,9 @@ void main() {
     );
 
     test('returns isSynced false when local or remote SHA is empty', () async {
-      await runCommand('git', ['init'], workingDirectory: tempDir.path);
-      await runCommand('git', [
-        'config',
-        'user.name',
-        'Test User',
-      ], workingDirectory: tempDir.path);
-      await runCommand('git', [
-        'config',
-        'user.email',
-        'test@example.com',
-      ], workingDirectory: tempDir.path);
-
-      File(p.join(tempDir.path, 'file.txt')).writeAsStringSync('hello');
-      await runCommand('git', ['add', '.'], workingDirectory: tempDir.path);
-      await runCommand('git', [
-        'commit',
-        '-m',
-        'initial commit',
-      ], workingDirectory: tempDir.path);
-
-      final currentBranch = (await runCommand('git', [
-        'symbolic-ref',
-        '--short',
-        'HEAD',
-      ], workingDirectory: tempDir.path)).trim();
-
-      final context = PrContext(
-        workingDir: tempDir.path,
-        prNumber: '1',
-        owner: 'testowner',
-        repo: 'testrepo',
-      );
+      final setup = await setupTestGitRepo(tempDir);
+      final currentBranch = setup.branch;
+      final context = setup.context;
 
       final status = await fetchPrSyncStatus(
         context,
@@ -322,38 +155,9 @@ void main() {
     test(
       'returns behind_remote when remote commit is not found in local repo',
       () async {
-        await runCommand('git', ['init'], workingDirectory: tempDir.path);
-        await runCommand('git', [
-          'config',
-          'user.name',
-          'Test User',
-        ], workingDirectory: tempDir.path);
-        await runCommand('git', [
-          'config',
-          'user.email',
-          'test@example.com',
-        ], workingDirectory: tempDir.path);
-
-        File(p.join(tempDir.path, 'file1.txt')).writeAsStringSync('first');
-        await runCommand('git', ['add', '.'], workingDirectory: tempDir.path);
-        await runCommand('git', [
-          'commit',
-          '-m',
-          'commit 1',
-        ], workingDirectory: tempDir.path);
-
-        final currentBranch = (await runCommand('git', [
-          'symbolic-ref',
-          '--short',
-          'HEAD',
-        ], workingDirectory: tempDir.path)).trim();
-
-        final context = PrContext(
-          workingDir: tempDir.path,
-          prNumber: '1',
-          owner: 'testowner',
-          repo: 'testrepo',
-        );
+        final setup = await setupTestGitRepo(tempDir);
+        final currentBranch = setup.branch;
+        final context = setup.context;
 
         // Simulated remote commit SHA that does not exist in local repo object store
         const nonExistentSha = '0123456789abcdef0123456789abcdef01234567';
