@@ -288,6 +288,81 @@ void main() {
         check(loaded!.quests.first.title).equals('Initial Task');
       },
     );
+
+    test('resolves directory across multi-tier discovery hierarchy', () async {
+      // 1. Explicit override
+      check(
+        SessionStore.resolveDirectory('/explicit/dir', environment: {}),
+      ).equals('/explicit/dir');
+
+      // 2. Direct environment variables (SIDEQUEST_DIR takes precedence over others)
+      check(
+        SessionStore.resolveDirectory(
+          null,
+          environment: {
+            'SIDEQUEST_DIR': '/env/sidequest',
+            'JETSKI_ARTIFACT_DIR': '/env/jetski',
+            'CLAUDE_ARTIFACT_DIR': '/env/claude',
+          },
+        ),
+      ).equals('/env/sidequest');
+
+      check(
+        SessionStore.resolveDirectory(
+          null,
+          environment: {'JETSKI_ARTIFACT_DIR': '/env/jetski'},
+        ),
+      ).equals('/env/jetski');
+
+      check(
+        SessionStore.resolveDirectory(
+          null,
+          environment: {'CLAUDE_ARTIFACT_DIR': '/env/claude'},
+        ),
+      ).equals('/env/claude');
+
+      check(
+        SessionStore.resolveDirectory(
+          null,
+          environment: {'GEMINI_ARTIFACT_DIR': '/env/gemini'},
+        ),
+      ).equals('/env/gemini');
+
+      // 3. Antigravity / Jetski conversation ID
+      check(
+        SessionStore.resolveDirectory(
+          null,
+          environment: {
+            'HOME': '/usr/home/testuser',
+            'ANTIGRAVITY_CONVERSATION_ID': 'abc-123-xyz',
+          },
+        ),
+      ).equals('/usr/home/testuser/.gemini/jetski/brain/abc-123-xyz');
+
+      // 4. .sidequest folder in cwd
+      final testCwd = await Directory.systemTemp.createTemp('sidequest_cwd_');
+      final dotSidequest = Directory(p.join(testCwd.path, '.sidequest'));
+      await dotSidequest.create();
+
+      check(
+        SessionStore.resolveDirectory(
+          null,
+          environment: {},
+          currentDirectory: testCwd.path,
+        ),
+      ).equals(dotSidequest.path);
+
+      await testCwd.delete(recursive: true);
+
+      // 5. Default fallback to cwd
+      check(
+        SessionStore.resolveDirectory(
+          null,
+          environment: {},
+          currentDirectory: '/workspace/project',
+        ),
+      ).equals('/workspace/project');
+    });
   });
 
   group('CLI Mutations & Workflow Operations', () {
@@ -349,6 +424,77 @@ void main() {
       },
     );
 
+    test('supports variadic multi-item completion', () async {
+      final runner = SidequestCliRunner(store: store);
+
+      // Add subquest and multiple steps
+      await runner.run(['subquest', 'add', '1', 'Multi-step SubQuest']);
+      await runner.run(['step', 'add', '1.1', 'Step 1']);
+      await runner.run(['step', 'add', '1.1', 'Step 2']);
+      await runner.run(['step', 'add', '1.1', 'Step 3']);
+
+      // Complete multiple items in one single canonical command
+      final exitCode = await runner.run([
+        'complete',
+        '1.1.1',
+        '1.1.2,1.1.3',
+        '1.1',
+      ]);
+      check(exitCode).equals(0);
+
+      final data = (await store.load())!;
+      check(data.lastCompletionOrder).equals(4);
+      check(
+        data.quests[0].subQuests[0].items[0].status,
+      ).equals(TaskStatus.completed);
+      check(
+        data.quests[0].subQuests[0].items[1].status,
+      ).equals(TaskStatus.completed);
+      check(
+        data.quests[0].subQuests[0].items[2].status,
+      ).equals(TaskStatus.completed);
+      check(data.quests[0].subQuests[0].status).equals(TaskStatus.completed);
+      check(data.quests[0].subQuests[0].completionOrder).equals(4);
+
+      // Reopen multiple items in one command
+      await runner.run(['reopen', '1.1.1', '1.1.2']);
+      final reopenedData = (await store.load())!;
+      check(
+        reopenedData.quests[0].subQuests[0].items[0].status,
+      ).equals(TaskStatus.pending);
+      check(
+        reopenedData.quests[0].subQuests[0].items[1].status,
+      ).equals(TaskStatus.pending);
+    });
+
+    test('rejects non-canonical alias commands', () async {
+      final runner = SidequestCliRunner(store: store);
+
+      // Non-canonical synonyms must fail
+      check(await runner.run(['show'])).equals(1);
+      check(await runner.run(['summary'])).equals(1);
+      check(await runner.run(['done', '1.1'])).equals(1);
+      check(await runner.run(['finish', '1.1'])).equals(1);
+      check(await runner.run(['delete', '1.1'])).equals(1);
+      check(await runner.run(['add', 'quest', 'Invalid'])).equals(1);
+    });
+
+    test(
+      'handles status command and empty invocation with existing state',
+      () async {
+        final runner = SidequestCliRunner(store: store);
+
+        await runner.run(['subquest', 'add', '1', 'Active SubQuest']);
+        await runner.run(['step', 'add', '1.1', 'Active Step']);
+
+        // Running canonical status command
+        check(await runner.run(['status'])).equals(0);
+
+        // Running bare command when state exists
+        check(await runner.run([])).equals(0);
+      },
+    );
+
     test('completes, reopens, and removes MainQuest and SideQuests', () async {
       final runner = SidequestCliRunner(store: store);
 
@@ -367,10 +513,11 @@ void main() {
       check(data.globalSideQuests[0].completionOrder).equals(1);
       check(data.lastCompletionOrder).equals(1);
 
-      // Complete MainQuest 1
+      // Complete MainQuest 1 (MainQuest does not carry completionOrder and should NOT advance lastCompletionOrder)
       await runner.run(['complete', '1']);
       data = (await store.load())!;
       check(data.quests[0].status).equals(QuestStatus.completed);
+      check(data.lastCompletionOrder).equals(1);
 
       // Reopen Global SideQuest G1
       await runner.run(['reopen', 'G1']);
@@ -389,30 +536,106 @@ void main() {
       check(data.quests.length).equals(1);
     });
 
-    test('executes batch mutations atomically', () async {
+    test(
+      'executes batch mutations with operations list and legacy formats',
+      () async {
+        final runner = SidequestCliRunner(store: store);
+
+        // 1. Operations list format including quest_add
+        final batchListJson = jsonEncode([
+          {'type': 'quest_add', 'title': 'Batch Main Quest 2'},
+          {'type': 'subquest_add', 'questId': '1', 'title': 'Batch SubQuest 1'},
+          {'type': 'step_add', 'subquestId': '1.1', 'title': 'Step 1.1.1'},
+          {
+            'type': 'blocker_add',
+            'subquestId': '1.1',
+            'title': 'Blocker 1.1.2',
+          },
+          {
+            'type': 'complete',
+            'ids': ['1.1.1'],
+          },
+          {
+            'type': 'vcs',
+            'quest': '1',
+            'stage': 'dirty',
+            'branch': 'feat/batch',
+            'files': ['lib/test.dart'],
+          },
+        ]);
+
+        await runner.run(['batch', batchListJson]);
+        var data = (await store.load())!;
+        check(data.quests.length).equals(2);
+        check(data.quests[1].title).equals('Batch Main Quest 2');
+        check(data.quests[0].subQuests.length).equals(1);
+        check(data.quests[0].subQuests[0].items.length).equals(2);
+        check(
+          data.quests[0].subQuests[0].items[0].status,
+        ).equals(TaskStatus.completed);
+        check(data.quests[0].vcs?.branch).equals('feat/batch');
+
+        // 2. Legacy format
+        final legacyJson = jsonEncode({
+          'addSubQuest': {'quest': '1', 'title': 'Legacy SubQuest'},
+          'complete': ['1.1.2'],
+        });
+        await runner.run(['batch', legacyJson]);
+        data = (await store.load())!;
+        check(data.quests[0].subQuests.length).equals(2);
+        check(
+          data.quests[0].subQuests[0].items[1].status,
+        ).equals(TaskStatus.completed);
+      },
+    );
+
+    test('updates VCS state via CLI and handles unknown items', () async {
       final runner = SidequestCliRunner(store: store);
 
-      final batchJson = jsonEncode({
-        'addSubQuest': {'quest': '1', 'title': 'Batch SubQuest'},
-        'vcs': {
-          'quest': '1',
-          'stage': 'dirty',
-          'branch': 'feat/test',
-          'files': ['lib/a.dart'],
-        },
-      });
+      // VCS update
+      final vcsCode = await runner.run([
+        'vcs',
+        '1',
+        '--stage=local_commit',
+        '--branch=feat/vcs-test',
+        '--files=lib/a.dart,lib/b.dart',
+        '--details=Ready for review',
+      ]);
+      check(vcsCode).equals(0);
 
-      await runner.run(['batch', batchJson]);
       final data = (await store.load())!;
-      check(data.quests[0].subQuests.length).equals(1);
-      check(data.quests[0].vcs?.stage).equals(VcsStage.dirty);
-      check(data.quests[0].vcs?.branch).equals('feat/test');
+      check(data.quests[0].vcs?.stage).equals(VcsStage.localCommit);
+      check(data.quests[0].vcs?.branch).equals('feat/vcs-test');
+      check(
+        data.quests[0].vcs!.modifiedFiles,
+      ).deepEquals(['lib/a.dart', 'lib/b.dart']);
+      check(data.quests[0].vcs?.details).equals('Ready for review');
+
+      // Unknown ID complete returns 1
+      final missingCode = await runner.run(['complete', 'non_existent_id']);
+      check(missingCode).equals(1);
     });
 
-    test('returns exit code 0 for help arguments and empty input', () async {
+    test('merges audit payload using positional or option argument', () async {
       final runner = SidequestCliRunner(store: store);
 
-      check(await runner.run([])).equals(0);
+      final auditPayload = SidequestData.initial(
+        firstQuestTitle: 'Audited Main Quest',
+      );
+      final payloadFile = File(p.join(tempDir.path, 'audit_payload.json'));
+      await payloadFile.writeAsString(auditPayload.toJsonString());
+
+      // Merge with positional arg
+      final code = await runner.run(['merge-audit', payloadFile.path]);
+      check(code).equals(0);
+
+      final data = (await store.load())!;
+      check(data.quests.first.title).equals('Audited Main Quest');
+    });
+
+    test('returns exit code 0 for help arguments', () async {
+      final runner = SidequestCliRunner(store: store);
+
       check(await runner.run(['--help'])).equals(0);
       check(await runner.run(['-h'])).equals(0);
       check(await runner.run(['help'])).equals(0);
