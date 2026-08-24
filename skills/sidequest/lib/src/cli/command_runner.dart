@@ -45,9 +45,6 @@ class SidequestCliRunner {
           _printUsage();
           return 0;
         case 'status':
-        case 'show':
-        case 'summary':
-        case 'list':
           return await _handleStatus();
         case 'init':
           return await _handleInit(subArgs);
@@ -61,18 +58,11 @@ class SidequestCliRunner {
           return await _handleBlocker(subArgs);
         case 'sidequest':
           return await _handleSideQuest(subArgs);
-        case 'add':
-          return await _handleDispatchAdd(subArgs);
         case 'complete':
-        case 'done':
-        case 'finish':
-        case 'resolve':
           return await _handleComplete(subArgs);
         case 'reopen':
           return await _handleReopen(subArgs);
         case 'remove':
-        case 'delete':
-        case 'rm':
           return await _handleRemove(subArgs);
         case 'vcs':
           return await _handleVcs(subArgs);
@@ -195,30 +185,6 @@ class SidequestCliRunner {
       };
       final note = sq.note != null ? ' (${sq.note})' : '';
       stdout.writeln('     * [$statusIcon] ${sq.id}: "${sq.title}"$note');
-    }
-  }
-
-  Future<int> _handleDispatchAdd(List<String> args) async {
-    if (args.isEmpty) {
-      return await _handleSideQuest(['add']);
-    }
-    final target = args[0];
-    final rest = args.sublist(1);
-
-    switch (target) {
-      case 'quest':
-        return await _handleQuest(['add', ...rest]);
-      case 'subquest':
-        return await _handleSubQuest(['add', ...rest]);
-      case 'step':
-        return await _handleStep(['add', ...rest]);
-      case 'blocker':
-        return await _handleBlocker(['add', ...rest]);
-      case 'sidequest':
-        return await _handleSideQuest(['add', ...rest]);
-      default:
-        // Default treat "add <title>" as adding a sidequest
-        return await _handleSideQuest(['add', ...args]);
     }
   }
 
@@ -791,28 +757,16 @@ class SidequestCliRunner {
 
     switch (type) {
       case 'quest_add':
-      case 'add_quest':
-      case 'quest':
         _applyBatchQuestAdd(data, op);
       case 'complete':
-      case 'done':
-      case 'finish':
         _applyBatchComplete(data, op);
       case 'subquest_add':
-      case 'add_subquest':
-      case 'subquest':
         _applyBatchSubQuestAdd(data, op);
       case 'step_add':
-      case 'add_step':
-      case 'step':
         _applyBatchStepAdd(data, op);
       case 'blocker_add':
-      case 'add_blocker':
-      case 'blocker':
         _applyBatchBlockerAdd(data, op);
       case 'sidequest_add':
-      case 'add_sidequest':
-      case 'sidequest':
         _applyBatchSideQuestAdd(data, op);
       case 'vcs':
         _applyBatchVcs(data, op);
@@ -1038,7 +992,7 @@ Global Options:
   --dir=<path>            Path to session artifact directory containing sidequest.json
 
 Inspection:
-  status, show, summary   Print compact 10-line session overview (default if state exists)
+  status                  Print compact 10-line session overview (default if state exists)
 
 Mutations:
   init [title]            Initialize sidequest session map (default: "Main Quest 1")
@@ -1047,9 +1001,9 @@ Mutations:
   step add <subId> <t>    Add a planned step under sub-quest <subId>
   blocker add <subId> <t> Add an unplanned blocker under sub-quest <subId>
   sidequest add <t>       Add a side quest (--quest=<qId>, --global, --parked, --note=<n>)
-  complete <id...>        Mark one or more items completed (alias: done, finish, resolve)
+  complete <id...>        Mark one or more items completed
   reopen <id...>          Reopen one or more completed items
-  remove <id...>          Remove one or more items (alias: delete, rm)
+  remove <id...>          Remove one or more items
   vcs <qId>               Update VCS state (--stage=dirty|local_commit|uploaded|merged|clean)
   batch <json>            Execute multiple mutations in a single call
   render                  Re-render sidequest.md from sidequest.json

@@ -71,7 +71,6 @@ sidequest sidequest add "Tangent item" [--global] [--parked] [--note="..."]
 
 # 3. Complete One or Multiple Items (Atomic disk write & star update)
 sidequest complete 1.1.1 1.1.2 1.1
-# Aliases: sidequest done 1.1 / sidequest finish 1.1 / sidequest resolve 1.1
 
 # 4. Update VCS Lifecycle
 sidequest vcs 1 --stage=dirty|local_commit|uploaded|merged|clean [--branch=B] [--files=F]

@@ -424,7 +424,7 @@ void main() {
       },
     );
 
-    test('supports variadic multi-item completion with synonyms', () async {
+    test('supports variadic multi-item completion', () async {
       final runner = SidequestCliRunner(store: store);
 
       // Add subquest and multiple steps
@@ -433,9 +433,9 @@ void main() {
       await runner.run(['step', 'add', '1.1', 'Step 2']);
       await runner.run(['step', 'add', '1.1', 'Step 3']);
 
-      // Complete multiple items in one single command using synonym "done"
+      // Complete multiple items in one single canonical command
       final exitCode = await runner.run([
-        'done',
+        'complete',
         '1.1.1',
         '1.1.2,1.1.3',
         '1.1',
@@ -467,31 +467,17 @@ void main() {
       ).equals(TaskStatus.pending);
     });
 
-    test(
-      'supports verb-dispatch synonyms: add quest, add subquest, add step',
-      () async {
-        final runner = SidequestCliRunner(store: store);
+    test('rejects non-canonical alias commands', () async {
+      final runner = SidequestCliRunner(store: store);
 
-        // add quest
-        await runner.run(['add', 'quest', 'Dispatched Main Quest 2']);
-        // add subquest
-        await runner.run(['add', 'subquest', '2', 'Dispatched SubQuest 2.1']);
-        // add step
-        await runner.run(['add', 'step', '2.1', 'Dispatched Step 2.1.1']);
-        // add blocker
-        await runner.run(['add', 'blocker', '2.1', 'Dispatched Blocker 2.1.2']);
-
-        final data = (await store.load())!;
-        check(data.quests.length).equals(2);
-        check(data.quests[1].title).equals('Dispatched Main Quest 2');
-        check(data.quests[1].subQuests.length).equals(1);
-        check(data.quests[1].subQuests[0].items.length).equals(2);
-        check(data.quests[1].subQuests[0].items[0].type).equals(TaskType.step);
-        check(
-          data.quests[1].subQuests[0].items[1].type,
-        ).equals(TaskType.blocker);
-      },
-    );
+      // Non-canonical synonyms must fail
+      check(await runner.run(['show'])).equals(1);
+      check(await runner.run(['summary'])).equals(1);
+      check(await runner.run(['done', '1.1'])).equals(1);
+      check(await runner.run(['finish', '1.1'])).equals(1);
+      check(await runner.run(['delete', '1.1'])).equals(1);
+      check(await runner.run(['add', 'quest', 'Invalid'])).equals(1);
+    });
 
     test(
       'handles status command and empty invocation with existing state',
@@ -501,9 +487,8 @@ void main() {
         await runner.run(['subquest', 'add', '1', 'Active SubQuest']);
         await runner.run(['step', 'add', '1.1', 'Active Step']);
 
-        // Running status command
+        // Running canonical status command
         check(await runner.run(['status'])).equals(0);
-        check(await runner.run(['show'])).equals(0);
 
         // Running bare command when state exists
         check(await runner.run([])).equals(0);
