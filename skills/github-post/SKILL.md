@@ -35,7 +35,7 @@ equivalents:
 ```mermaid
 graph TD
     A["1. Intake & Disambiguation<br><b>STOP. DON'T GUESS.</b>"] --> B["2. Repository Orientation<br><code>orient.dart [-R repo]</code>"]
-    B --> C["3. Draft into Artifact<br><code>draft_github_issue.md</code> / <code>draft_github_pr.md</code>"]
+    B --> C["3. Draft into Artifact<br><code>draft_github_[owner]_[repo]_issue.md</code> / <code>draft_github_[owner]_[repo]_pr.md</code>"]
     C --> D["4. Mandatory Approval Gate<br><code>ask_question</code> (Hard Stop)"]
     D --> E["5. Execution & Verification<br><code>gh issue/pr create --body-file</code>"]
 ```
@@ -89,10 +89,12 @@ dart run skills/github-post/bin/orient.dart -R invertase/melos
 
 Always draft the complete title and body into a dedicated Markdown artifact in
 the conversation artifact directory (`<appDataDir>/brain/<conversation-id>/`)
-before touching the GitHub CLI:
+before touching the GitHub CLI, explicitly namespaced by repository:
 
-* **For Issues**: `draft_github_issue.md`
-* **For Pull Requests**: `draft_github_pr.md`
+* **For Issues**: `draft_github_<owner>_<repo>_issue.md`
+  *(e.g., `draft_github_invertase_melos_issue.md` or `draft_github_kevmoo_kevmoo_skills_issue.md`)*
+* **For Pull Requests**: `draft_github_<owner>_<repo>_pr.md`
+  *(e.g., `draft_github_invertase_melos_pr.md` or `draft_github_kevmoo_kevmoo_skills_pr.md`)*
 
 Always provide `ArtifactMetadata` with `RequestFeedback: true` so the user can
 review the rendered draft directly in the UI.
