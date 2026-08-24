@@ -288,6 +288,55 @@ void main() {
         check(loaded!.quests.first.title).equals('Initial Task');
       },
     );
+
+    test('resolves directory across multi-tier discovery hierarchy', () {
+      // 1. Explicit override
+      check(
+        SessionStore.resolveDirectory('/explicit/dir', environment: {}),
+      ).equals('/explicit/dir');
+
+      // 2. Direct environment variables
+      check(
+        SessionStore.resolveDirectory(
+          null,
+          environment: {'SIDEQUEST_DIR': '/env/sidequest'},
+        ),
+      ).equals('/env/sidequest');
+
+      check(
+        SessionStore.resolveDirectory(
+          null,
+          environment: {'CLAUDE_ARTIFACT_DIR': '/env/claude'},
+        ),
+      ).equals('/env/claude');
+
+      check(
+        SessionStore.resolveDirectory(
+          null,
+          environment: {'GEMINI_ARTIFACT_DIR': '/env/gemini'},
+        ),
+      ).equals('/env/gemini');
+
+      // 3. Antigravity / Jetski conversation ID
+      check(
+        SessionStore.resolveDirectory(
+          null,
+          environment: {
+            'HOME': '/usr/home/testuser',
+            'ANTIGRAVITY_CONVERSATION_ID': 'abc-123-xyz',
+          },
+        ),
+      ).equals('/usr/home/testuser/.gemini/jetski/brain/abc-123-xyz');
+
+      // 4. Default fallback to cwd
+      check(
+        SessionStore.resolveDirectory(
+          null,
+          environment: {},
+          currentDirectory: '/workspace/project',
+        ),
+      ).equals('/workspace/project');
+    });
   });
 
   group('CLI Mutations & Workflow Operations', () {
@@ -349,6 +398,92 @@ void main() {
       },
     );
 
+    test('supports variadic multi-item completion with synonyms', () async {
+      final runner = SidequestCliRunner(store: store);
+
+      // Add subquest and multiple steps
+      await runner.run(['subquest', 'add', '1', 'Multi-step SubQuest']);
+      await runner.run(['step', 'add', '1.1', 'Step 1']);
+      await runner.run(['step', 'add', '1.1', 'Step 2']);
+      await runner.run(['step', 'add', '1.1', 'Step 3']);
+
+      // Complete multiple items in one single command using synonym "done"
+      final exitCode = await runner.run([
+        'done',
+        '1.1.1',
+        '1.1.2,1.1.3',
+        '1.1',
+      ]);
+      check(exitCode).equals(0);
+
+      final data = (await store.load())!;
+      check(data.lastCompletionOrder).equals(4);
+      check(
+        data.quests[0].subQuests[0].items[0].status,
+      ).equals(TaskStatus.completed);
+      check(
+        data.quests[0].subQuests[0].items[1].status,
+      ).equals(TaskStatus.completed);
+      check(
+        data.quests[0].subQuests[0].items[2].status,
+      ).equals(TaskStatus.completed);
+      check(data.quests[0].subQuests[0].status).equals(TaskStatus.completed);
+      check(data.quests[0].subQuests[0].completionOrder).equals(4);
+
+      // Reopen multiple items in one command
+      await runner.run(['reopen', '1.1.1', '1.1.2']);
+      final reopenedData = (await store.load())!;
+      check(
+        reopenedData.quests[0].subQuests[0].items[0].status,
+      ).equals(TaskStatus.pending);
+      check(
+        reopenedData.quests[0].subQuests[0].items[1].status,
+      ).equals(TaskStatus.pending);
+    });
+
+    test(
+      'supports verb-dispatch synonyms: add quest, add subquest, add step',
+      () async {
+        final runner = SidequestCliRunner(store: store);
+
+        // add quest
+        await runner.run(['add', 'quest', 'Dispatched Main Quest 2']);
+        // add subquest
+        await runner.run(['add', 'subquest', '2', 'Dispatched SubQuest 2.1']);
+        // add step
+        await runner.run(['add', 'step', '2.1', 'Dispatched Step 2.1.1']);
+        // add blocker
+        await runner.run(['add', 'blocker', '2.1', 'Dispatched Blocker 2.1.2']);
+
+        final data = (await store.load())!;
+        check(data.quests.length).equals(2);
+        check(data.quests[1].title).equals('Dispatched Main Quest 2');
+        check(data.quests[1].subQuests.length).equals(1);
+        check(data.quests[1].subQuests[0].items.length).equals(2);
+        check(data.quests[1].subQuests[0].items[0].type).equals(TaskType.step);
+        check(
+          data.quests[1].subQuests[0].items[1].type,
+        ).equals(TaskType.blocker);
+      },
+    );
+
+    test(
+      'handles status command and empty invocation with existing state',
+      () async {
+        final runner = SidequestCliRunner(store: store);
+
+        await runner.run(['subquest', 'add', '1', 'Active SubQuest']);
+        await runner.run(['step', 'add', '1.1', 'Active Step']);
+
+        // Running status command
+        check(await runner.run(['status'])).equals(0);
+        check(await runner.run(['show'])).equals(0);
+
+        // Running bare command when state exists
+        check(await runner.run([])).equals(0);
+      },
+    );
+
     test('completes, reopens, and removes MainQuest and SideQuests', () async {
       final runner = SidequestCliRunner(store: store);
 
@@ -389,30 +524,59 @@ void main() {
       check(data.quests.length).equals(1);
     });
 
-    test('executes batch mutations atomically', () async {
+    test(
+      'executes batch mutations with operations list and legacy formats',
+      () async {
+        final runner = SidequestCliRunner(store: store);
+
+        // 1. Operations list format
+        final batchListJson = jsonEncode([
+          {'type': 'subquest_add', 'questId': '1', 'title': 'Batch SubQuest 1'},
+          {'type': 'step_add', 'subquestId': '1.1', 'title': 'Step 1.1.1'},
+          {
+            'type': 'blocker_add',
+            'subquestId': '1.1',
+            'title': 'Blocker 1.1.2',
+          },
+          {
+            'type': 'complete',
+            'ids': ['1.1.1'],
+          },
+          {
+            'type': 'vcs',
+            'quest': '1',
+            'stage': 'dirty',
+            'branch': 'feat/batch',
+            'files': ['lib/test.dart'],
+          },
+        ]);
+
+        await runner.run(['batch', batchListJson]);
+        var data = (await store.load())!;
+        check(data.quests[0].subQuests.length).equals(1);
+        check(data.quests[0].subQuests[0].items.length).equals(2);
+        check(
+          data.quests[0].subQuests[0].items[0].status,
+        ).equals(TaskStatus.completed);
+        check(data.quests[0].vcs?.branch).equals('feat/batch');
+
+        // 2. Legacy format
+        final legacyJson = jsonEncode({
+          'addSubQuest': {'quest': '1', 'title': 'Legacy SubQuest'},
+          'complete': ['1.1.2'],
+        });
+        await runner.run(['batch', legacyJson]);
+        data = (await store.load())!;
+        check(data.quests[0].subQuests.length).equals(2);
+        check(
+          data.quests[0].subQuests[0].items[1].status,
+        ).equals(TaskStatus.completed);
+      },
+    );
+
+    test('returns exit code 0 for help arguments', () async {
       final runner = SidequestCliRunner(store: store);
 
-      final batchJson = jsonEncode({
-        'addSubQuest': {'quest': '1', 'title': 'Batch SubQuest'},
-        'vcs': {
-          'quest': '1',
-          'stage': 'dirty',
-          'branch': 'feat/test',
-          'files': ['lib/a.dart'],
-        },
-      });
-
-      await runner.run(['batch', batchJson]);
-      final data = (await store.load())!;
-      check(data.quests[0].subQuests.length).equals(1);
-      check(data.quests[0].vcs?.stage).equals(VcsStage.dirty);
-      check(data.quests[0].vcs?.branch).equals('feat/test');
-    });
-
-    test('returns exit code 0 for help arguments and empty input', () async {
-      final runner = SidequestCliRunner(store: store);
-
-      check(await runner.run([])).equals(0);
       check(await runner.run(['--help'])).equals(0);
       check(await runner.run(['-h'])).equals(0);
       check(await runner.run(['help'])).equals(0);

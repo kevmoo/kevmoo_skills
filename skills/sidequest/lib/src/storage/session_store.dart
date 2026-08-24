@@ -9,24 +9,60 @@ import '../models/sidequest_data.dart';
 class SessionStore {
   final String directory;
 
-  SessionStore({String? directory}) : directory = resolveDirectory(directory);
+  SessionStore({
+    String? directory,
+    Map<String, String>? environment,
+    String? currentDirectory,
+  }) : directory = resolveDirectory(
+         directory,
+         environment: environment,
+         currentDirectory: currentDirectory,
+       );
 
-  static String resolveDirectory(String? explicit) {
+  static String resolveDirectory(
+    String? explicit, {
+    Map<String, String>? environment,
+    String? currentDirectory,
+  }) {
     if (explicit != null && explicit.trim().isNotEmpty) {
       return explicit.trim();
     }
-    final envVars = [
+
+    final env = environment ?? Platform.environment;
+    final cwd = currentDirectory ?? Directory.current.path;
+
+    final directEnvVars = [
       'JETSKI_ARTIFACT_DIR',
-      'GEMINI_ARTIFACT_DIR',
       'CLAUDE_ARTIFACT_DIR',
+      'GEMINI_ARTIFACT_DIR',
+      'SIDEQUEST_DIR',
     ];
-    for (final key in envVars) {
-      final val = Platform.environment[key];
+    for (final key in directEnvVars) {
+      final val = env[key];
       if (val != null && val.trim().isNotEmpty) {
         return val.trim();
       }
     }
-    return '.';
+
+    final convId = env['ANTIGRAVITY_CONVERSATION_ID'];
+    if (convId != null && convId.trim().isNotEmpty) {
+      final home = env['HOME'] ?? env['USERPROFILE'] ?? '';
+      if (home.isNotEmpty) {
+        return p.join(home, '.gemini', 'jetski', 'brain', convId.trim());
+      }
+    }
+
+    final dotSidequest = p.join(cwd, '.sidequest');
+    if (Directory(dotSidequest).existsSync() ||
+        File(p.join(dotSidequest, 'sidequest.json')).existsSync()) {
+      return dotSidequest;
+    }
+
+    if (File(p.join(cwd, 'sidequest.json')).existsSync()) {
+      return cwd;
+    }
+
+    return cwd;
   }
 
   File get jsonFile => File(p.join(directory, 'sidequest.json'));
