@@ -13,6 +13,8 @@ dependencies:
 dev_dependencies:
   deslop_duplication_audit:
     path: ../skills/deslop-duplication-audit
+  github_post:
+    path: ../skills/github-post
   sidequest:
     path: ../skills/sidequest
   test: ^1.24.0
