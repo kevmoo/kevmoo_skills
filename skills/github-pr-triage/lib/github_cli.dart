@@ -289,7 +289,15 @@ typedef PrReviewThread = ({
 });
 
 /// Represents a submitted review on a PR.
-typedef PrReview = ({String author, String submittedAt});
+typedef PrReview = ({
+  String id,
+  String databaseId,
+  String author,
+  String body,
+  String state,
+  String submittedAt,
+  String url,
+});
 
 /// Container for GraphQL PR data.
 typedef PrGraphData = ({
@@ -690,8 +698,13 @@ Future<PrGraphData> fetchPrGraphQLData(
         }
         reviews(last: 100) {
           nodes {
+            id
+            databaseId
             author { login }
+            body
+            state
             submittedAt
+            url
           }
         }
         reviewThreads(first: 100) {
@@ -884,10 +897,15 @@ PrComment _parsePrComment(Map json) {
 PrReview _parsePrReview(Map json) {
   final authorLogin = switch (json['author']) {
     {'login': final String login} => login,
-    _ => '',
+    _ => 'ghost',
   };
   return (
+    id: json['id']?.toString() ?? '',
+    databaseId: json['databaseId']?.toString() ?? '',
     author: authorLogin,
+    body: json['body']?.toString() ?? '',
+    state: json['state']?.toString() ?? '',
     submittedAt: json['submittedAt']?.toString() ?? '',
+    url: json['url']?.toString() ?? '',
   );
 }

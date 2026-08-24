@@ -83,11 +83,12 @@ key_features:
      - Do not start making code edits while the local workspace is out of sync with the remote PR.
 
 3. **Analyze Open Comments**:
-   - The script lists all unresolved comment threads.
+   - The script lists all unresolved review threads, top-level review comments
+     (overall review summaries), and general PR conversation comments.
    - Read the conversations carefully to understand what reviewers are
      requesting.
-   - Focus *only* on unresolved comments. Ignore comments marked as resolved
-     unless they provide necessary context.
+   - Focus *only* on unresolved or actionable comments. Ignore comments marked
+     as resolved unless they provide necessary context.
    - Ignore comments from the PR author themselves unless they clarify a
      reviewer's comment.
 
@@ -126,13 +127,13 @@ key_features:
      - **Summary of Feedback/Failure**: A concise summary of the reviewer
        comment(s) or CI failure(s), including direct markdown links back to the
        comments/checks on GitHub. When linking to comments, use a descriptive
-       link that includes both the comment number and the GitHub username of the
-       reviewer (e.g. `[Comment #1 by @reviewer_username](#)`).
-     - **Thread & Comment Identifiers (For Comments)**: Explicitly preserve the
-       `Thread ID` (e.g. `PRRT_...`) and `Comment ID` (e.g. `3438780787`) from
-       the comment header in `raw_triage_output.md` under each action item so
-       the resolution step (`gh api`) has immediate access to both parameters
-       without extra API lookups.
+       link that includes both the comment/review number and the GitHub username of the
+       reviewer (e.g. `[Comment #1 by @reviewer_username](#)` or `[Review #1 by @reviewer_username](#)`).
+     - **Thread & Comment/Review Identifiers (For Comments)**: Explicitly preserve the
+       `Thread ID` (e.g. `PRRT_...`), `Comment ID` (e.g. `3438780787`), or `Review ID`
+       (e.g. `PRR_...`) from the header in `raw_triage_output.md` under each action
+       item so the resolution step (`gh api` or `gh pr comment`) has immediate access
+       to the identifiers without extra API lookups.
      - **Agent Assessment (For Comments)**:
        - **Agreement Level**: A short indicator of your agreement using one of
          these categories:
@@ -182,7 +183,7 @@ key_features:
      - **If uncommitted changes or unpushed commits exist**, offer:
        1. `(Recommended) Commit fixes, push branch, reply to comments, and resolve threads`
        2. `Commit fixes and push branch only`
-       3. `Reply to comments and resolve threads without committing/pushing`
+       3. `Commit fixes locally only`
        4. `Do nothing`
      - **If working tree is clean and all commits are pushed**, offer:
        1. `(Recommended) Reply to comments and resolve threads`
@@ -229,8 +230,7 @@ dart run <path-to-github-pr-triage-skill>/bin/triage.dart resolve <thread_graphq
   like `pr-loop` with upfront user consent).
 - **Sync Code Before Comments**: Do not post "Done" or "Fixed" comment replies
   or resolve threads on GitHub while the corresponding code fixes remain
-  uncommitted or unpushed, unless the user explicitly selects an option
-  directing you to do so.
+  uncommitted or unpushed.
 - Do NOT address resolved comments unless requested.
 - **NO `commit --amend`**: Modifying commit history via `git commit --amend` is
   strictly prohibited. Always create new, atomic commits.
