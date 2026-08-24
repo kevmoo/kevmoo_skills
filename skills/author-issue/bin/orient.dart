@@ -27,6 +27,7 @@ Future<void> main(List<String> args) async {
   }
 
   final workingDir = results.option('dir');
+  final repo = results.option('repo');
   final limitStr = results.option('limit') ?? '20';
   final limit = int.tryParse(limitStr) ?? 20;
   final asJson = results.flag('json');
@@ -35,6 +36,7 @@ Future<void> main(List<String> args) async {
   try {
     final orientation = await gatherer.gather(
       workingDirectory: workingDir,
+      repo: repo,
       sampleLimit: limit,
     );
 

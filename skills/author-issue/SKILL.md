@@ -64,17 +64,22 @@ vocabulary, and native templates).
 
 ### 1. Automated Orientation via `orient.dart`
 
-Run the bundled orientation script in the target repository:
+Run the bundled orientation script in the target repository or against a remote
+GitHub slug:
 
 ```bash
+# In a local repository checkout:
 dart run skills/author-issue/bin/orient.dart
+
+# Against a remote GitHub repository (zero clone required):
+dart run skills/author-issue/bin/orient.dart -R invertase/melos
 ```
 
 * **What it gathers**:
-  * Active maintainers and reviewers (from recent merged PRs and `OWNERS`).
-  * Common issue title prefixes (e.g. `[analyzer]`, `pkg_name:`, `area-foo:`).
+  * Active human maintainers and reviewers (filtering out CI and bot accounts).
+  * Common issue title prefixes (e.g. `[analyzer]`, `pkg_name:`, `request:`).
   * Common PR / CL title prefixes (e.g. `feat(scope):`, `fix:`, `refactor:`).
-  * Repository label vocabulary and detected issue/PR templates.
+  * Repository label vocabulary and detected issue/PR templates with field schemas.
   * Sample maintainer titles for style calibration.
 * **Slop Contagion Guardrail**: Use the gathered orientation *strictly* for
   taxonomy, title prefixes, and label selection. Do NOT adopt decorative slop,
@@ -92,10 +97,16 @@ gh pr list --state merged --limit 15 --json author,reviews,title,labels
 gh issue list --limit 15 --state all --json author,title,labels
 ```
 
-## Title Conventions
+## Title Conventions & Disambiguation
 
-Use concise, imperative titles (≤70 characters) formatted according to the
-repository's conventions:
+Use concise, imperative titles (≤70 characters) calibrated to whether you are
+filing an issue or creating a pull request / CL:
+
+* **When Authoring an Issue**: Adopt the repository's issue prefix convention
+  (e.g., `request: ...`, `[subsystem] ...`, `area/foo: ...`).
+* **When Authoring a PR / CL**: Adopt Conventional Commits (`feat(scope): ...`,
+  `fix(scope): ...`) unless the repository's PR history explicitly indicates an
+  alternative convention.
 
 <!-- mdformat off(prevent table wrapping) -->
 | Type | Convention Format | Good Example | Bad Example |
@@ -103,6 +114,7 @@ repository's conventions:
 | **Bug** | `[subsystem] Failure on condition` | `[analyzer] Crash with NullPointer when parsing empty config.json` | `Bug in analyzer` or `[CRITICAL] System failure observed` |
 | **Bug** | `subsystem: Failure on condition` | `cli: Flag --output fails when target directory does not exist` | `CLI tool is broken` |
 | **Feature** | `[subsystem] Imperative capability` | `[auth] Support PKCE flow in OAuth2 authentication client` | `Feature request: make authentication better` |
+| **Feature** | `request: Imperative capability` | `request: avoid cascading releases when constraints allow update` | `Feature idea for melos` |
 | **PR / CL** | `type(scope): imperative summary` | `feat(sidequest): enforce fully numbered sub-quests and sub-bullets` | `Updates and fixes` |
 <!-- mdformat on -->
 
@@ -165,6 +177,23 @@ Concrete description of the proposed interface, behavior, or flag.
 Fixes #<issue_number>
 ```
 
+## Mapping Standard Sections to GitHub YAML Issue Forms
+
+When a repository uses GitHub Issue Forms (`.github/ISSUE_TEMPLATE/*.yml`), the
+issue body is rendered as sequential H3 markdown sections matching each form
+element's `label:` attribute. Map conceptual anti-slop sections to the form's
+specific fields:
+
+<!-- mdformat off(prevent table wrapping) -->
+| Conceptual Section | Common YAML Field IDs | Rendered Form Heading |
+| :--- | :--- | :--- |
+| **Trigger Command** | `command`, `repro_command` | `### Command` |
+| **Context & Problem** | `description`, `context`, `problem` | `### Description` or `### Context` |
+| **Reasoning / Impact** | `reasoning`, `motivation` | `### Reasoning` |
+| **Proposed Solution** | `solution`, `proposal`, `idea` | `### Proposed Solution` |
+| **Additional Context** | `additional_context`, `comments` | `### Additional Context` (put Acceptance Criteria here) |
+<!-- mdformat on -->
+
 ## Platform-Specific Execution
 
 ### GitHub (`gh` CLI)
@@ -173,14 +202,14 @@ Fixes #<issue_number>
    `.github/ISSUE_TEMPLATE/` or `.github/pull_request_template.md`. If present,
    structure fields to match the repository's native schema.
 2. **Drafting & Submitting Issues**:
-   ```bash
-   # Write content to temporary file
-   gh issue create --title "[subsystem] Title" --body-file /tmp/gh_issue.md
-   rm /tmp/gh_issue.md
-   ```
+   * Always write the prepared Markdown to a temporary file (e.g. `/tmp/gh_issue.md`).
+   * Pass `--body-file` to ensure non-interactive execution:
+     ```bash
+     gh issue create --title "[subsystem] Title" --body-file /tmp/gh_issue.md
+     rm /tmp/gh_issue.md
+     ```
 3. **Drafting & Submitting Pull Requests**:
    ```bash
-   # Write PR description to temporary file
    gh pr create --title "feat(scope): title" --body-file /tmp/gh_pr.md
    rm /tmp/gh_pr.md
    ```
@@ -219,7 +248,7 @@ Fixes #<issue_number>
 
 Before submitting any issue, PR, or CL description:
 
-- [ ] Title follows repository convention (`[subsystem]` or `feat(scope):`) and
+- [ ] Title follows repository convention (`[subsystem]`, `request:`, or `feat(scope):`) and
   is ≤70 chars.
 - [ ] Zero decorative emojis on titles, headers, or bullet points.
 - [ ] Zero pleasantry intro/outro paragraphs.

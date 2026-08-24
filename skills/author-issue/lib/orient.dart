@@ -35,12 +35,67 @@ Future<String> defaultCommandRunner(
   return result.stdout.toString();
 }
 
-final _prefixPattern = RegExp(r'^(\[[^\]]+\]|[a-zA-Z0-9_-]+(?:\([^\)]+\))?:)');
+final _prefixPattern = RegExp(
+  r'^(\[[^\]]+\]|[a-zA-Z0-9_\-\/]+(?:\([^\)]+\))?:\s*)',
+);
 
 /// Extracts title prefix convention (e.g. `[analyzer]`, `feat(scope):`, `pkg:`).
+/// Normalizes excess internal whitespace.
 String? extractPrefix(String title) {
   final match = _prefixPattern.firstMatch(title.trim());
-  return match?.group(0);
+  if (match == null) return null;
+  return match
+      .group(0)!
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .replaceFirst(RegExp(r':\s*$'), ':');
+}
+
+/// Checks whether a GitHub login corresponds to an automated bot or service account.
+bool isBotAccount(String login) {
+  final l = login.toLowerCase();
+  return l.contains('[bot]') ||
+      l.startsWith('app/') ||
+      l.contains('copilot') ||
+      l.endsWith('-bot') ||
+      l == 'github-actions';
+}
+
+/// Extracts top-level form field IDs and labels from a GitHub YAML issue form.
+List<String> extractYamlFormFields(String yamlContent) {
+  final fields = <String>[];
+  final lines = yamlContent.split('\n');
+  String? currentId;
+  String? currentLabel;
+
+  for (final line in lines) {
+    final idMatch = RegExp(r'^\s*id:\s*([a-zA-Z0-9_-]+)').firstMatch(line);
+    if (idMatch != null) {
+      if (currentId != null) {
+        fields.add(
+          currentLabel != null ? '$currentId ($currentLabel)' : currentId,
+        );
+        currentLabel = null;
+      }
+      currentId = idMatch.group(1);
+      continue;
+    }
+
+    final labelMatch = RegExp(
+      r'^\s*label:\s*["'
+      ']?([^"'
+      '\n]+)["'
+      ']?',
+    ).firstMatch(line);
+    if (labelMatch != null && currentId != null && currentLabel == null) {
+      currentLabel = labelMatch.group(1)?.trim();
+    }
+  }
+
+  if (currentId != null) {
+    fields.add(currentLabel != null ? '$currentId ($currentLabel)' : currentId);
+  }
+
+  return fields;
 }
 
 /// Encapsulates discovered repository conventions for issues and PRs.
@@ -52,6 +107,7 @@ class RepositoryOrientation {
   final List<String> commonPrPrefixes;
   final List<String> detectedLabels;
   final List<String> detectedTemplates;
+  final Map<String, List<String>> templateSchemas;
   final List<String> sampleIssueTitles;
   final List<String> samplePrTitles;
 
@@ -63,6 +119,7 @@ class RepositoryOrientation {
     this.commonPrPrefixes = const [],
     this.detectedLabels = const [],
     this.detectedTemplates = const [],
+    this.templateSchemas = const {},
     this.sampleIssueTitles = const [],
     this.samplePrTitles = const [],
   });
@@ -75,6 +132,7 @@ class RepositoryOrientation {
     'commonPrPrefixes': commonPrPrefixes,
     'detectedLabels': detectedLabels,
     'detectedTemplates': detectedTemplates,
+    if (templateSchemas.isNotEmpty) 'templateSchemas': templateSchemas,
     'sampleIssueTitles': sampleIssueTitles,
     'samplePrTitles': samplePrTitles,
   };
@@ -114,7 +172,15 @@ class RepositoryOrientation {
     if (detectedTemplates.isNotEmpty) {
       buffer.writeln('- **Available Templates**:');
       for (final t in detectedTemplates) {
-        buffer.writeln('  - `$t`');
+        final schema = templateSchemas[t];
+        if (schema != null && schema.isNotEmpty) {
+          buffer.writeln('  - `$t`:');
+          for (final field in schema) {
+            buffer.writeln('    - `$field`');
+          }
+        } else {
+          buffer.writeln('  - `$t`');
+        }
       }
     }
     if (sampleIssueTitles.isNotEmpty) {
@@ -143,9 +209,19 @@ class OrientationGatherer {
 
   Future<RepositoryOrientation> gather({
     String? workingDirectory,
+    String? repo,
     int sampleLimit = 20,
   }) async {
     final targetDir = workingDirectory ?? Directory.current.path;
+
+    // Remote repo target explicitly passed
+    if (repo != null && repo.isNotEmpty) {
+      return _gatherGitHub(
+        targetDir,
+        remoteRepo: repo,
+        sampleLimit: sampleLimit,
+      );
+    }
 
     // Check if in Google3
     if (targetDir.contains('/google3') ||
@@ -154,27 +230,32 @@ class OrientationGatherer {
       return _gatherGoogle3(targetDir, sampleLimit: sampleLimit);
     }
 
-    // Default to GitHub / Git
+    // Default to local GitHub / Git clone
     return _gatherGitHub(targetDir, sampleLimit: sampleLimit);
   }
 
   Future<RepositoryOrientation> _gatherGitHub(
     String targetDir, {
+    String? remoteRepo,
     required int sampleLimit,
   }) async {
-    String? repoSlug;
-    try {
-      final repoViewOut = await runCmd('gh', [
-        'repo',
-        'view',
-        '--json',
-        'nameWithOwner',
-      ], workingDirectory: targetDir);
-      final json = jsonDecode(repoViewOut) as Map<String, dynamic>;
-      repoSlug = json['nameWithOwner'] as String?;
-    } catch (_) {
-      // Non-fatal if gh is not configured or in local git clone without remote
+    String? repoSlug = remoteRepo;
+    if (repoSlug == null) {
+      try {
+        final repoViewOut = await runCmd('gh', [
+          'repo',
+          'view',
+          '--json',
+          'nameWithOwner',
+        ], workingDirectory: targetDir);
+        final json = jsonDecode(repoViewOut) as Map<String, dynamic>;
+        repoSlug = json['nameWithOwner'] as String?;
+      } catch (_) {
+        // Non-fatal if gh repo view fails
+      }
     }
+
+    final repoArgs = repoSlug != null ? ['-R', repoSlug] : <String>[];
 
     final maintainers = <String>{};
     final prTitles = <String>[];
@@ -186,6 +267,7 @@ class OrientationGatherer {
       final prsJsonOut = await runCmd('gh', [
         'pr',
         'list',
+        ...repoArgs,
         '--state',
         'merged',
         '--limit',
@@ -199,7 +281,7 @@ class OrientationGatherer {
         if (pr is! Map<String, dynamic>) continue;
         final authorMap = pr['author'] as Map<String, dynamic>?;
         final login = authorMap?['login'] as String?;
-        if (login != null && login.isNotEmpty) {
+        if (login != null && login.isNotEmpty && !isBotAccount(login)) {
           maintainers.add(login);
         }
 
@@ -209,7 +291,9 @@ class OrientationGatherer {
             if (review is Map<String, dynamic>) {
               final reviewAuthor = review['author'] as Map<String, dynamic>?;
               final rLogin = reviewAuthor?['login'] as String?;
-              if (rLogin != null && rLogin.isNotEmpty) {
+              if (rLogin != null &&
+                  rLogin.isNotEmpty &&
+                  !isBotAccount(rLogin)) {
                 maintainers.add(rLogin);
               }
             }
@@ -250,6 +334,7 @@ class OrientationGatherer {
       final issuesJsonOut = await runCmd('gh', [
         'issue',
         'list',
+        ...repoArgs,
         '--state',
         'all',
         '--limit',
@@ -286,26 +371,76 @@ class OrientationGatherer {
       // Non-fatal if gh issue list fails
     }
 
-    // 3. Scan local filesystem for issue/PR templates
+    // 3. Scan local filesystem or remote API for issue/PR templates and parse YAML forms
     final detectedTemplates = <String>[];
-    final templateDirs = [
-      p.join(targetDir, '.github', 'ISSUE_TEMPLATE'),
-      p.join(targetDir, '.github', 'PULL_REQUEST_TEMPLATE'),
-    ];
-    for (final dirPath in templateDirs) {
-      final dir = Directory(dirPath);
-      if (dir.existsSync()) {
-        for (final file in dir.listSync(recursive: true).whereType<File>()) {
-          final rel = p.relative(file.path, from: targetDir);
-          detectedTemplates.add(rel);
+    final templateSchemas = <String, List<String>>{};
+
+    if (remoteRepo != null) {
+      // Fetch templates via GitHub API
+      try {
+        final apiOut = await runCmd('gh', [
+          'api',
+          'repos/$remoteRepo/contents/.github/ISSUE_TEMPLATE',
+        ], workingDirectory: targetDir);
+        final list = jsonDecode(apiOut) as List<dynamic>;
+        for (final item in list) {
+          if (item is Map<String, dynamic>) {
+            final path = item['path'] as String?;
+            final downloadUrl = item['download_url'] as String?;
+            if (path != null) {
+              detectedTemplates.add(path);
+              if (downloadUrl != null &&
+                  (path.endsWith('.yml') || path.endsWith('.yaml'))) {
+                try {
+                  final content = await runCmd('gh', [
+                    'api',
+                    'repos/$remoteRepo/contents/$path',
+                    '--jq',
+                    '.content',
+                  ], workingDirectory: targetDir);
+                  final decoded = utf8.decode(
+                    base64.decode(content.replaceAll('\n', '')),
+                  );
+                  final fields = extractYamlFormFields(decoded);
+                  if (fields.isNotEmpty) {
+                    templateSchemas[path] = fields;
+                  }
+                } catch (_) {}
+              }
+            }
+          }
+        }
+      } catch (_) {}
+    } else {
+      // Scan local workspace
+      final templateDirs = [
+        p.join(targetDir, '.github', 'ISSUE_TEMPLATE'),
+        p.join(targetDir, '.github', 'PULL_REQUEST_TEMPLATE'),
+      ];
+      for (final dirPath in templateDirs) {
+        final dir = Directory(dirPath);
+        if (dir.existsSync()) {
+          for (final file in dir.listSync(recursive: true).whereType<File>()) {
+            final rel = p.relative(file.path, from: targetDir);
+            detectedTemplates.add(rel);
+            if (rel.endsWith('.yml') || rel.endsWith('.yaml')) {
+              try {
+                final content = file.readAsStringSync();
+                final fields = extractYamlFormFields(content);
+                if (fields.isNotEmpty) {
+                  templateSchemas[rel] = fields;
+                }
+              } catch (_) {}
+            }
+          }
         }
       }
-    }
-    final rootPrTemplate = File(
-      p.join(targetDir, '.github', 'pull_request_template.md'),
-    );
-    if (rootPrTemplate.existsSync()) {
-      detectedTemplates.add('.github/pull_request_template.md');
+      final rootPrTemplate = File(
+        p.join(targetDir, '.github', 'pull_request_template.md'),
+      );
+      if (rootPrTemplate.existsSync()) {
+        detectedTemplates.add('.github/pull_request_template.md');
+      }
     }
 
     // Sort prefixes by frequency
@@ -322,6 +457,7 @@ class OrientationGatherer {
       commonPrPrefixes: sortedPrPrefixes.map((e) => e.key).toList(),
       detectedLabels: {...issueLabels, ...prLabels}.toList(),
       detectedTemplates: detectedTemplates,
+      templateSchemas: templateSchemas,
       sampleIssueTitles: issueTitles,
       samplePrTitles: prTitles,
     );
@@ -390,6 +526,11 @@ ArgParser buildArgParser() {
       'dir',
       abbr: 'C',
       help: 'Target repository directory path (defaults to current directory)',
+    )
+    ..addOption(
+      'repo',
+      abbr: 'R',
+      help: 'Target GitHub repository slug in owner/repo format',
     )
     ..addOption(
       'limit',
