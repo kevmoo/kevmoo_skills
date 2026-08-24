@@ -1,34 +1,36 @@
 ---
 name: author-issue
 description: >-
-  Author high-signal, anti-slop bug reports and feature issues for GitHub and
-  Buganizer. Enforces empirical reproduction, literal logs, exact
-  commit/environment targeting, and strict anti-AI formatting (strips emojis,
-  pleasantry preambles, gratuitous horizontal rules, and speculative
+  Author high-signal, anti-slop bug reports, feature requests, and pull request
+  or changelist (CL) descriptions for GitHub and Buganizer/Piper. Enforces
+  empirical reproduction, literal logs, exact commit/environment targeting,
+  repository convention orientation, and strict anti-AI formatting (strips
+  emojis, pleasantry preambles, gratuitous horizontal rules, and speculative
   architectural essays). Use when filing, drafting, formatting, or creating an
-  issue, bug report, or feature request.
+  issue, bug report, feature request, pull request, or CL description.
 ---
 
-# Author Issue
+# Author Issue & Pull Request
 
-Guidelines and protocols for authoring concise, actionable, high-signal issue
-descriptions and bug reports across GitHub and Buganizer without AI formatting
-slop.
+Guidelines, protocols, and orientation tools for authoring concise, actionable,
+high-signal issue descriptions, bug reports, and pull request / CL descriptions
+across GitHub and Buganizer without AI formatting slop.
 
 ## Core Philosophy: Empirical Signal over Conversational Slop
 
 Maintainers and engineers suffer from fatigue caused by low-effort, decorative
-LLM outputs. A well-authored issue should take under 15 seconds for an engineer
-to triage and reproduce.
+LLM outputs. A well-authored issue or PR description should take under 15
+seconds for an engineer to triage and understand.
 
-Every issue must prioritize **empirical evidence** (minimal reproduction steps,
-literal CLI invocations, exact error strings, raw stack traces, and commit SHAs)
-over conversational prose, speculative architecture essays, or decorative
-formatting.
+Every submission must prioritize **empirical evidence** (minimal reproduction
+steps, literal CLI invocations, exact error strings, raw stack traces, test
+verification logs, and commit SHAs) over conversational prose, speculative
+architecture essays, or decorative formatting.
 
 ## The Anti-Slop Filter (Negative Invariants)
 
-When drafting or submitting issues, enforce these negative constraints:
+When drafting or submitting issues, PRs, or CL descriptions, enforce these
+negative constraints:
 
 * **No Decorative Emojis**: Never prefix titles, section headers, or bullet
   points with emojis (`🚀`, `🐛`, `📋`, `💡`, `✨`, `⚠️`, `🔍`).
@@ -41,31 +43,70 @@ When drafting or submitting issues, enforce these negative constraints:
   * Omit closing pleasantries (*"Let me know if you need anything else!"*,
     *"Looking forward to your thoughts!"*).
 * **No Speculative Architecture Essays**:
-  * Do not write multi-paragraph dissertations hypothesizing about theoretical
-    system-wide catastrophes or broad architectural overhauls.
-  * State the observed defect, isolate the failing component, and limit
-    proposed fixes to 1–2 factual sentences pointing to the exact line or
+  * In bug reports: Do not write multi-paragraph dissertations hypothesizing
+    about theoretical system-wide catastrophes or broad architectural
+    overhauls. State the observed defect, isolate the failing component, and
+    limit proposed fixes to 1–2 factual sentences pointing to the exact line or
     function (or omit proposed fixes entirely).
+  * In PRs: Explain strictly the rationale ("why") and the isolated delta
+    ("what changed"). Do not narrate routine tool invocations.
 * **No Inline Multiline Shell Escapes**:
   * Never pass multiline Markdown inline via `--body "line 1\nline 2"`, which
     causes literal `\n` escaping bugs in CLI tools.
   * Always write content to a temporary Markdown file and use `--body-file`
-    (`gh`) or `--description_file` (`issues`).
+    (`gh`) or `--description_file` / stdin (`issues`, `jj describe`).
+
+## Phase 1: Repository Conventions Orientation (Optional Pre-Flight)
+
+Before authoring, orient with the repository's established conventions to adopt
+its taxonomy (subsystem prefixes, conventional commit types, issue/PR label
+vocabulary, and native templates).
+
+### 1. Automated Orientation via `orient.dart`
+
+Run the bundled orientation script in the target repository:
+
+```bash
+dart run skills/author-issue/bin/orient.dart
+```
+
+* **What it gathers**:
+  * Active maintainers and reviewers (from recent merged PRs and `OWNERS`).
+  * Common issue title prefixes (e.g. `[analyzer]`, `pkg_name:`, `area-foo:`).
+  * Common PR / CL title prefixes (e.g. `feat(scope):`, `fix:`, `refactor:`).
+  * Repository label vocabulary and detected issue/PR templates.
+  * Sample maintainer titles for style calibration.
+* **Slop Contagion Guardrail**: Use the gathered orientation *strictly* for
+  taxonomy, title prefixes, and label selection. Do NOT adopt decorative slop,
+  emojis, or conversational noise found in historical items.
+
+### 2. Manual CLI Fallback
+
+If running without Dart tooling:
+
+```bash
+# Discover maintainers, PR prefixes, and labels
+gh pr list --state merged --limit 15 --json author,reviews,title,labels
+
+# Discover issue title prefixes and labels
+gh issue list --limit 15 --state all --json author,title,labels
+```
 
 ## Title Conventions
 
-Use concise, imperative titles formatted as:
-`[subsystem] Specific failure on condition`
+Use concise, imperative titles (≤70 characters) formatted according to the
+repository's conventions:
 
 <!-- mdformat off(prevent table wrapping) -->
-| Type | Good Example | Bad Example |
-| :--- | :--- | :--- |
-| **Bug** | `[analyzer] Crash with NullPointer when parsing empty config.json` | `Bug in analyzer` or `[CRITICAL ISSUE] Crash occurred` |
-| **Bug** | `[cli] Flag --output fails when target directory does not exist` | `CLI tool is broken` |
-| **Feature** | `[auth] Support PKCE flow in OAuth2 authentication client` | `Feature request: make authentication better` |
+| Type | Convention Format | Good Example | Bad Example |
+| :--- | :--- | :--- | :--- |
+| **Bug** | `[subsystem] Failure on condition` | `[analyzer] Crash with NullPointer when parsing empty config.json` | `Bug in analyzer` or `[CRITICAL] System failure observed` |
+| **Bug** | `subsystem: Failure on condition` | `cli: Flag --output fails when target directory does not exist` | `CLI tool is broken` |
+| **Feature** | `[subsystem] Imperative capability` | `[auth] Support PKCE flow in OAuth2 authentication client` | `Feature request: make authentication better` |
+| **PR / CL** | `type(scope): imperative summary` | `feat(sidequest): enforce fully numbered sub-quests and sub-bullets` | `Updates and fixes` |
 <!-- mdformat on -->
 
-## Standard Issue Templates
+## Standard Content Templates
 
 ### 1. Bug Report Template
 
@@ -107,56 +148,84 @@ Concrete description of the proposed interface, behavior, or flag.
 - What this feature explicitly does NOT cover
 ```
 
+### 3. Pull Request / CL Description Template
+
+```markdown
+### Rationale
+1–2 sentences explaining why this change is needed.
+
+### Summary of Changes
+- Bulleted description of the concrete code changes
+- Touch only what the task requires; no orphaned imports or unrelated diffs
+
+### Verification
+- Executed `dart test` (or `blaze-for-agents test //...`) with 100% pass
+- Verified edge case `<repro_condition>` passes
+
+Fixes #<issue_number>
+```
+
 ## Platform-Specific Execution
 
 ### GitHub (`gh` CLI)
 
 1. **Template Discovery**: Check for existing templates under
-   `.github/ISSUE_TEMPLATE/` (`.yml` forms or `.md` templates). If present,
-   structure the issue fields to match the repository's native schema rather
-   than forcing a generic template.
-2. **Drafting & Submitting**:
-   * Write the drafted Markdown to a temporary file (e.g. `/tmp/gh_issue.md`).
-   * Submit via `--body-file`:
-     ```bash
-     gh issue create --title "[subsystem] Title" --body-file /tmp/gh_issue.md
-     ```
-   * Clean up the temporary file immediately after submission.
-3. **Verification**: Verify the body rendered cleanly with real blank lines:
+   `.github/ISSUE_TEMPLATE/` or `.github/pull_request_template.md`. If present,
+   structure fields to match the repository's native schema.
+2. **Drafting & Submitting Issues**:
+   ```bash
+   # Write content to temporary file
+   gh issue create --title "[subsystem] Title" --body-file /tmp/gh_issue.md
+   rm /tmp/gh_issue.md
+   ```
+3. **Drafting & Submitting Pull Requests**:
+   ```bash
+   # Write PR description to temporary file
+   gh pr create --title "feat(scope): title" --body-file /tmp/gh_pr.md
+   rm /tmp/gh_pr.md
+   ```
+4. **Verification**: Confirm body rendered cleanly with real blank lines:
    ```bash
    gh issue view <issue_number> --json body --jq .body
+   gh pr view <pr_number> --json body --jq .body
    ```
 
-### Buganizer (`issues` CLI in Google3)
+### Buganizer & Piper (Google3)
 
-1. **Authorization Prerequisite**: Write actions in Buganizer mutate corporate
-   trackers. Ensure the user has explicitly requested creating the issue before
-   executing write commands.
-2. **Component Lookup**: Find the relevant component ID:
+1. **Authorization Prerequisite**: Write actions mutate corporate trackers or
+   code reviews. Ensure explicit user approval before executing write commands.
+2. **Filing Buganizer Issues**:
    ```bash
-   /google/bin/releases/issues-cli/issues readonly search-components "<query>"
+   /google/bin/releases/issues-cli/issues mutate create \
+     --title "[subsystem] Title" \
+     --description_file /tmp/bug_desc.md \
+     --component_id <id> \
+     --priority P2 \
+     --type BUG
+   rm /tmp/bug_desc.md
    ```
-3. **Drafting & Submitting**:
-   * Write description to a temporary file (e.g. `/tmp/bug_desc.md`).
-   * Create the issue via `--description_file`:
-     ```bash
-     /google/bin/releases/issues-cli/issues mutate create \
-       --title "[subsystem] Title" \
-       --description_file /tmp/bug_desc.md \
-       --component_id <id> \
-       --priority P2 \
-       --type BUG
-     ```
-   * Clean up `/tmp/bug_desc.md`.
+3. **Updating CL Descriptions**:
+   ```bash
+   cat << 'EOF' | jj describe --stdin
+   feat(scope): concise summary
+
+   Why this change is needed and bulleted summary.
+
+   BUG=<id>
+   EOF
+   ```
 
 ## Pre-Submission Verification Checklist
 
-Before submitting any issue, run through this mental checklist:
+Before submitting any issue, PR, or CL description:
 
-- [ ] Title has a subsystem prefix and concise failure statement.
+- [ ] Title follows repository convention (`[subsystem]` or `feat(scope):`) and
+  is ≤70 chars.
 - [ ] Zero decorative emojis on titles, headers, or bullet points.
 - [ ] Zero pleasantry intro/outro paragraphs.
 - [ ] Zero gratuitous `---` divider clutter.
-- [ ] Steps to reproduce are minimal, concrete, and copy-pasteable.
-- [ ] Raw error logs and stack traces are literal and code-fenced.
-- [ ] Multiline body was passed via `--body-file` or `--description_file`.
+- [ ] Steps to reproduce (for bugs) or verification tests (for PRs) are minimal,
+  concrete, and copy-pasteable.
+- [ ] Raw error logs and test outputs are literal and code-fenced.
+- [ ] Multiline body was passed via `--body-file`, `--description_file`, or
+  heredoc stdin (no literal `\n` escaping).
