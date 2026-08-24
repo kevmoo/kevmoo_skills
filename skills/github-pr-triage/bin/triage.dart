@@ -144,11 +144,17 @@ void main(List<String> args) async {
       stdout.writeln('\nWARNING: ${syncStatus.warning}\n');
     }
 
-    // 5. Fetch unresolved review comments using unified GraphQL helper.
-    stdout.writeln('Fetching unresolved review comments...');
+    // 5. Fetch review comments and threads using unified GraphQL helper.
+    stdout.writeln('Fetching review comments and threads...');
     final graphData = await fetchPrGraphQLData(context);
     final unresolvedThreads = graphData.reviewThreads
         .where((t) => !t.isResolved)
+        .toList();
+    final reviewComments = graphData.reviews
+        .where((r) => r.body.trim().isNotEmpty)
+        .toList();
+    final generalComments = graphData.comments
+        .where((c) => c.body.trim().isNotEmpty)
         .toList();
 
     // 6. Fetch CI check runs using unified checks helper.
@@ -221,6 +227,56 @@ $syncWarningBlock## Unresolved Review Comments (${unresolvedThreads.length})
 Link: $url
 
 $commentsMarkdown
+
+---
+
+''');
+      }
+    }
+
+    if (reviewComments.isNotEmpty) {
+      report.write(
+        '## Top-Level Review Comments (${reviewComments.length})\n\n',
+      );
+      for (var i = 0; i < reviewComments.length; i++) {
+        final review = reviewComments[i];
+        final reviewId = review.id;
+        final reviewDbId = review.databaseId;
+        final state = review.state;
+        final author = review.author;
+        final submittedAt = review.submittedAt;
+        final url = review.url;
+        final body = review.body;
+
+        report.write('''
+### Review #${i + 1} (Review `$reviewId`, Database ID `$reviewDbId`): `$state` by @$author
+Link: $url
+
+**@$author** ($submittedAt):
+> ${body.replaceAll('\n', '\n> ')}
+
+---
+
+''');
+      }
+    }
+
+    if (generalComments.isNotEmpty) {
+      report.write('## Conversation Comments (${generalComments.length})\n\n');
+      for (var i = 0; i < generalComments.length; i++) {
+        final comment = generalComments[i];
+        final commentDbId = comment.databaseId;
+        final author = comment.author;
+        final createdAt = comment.createdAt;
+        final url = comment.url;
+        final body = comment.body;
+
+        report.write('''
+### Conversation Comment #${i + 1} (Comment `$commentDbId`) by @$author
+Link: $url
+
+**@$author** ($createdAt):
+> ${body.replaceAll('\n', '\n> ')}
 
 ---
 
