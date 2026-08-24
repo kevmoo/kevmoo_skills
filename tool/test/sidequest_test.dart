@@ -289,19 +289,30 @@ void main() {
       },
     );
 
-    test('resolves directory across multi-tier discovery hierarchy', () {
+    test('resolves directory across multi-tier discovery hierarchy', () async {
       // 1. Explicit override
       check(
         SessionStore.resolveDirectory('/explicit/dir', environment: {}),
       ).equals('/explicit/dir');
 
-      // 2. Direct environment variables
+      // 2. Direct environment variables (SIDEQUEST_DIR takes precedence over others)
       check(
         SessionStore.resolveDirectory(
           null,
-          environment: {'SIDEQUEST_DIR': '/env/sidequest'},
+          environment: {
+            'SIDEQUEST_DIR': '/env/sidequest',
+            'JETSKI_ARTIFACT_DIR': '/env/jetski',
+            'CLAUDE_ARTIFACT_DIR': '/env/claude',
+          },
         ),
       ).equals('/env/sidequest');
+
+      check(
+        SessionStore.resolveDirectory(
+          null,
+          environment: {'JETSKI_ARTIFACT_DIR': '/env/jetski'},
+        ),
+      ).equals('/env/jetski');
 
       check(
         SessionStore.resolveDirectory(
@@ -328,7 +339,22 @@ void main() {
         ),
       ).equals('/usr/home/testuser/.gemini/jetski/brain/abc-123-xyz');
 
-      // 4. Default fallback to cwd
+      // 4. .sidequest folder in cwd
+      final testCwd = await Directory.systemTemp.createTemp('sidequest_cwd_');
+      final dotSidequest = Directory(p.join(testCwd.path, '.sidequest'));
+      await dotSidequest.create();
+
+      check(
+        SessionStore.resolveDirectory(
+          null,
+          environment: {},
+          currentDirectory: testCwd.path,
+        ),
+      ).equals(dotSidequest.path);
+
+      await testCwd.delete(recursive: true);
+
+      // 5. Default fallback to cwd
       check(
         SessionStore.resolveDirectory(
           null,
@@ -502,10 +528,11 @@ void main() {
       check(data.globalSideQuests[0].completionOrder).equals(1);
       check(data.lastCompletionOrder).equals(1);
 
-      // Complete MainQuest 1
+      // Complete MainQuest 1 (MainQuest does not carry completionOrder and should NOT advance lastCompletionOrder)
       await runner.run(['complete', '1']);
       data = (await store.load())!;
       check(data.quests[0].status).equals(QuestStatus.completed);
+      check(data.lastCompletionOrder).equals(1);
 
       // Reopen Global SideQuest G1
       await runner.run(['reopen', 'G1']);
@@ -529,8 +556,9 @@ void main() {
       () async {
         final runner = SidequestCliRunner(store: store);
 
-        // 1. Operations list format
+        // 1. Operations list format including quest_add
         final batchListJson = jsonEncode([
+          {'type': 'quest_add', 'title': 'Batch Main Quest 2'},
           {'type': 'subquest_add', 'questId': '1', 'title': 'Batch SubQuest 1'},
           {'type': 'step_add', 'subquestId': '1.1', 'title': 'Step 1.1.1'},
           {
@@ -553,6 +581,8 @@ void main() {
 
         await runner.run(['batch', batchListJson]);
         var data = (await store.load())!;
+        check(data.quests.length).equals(2);
+        check(data.quests[1].title).equals('Batch Main Quest 2');
         check(data.quests[0].subQuests.length).equals(1);
         check(data.quests[0].subQuests[0].items.length).equals(2);
         check(
@@ -573,6 +603,50 @@ void main() {
         ).equals(TaskStatus.completed);
       },
     );
+
+    test('updates VCS state via CLI and handles unknown items', () async {
+      final runner = SidequestCliRunner(store: store);
+
+      // VCS update
+      final vcsCode = await runner.run([
+        'vcs',
+        '1',
+        '--stage=local_commit',
+        '--branch=feat/vcs-test',
+        '--files=lib/a.dart,lib/b.dart',
+        '--details=Ready for review',
+      ]);
+      check(vcsCode).equals(0);
+
+      final data = (await store.load())!;
+      check(data.quests[0].vcs?.stage).equals(VcsStage.localCommit);
+      check(data.quests[0].vcs?.branch).equals('feat/vcs-test');
+      check(
+        data.quests[0].vcs!.modifiedFiles,
+      ).deepEquals(['lib/a.dart', 'lib/b.dart']);
+      check(data.quests[0].vcs?.details).equals('Ready for review');
+
+      // Unknown ID complete returns 1
+      final missingCode = await runner.run(['complete', 'non_existent_id']);
+      check(missingCode).equals(1);
+    });
+
+    test('merges audit payload using positional or option argument', () async {
+      final runner = SidequestCliRunner(store: store);
+
+      final auditPayload = SidequestData.initial(
+        firstQuestTitle: 'Audited Main Quest',
+      );
+      final payloadFile = File(p.join(tempDir.path, 'audit_payload.json'));
+      await payloadFile.writeAsString(auditPayload.toJsonString());
+
+      // Merge with positional arg
+      final code = await runner.run(['merge-audit', payloadFile.path]);
+      check(code).equals(0);
+
+      final data = (await store.load())!;
+      check(data.quests.first.title).equals('Audited Main Quest');
+    });
 
     test('returns exit code 0 for help arguments', () async {
       final runner = SidequestCliRunner(store: store);

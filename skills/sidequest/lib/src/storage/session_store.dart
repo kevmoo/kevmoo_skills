@@ -32,10 +32,10 @@ class SessionStore {
     final cwd = currentDirectory ?? Directory.current.path;
 
     final directEnvVars = [
+      'SIDEQUEST_DIR',
       'JETSKI_ARTIFACT_DIR',
       'CLAUDE_ARTIFACT_DIR',
       'GEMINI_ARTIFACT_DIR',
-      'SIDEQUEST_DIR',
     ];
     for (final key in directEnvVars) {
       final val = env[key];

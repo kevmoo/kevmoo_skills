@@ -9,7 +9,12 @@ import '../models/sidequest_data.dart';
 import '../models/vcs_state.dart';
 import '../storage/session_store.dart';
 
-enum _ItemCompleteResult { completed, alreadyCompleted, notFound }
+enum _ItemCompleteResult {
+  completedWithOrder,
+  completedNoOrder,
+  alreadyCompleted,
+  notFound,
+}
 
 class SidequestCliRunner {
   final SessionStore store;
@@ -403,8 +408,10 @@ class SidequestCliRunner {
     for (final id in ids) {
       final nextOrder = data.lastCompletionOrder + 1;
       final result = _completeSingleItem(data, id, nextOrder);
-      if (result == _ItemCompleteResult.completed) {
+      if (result == _ItemCompleteResult.completedWithOrder) {
         data.lastCompletionOrder = nextOrder;
+        completedIds.add(id);
+      } else if (result == _ItemCompleteResult.completedNoOrder) {
         completedIds.add(id);
       } else if (result == _ItemCompleteResult.alreadyCompleted) {
         alreadyCompletedIds.add(id);
@@ -415,8 +422,11 @@ class SidequestCliRunner {
 
     if (completedIds.isNotEmpty) {
       await store.save(data);
+      final orderSuffix = data.lastCompletionOrder > 0
+          ? ' (Order [#${data.lastCompletionOrder} ⭐])'
+          : '';
       stdout.writeln(
-        '✔ Completed item(s): ${completedIds.join(", ")} (Order [#${data.lastCompletionOrder} ⭐])',
+        '✔ Completed item(s): ${completedIds.join(", ")}$orderSuffix',
       );
     }
     if (alreadyCompletedIds.isNotEmpty) {
@@ -440,7 +450,7 @@ class SidequestCliRunner {
           return _ItemCompleteResult.alreadyCompleted;
         }
         q.status = QuestStatus.completed;
-        return _ItemCompleteResult.completed;
+        return _ItemCompleteResult.completedNoOrder;
       }
       for (final sq in q.subQuests) {
         if (sq.id == id) {
@@ -449,7 +459,7 @@ class SidequestCliRunner {
           }
           sq.status = TaskStatus.completed;
           sq.completionOrder = nextOrder;
-          return _ItemCompleteResult.completed;
+          return _ItemCompleteResult.completedWithOrder;
         }
         for (final item in sq.items) {
           if (item.id == id) {
@@ -458,7 +468,7 @@ class SidequestCliRunner {
             }
             item.status = TaskStatus.completed;
             item.completionOrder = nextOrder;
-            return _ItemCompleteResult.completed;
+            return _ItemCompleteResult.completedWithOrder;
           }
         }
       }
@@ -469,7 +479,7 @@ class SidequestCliRunner {
           }
           sq.status = SideQuestStatus.completed;
           sq.completionOrder = nextOrder;
-          return _ItemCompleteResult.completed;
+          return _ItemCompleteResult.completedWithOrder;
         }
       }
     }
@@ -481,7 +491,7 @@ class SidequestCliRunner {
         }
         sq.status = SideQuestStatus.completed;
         sq.completionOrder = nextOrder;
-        return _ItemCompleteResult.completed;
+        return _ItemCompleteResult.completedWithOrder;
       }
     }
 
@@ -667,13 +677,8 @@ class SidequestCliRunner {
         if (decoded['complete'] is List) {
           for (final id in decoded['complete'] as List) {
             final nextOrder = data.lastCompletionOrder + 1;
-            final updated = _setItemStatus(
-              data,
-              id.toString(),
-              TaskStatus.completed,
-              nextOrder,
-            );
-            if (updated) {
+            final result = _completeSingleItem(data, id.toString(), nextOrder);
+            if (result == _ItemCompleteResult.completedWithOrder) {
               data.lastCompletionOrder = nextOrder;
             }
           }
@@ -725,6 +730,24 @@ class SidequestCliRunner {
     final type = (op['type'] as String? ?? '').toLowerCase();
 
     switch (type) {
+      case 'quest_add':
+      case 'add_quest':
+      case 'quest':
+        final title =
+            op['title']?.toString() ??
+            op['description']?.toString() ??
+            'New Main Quest';
+        final nextQuestNumber =
+            data.quests.map((q) => int.tryParse(q.id) ?? 0).fold(0, max) + 1;
+        data.quests.add(
+          MainQuest(
+            id: '$nextQuestNumber',
+            title: title,
+            status: QuestStatus.active,
+            vcs: const VcsState(stage: VcsStage.dirty),
+          ),
+        );
+        break;
       case 'complete':
       case 'done':
       case 'finish':
@@ -734,13 +757,8 @@ class SidequestCliRunner {
             : [rawIds?.toString() ?? ''];
         for (final id in idList.where((s) => s.isNotEmpty)) {
           final nextOrder = data.lastCompletionOrder + 1;
-          final updated = _setItemStatus(
-            data,
-            id,
-            TaskStatus.completed,
-            nextOrder,
-          );
-          if (updated) {
+          final result = _completeSingleItem(data, id, nextOrder);
+          if (result == _ItemCompleteResult.completedWithOrder) {
             data.lastCompletionOrder = nextOrder;
           }
         }
@@ -869,7 +887,7 @@ class SidequestCliRunner {
   Future<int> _handleMergeAudit(List<String> args) async {
     final parser = ArgParser()..addOption('input');
     final results = parser.parse(args);
-    final inputPath = results['input'] as String?;
+    final inputPath = (results['input'] as String?) ?? results.rest.firstOrNull;
     if (inputPath == null || !await File(inputPath).exists()) {
       stderr.writeln('Error: Missing or invalid --input file for merge-audit');
       return 1;
@@ -907,49 +925,6 @@ class SidequestCliRunner {
     }
     stderr.writeln('Error: Sub-Quest "$subId" not found.');
     return null;
-  }
-
-  bool _setItemStatus(
-    SidequestData data,
-    String id,
-    TaskStatus status,
-    int order,
-  ) {
-    for (final q in data.quests) {
-      if (q.id == id) {
-        q.status = QuestStatus.completed;
-        return true;
-      }
-      for (final sq in q.subQuests) {
-        if (sq.id == id) {
-          sq.status = status;
-          sq.completionOrder = order;
-          return true;
-        }
-        for (final item in sq.items) {
-          if (item.id == id) {
-            item.status = status;
-            item.completionOrder = order;
-            return true;
-          }
-        }
-      }
-      for (final sq in q.sideQuests) {
-        if (sq.id == id) {
-          sq.status = SideQuestStatus.completed;
-          sq.completionOrder = order;
-          return true;
-        }
-      }
-    }
-    for (final sq in data.globalSideQuests) {
-      if (sq.id == id) {
-        sq.status = SideQuestStatus.completed;
-        sq.completionOrder = order;
-        return true;
-      }
-    }
-    return false;
   }
 
   void _recalculateMaxCompletionOrder(SidequestData data) {
