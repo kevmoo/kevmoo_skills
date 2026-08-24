@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:author_issue/orient.dart';
+import 'package:github_post/orient.dart';
 import 'package:test/test.dart';
 
 void main() {

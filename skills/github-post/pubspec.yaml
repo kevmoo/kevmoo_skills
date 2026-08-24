@@ -1,0 +1,11 @@
+name: github_post
+description: Automated orientation and high-signal formatting tools for GitHub issues and pull requests.
+version: 1.0.0
+publish_to: none
+
+environment:
+  sdk: ^3.12.0
+
+dependencies:
+  args: ^2.4.0
+  path: ^1.9.0
