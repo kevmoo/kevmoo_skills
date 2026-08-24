@@ -56,7 +56,11 @@ bool isBotAccount(String login) {
   return l.contains('[bot]') ||
       l.startsWith('app/') ||
       l.contains('copilot') ||
-      l.endsWith('-bot') ||
+      l.endsWith('bot') ||
+      l.contains('-bot') ||
+      l.contains('bot-') ||
+      l.contains('gemini-') ||
+      l.contains('codecov') ||
       l == 'github-actions';
 }
 
