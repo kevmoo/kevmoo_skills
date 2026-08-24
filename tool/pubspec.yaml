@@ -11,6 +11,8 @@ dependencies:
   path: ^1.9.0
 
 dev_dependencies:
+  author_issue:
+    path: ../skills/author-issue
   deslop_duplication_audit:
     path: ../skills/deslop-duplication-audit
   sidequest:

@@ -1,7 +1,6 @@
 import 'dart:convert';
+import 'package:author_issue/orient.dart';
 import 'package:test/test.dart';
-
-import '../../skills/author-issue/lib/orient.dart';
 
 void main() {
   group('extractPrefix unit tests', () {
@@ -24,6 +23,17 @@ void main() {
       expect(
         extractPrefix('fix(github-pr-triage): handle empty review array'),
         equals('fix(github-pr-triage):'),
+      );
+    });
+
+    test('extracts conventional commit breaking change prefixes', () {
+      expect(
+        extractPrefix('feat(version)!: breaking API overhaul'),
+        equals('feat(version)!:'),
+      );
+      expect(
+        extractPrefix('fix!: breaking fix for auth client'),
+        equals('fix!:'),
       );
     });
 
@@ -52,6 +62,8 @@ void main() {
       expect(isBotAccount('app/github-actions'), isTrue);
       expect(isBotAccount('copilot-pull-request-reviewer'), isTrue);
       expect(isBotAccount('renovate-bot'), isTrue);
+      expect(isBotAccount('fluttergithubbot'), isTrue);
+      expect(isBotAccount('gemini-code-assist'), isTrue);
       expect(isBotAccount('alice'), isFalse);
       expect(isBotAccount('kevmoo'), isFalse);
     });
@@ -205,6 +217,16 @@ body:
               ]);
             }
             if (command == 'gh' && args.contains('api')) {
+              if (args.contains(
+                'repos/invertase/melos/contents/.github/pull_request_template.md',
+              )) {
+                return jsonEncode({'path': '.github/pull_request_template.md'});
+              }
+              if (args.contains(
+                'repos/invertase/melos/contents/.github/PULL_REQUEST_TEMPLATE',
+              )) {
+                return jsonEncode([]);
+              }
               return jsonEncode([
                 {
                   'path': '.github/ISSUE_TEMPLATE/feature_request.yml',
@@ -226,6 +248,10 @@ body:
       expect(
         orientation.detectedTemplates,
         contains('.github/ISSUE_TEMPLATE/feature_request.yml'),
+      );
+      expect(
+        orientation.detectedTemplates,
+        contains('.github/pull_request_template.md'),
       );
     });
   });

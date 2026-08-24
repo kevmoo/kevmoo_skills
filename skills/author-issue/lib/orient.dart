@@ -36,7 +36,7 @@ Future<String> defaultCommandRunner(
 }
 
 final _prefixPattern = RegExp(
-  r'^(\[[^\]]+\]|[a-zA-Z0-9_\-\/]+(?:\([^\)]+\))?:\s*)',
+  r'^(\[[^\]]+\]|[a-zA-Z0-9_\-\/]+(?:\([^\)]+\))?!*:\s*)',
 );
 
 /// Extracts title prefix convention (e.g. `[analyzer]`, `feat(scope):`, `pkg:`).
@@ -452,29 +452,46 @@ class OrientationGatherer {
     List<String> detectedTemplates,
     Map<String, List<String>> templateSchemas,
   ) async {
-    try {
-      final apiOut = await runCmd('gh', [
-        'api',
-        'repos/$remoteRepo/contents/.github/ISSUE_TEMPLATE',
-      ], workingDirectory: targetDir);
-      final list = jsonDecode(apiOut) as List<dynamic>;
-      for (final item in list) {
-        if (item is Map<String, dynamic>) {
-          final path = item['path'] as String?;
-          final downloadUrl = item['download_url'] as String?;
-          if (path != null) {
-            detectedTemplates.add(path);
-            if (downloadUrl != null &&
-                (path.endsWith('.yml') || path.endsWith('.yaml'))) {
-              await _fetchRemoteYamlSchema(
-                targetDir,
-                remoteRepo,
-                path,
-                templateSchemas,
-              );
+    final remoteDirs = [
+      '.github/ISSUE_TEMPLATE',
+      '.github/PULL_REQUEST_TEMPLATE',
+    ];
+    for (final remoteDir in remoteDirs) {
+      try {
+        final apiOut = await runCmd('gh', [
+          'api',
+          'repos/$remoteRepo/contents/$remoteDir',
+        ], workingDirectory: targetDir);
+        final list = jsonDecode(apiOut) as List<dynamic>;
+        for (final item in list) {
+          if (item is Map<String, dynamic>) {
+            final path = item['path'] as String?;
+            final downloadUrl = item['download_url'] as String?;
+            if (path != null) {
+              detectedTemplates.add(path);
+              if (downloadUrl != null &&
+                  (path.endsWith('.yml') || path.endsWith('.yaml'))) {
+                await _fetchRemoteYamlSchema(
+                  targetDir,
+                  remoteRepo,
+                  path,
+                  templateSchemas,
+                );
+              }
             }
           }
         }
+      } catch (_) {}
+    }
+
+    try {
+      final prFileOut = await runCmd('gh', [
+        'api',
+        'repos/$remoteRepo/contents/.github/pull_request_template.md',
+      ], workingDirectory: targetDir);
+      final json = jsonDecode(prFileOut) as Map<String, dynamic>;
+      if (json['path'] != null) {
+        detectedTemplates.add('.github/pull_request_template.md');
       }
     } catch (_) {}
   }
@@ -492,7 +509,9 @@ class OrientationGatherer {
         '--jq',
         '.content',
       ], workingDirectory: targetDir);
-      final decoded = utf8.decode(base64.decode(content.replaceAll('\n', '')));
+      final decoded = utf8.decode(
+        base64.decode(content.replaceAll(RegExp(r'\s+'), '')),
+      );
       final fields = extractYamlFormFields(decoded);
       if (fields.isNotEmpty) {
         templateSchemas[path] = fields;
@@ -578,6 +597,9 @@ class OrientationGatherer {
             final trimmed = line.trim();
             if (trimmed.isNotEmpty &&
                 !trimmed.startsWith('#') &&
+                !trimmed.startsWith('include ') &&
+                !trimmed.contains('/') &&
+                !trimmed.contains(' ') &&
                 !trimmed.contains('=')) {
               maintainers.add(trimmed);
             }
