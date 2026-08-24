@@ -64,6 +64,35 @@ bool isBotAccount(String login) {
       l == 'github-actions';
 }
 
+/// Helper to safely extract non-empty label names from a raw JSON label list.
+Set<String> _extractLabels(List<dynamic>? labelsList) {
+  final result = <String>{};
+  if (labelsList == null) return result;
+  for (final label in labelsList) {
+    if (label is Map<String, dynamic>) {
+      final name = label['name'] as String?;
+      if (name != null && name.isNotEmpty) {
+        result.add(name);
+      }
+    }
+  }
+  return result;
+}
+
+/// Helper to record title prefix frequencies into a map and list.
+void _recordTitle(
+  String? title,
+  List<String> titlesList,
+  Map<String, int> prefixCounts,
+) {
+  if (title == null || title.isEmpty) return;
+  titlesList.add(title);
+  final prefix = extractPrefix(title);
+  if (prefix != null) {
+    prefixCounts[prefix] = (prefixCounts[prefix] ?? 0) + 1;
+  }
+}
+
 /// Extracts top-level form field IDs and labels from a GitHub YAML issue form.
 List<String> extractYamlFormFields(String yamlContent) {
   final fields = <String>[];
@@ -71,15 +100,19 @@ List<String> extractYamlFormFields(String yamlContent) {
   String? currentId;
   String? currentLabel;
 
+  void flush() {
+    if (currentId == null) return;
+    fields.add(
+      currentLabel != null ? '$currentId ($currentLabel)' : currentId!,
+    );
+    currentId = null;
+    currentLabel = null;
+  }
+
   for (final line in lines) {
     final idMatch = RegExp(r'^\s*id:\s*([a-zA-Z0-9_-]+)').firstMatch(line);
     if (idMatch != null) {
-      if (currentId != null) {
-        fields.add(
-          currentLabel != null ? '$currentId ($currentLabel)' : currentId,
-        );
-        currentLabel = null;
-      }
+      flush();
       currentId = idMatch.group(1);
       continue;
     }
@@ -95,10 +128,7 @@ List<String> extractYamlFormFields(String yamlContent) {
     }
   }
 
-  if (currentId != null) {
-    fields.add(currentLabel != null ? '$currentId ($currentLabel)' : currentId);
-  }
-
+  flush();
   return fields;
 }
 
@@ -143,8 +173,7 @@ class RepositoryOrientation {
 
   String toMarkdown() {
     final buffer = StringBuffer();
-    buffer.writeln('# Repository Conventions Orientation');
-    buffer.writeln();
+    buffer.writeln('# Repository Conventions Orientation\n');
     buffer.writeln(
       '- **Environment**: $environment'
       '${repoSlug != null ? ' ($repoSlug)' : ''}',
@@ -173,35 +202,42 @@ class RepositoryOrientation {
         '${detectedLabels.take(10).map((l) => '`$l`').join(', ')}',
       );
     }
-    if (detectedTemplates.isNotEmpty) {
-      buffer.writeln('- **Available Templates**:');
-      for (final t in detectedTemplates) {
-        final schema = templateSchemas[t];
-        if (schema != null && schema.isNotEmpty) {
-          buffer.writeln('  - `$t`:');
-          for (final field in schema) {
-            buffer.writeln('    - `$field`');
-          }
-        } else {
-          buffer.writeln('  - `$t`');
-        }
-      }
-    }
-    if (sampleIssueTitles.isNotEmpty) {
-      buffer.writeln();
-      buffer.writeln('### Sample Maintainer Issue Titles');
-      for (final title in sampleIssueTitles.take(5)) {
-        buffer.writeln('- $title');
-      }
-    }
-    if (samplePrTitles.isNotEmpty) {
-      buffer.writeln();
-      buffer.writeln('### Sample Merged PR / CL Titles');
-      for (final title in samplePrTitles.take(5)) {
-        buffer.writeln('- $title');
-      }
-    }
+    _writeTemplatesSection(buffer);
+    _writeSampleSection(
+      buffer,
+      'Sample Maintainer Issue Titles',
+      sampleIssueTitles,
+    );
+    _writeSampleSection(buffer, 'Sample Merged PR / CL Titles', samplePrTitles);
     return buffer.toString().trimRight();
+  }
+
+  void _writeTemplatesSection(StringBuffer buffer) {
+    if (detectedTemplates.isEmpty) return;
+    buffer.writeln('- **Available Templates**:');
+    for (final t in detectedTemplates) {
+      final schema = templateSchemas[t];
+      if (schema != null && schema.isNotEmpty) {
+        buffer.writeln('  - `$t`:');
+        for (final field in schema) {
+          buffer.writeln('    - `$field`');
+        }
+      } else {
+        buffer.writeln('  - `$t`');
+      }
+    }
+  }
+
+  void _writeSampleSection(
+    StringBuffer buffer,
+    String heading,
+    List<String> samples,
+  ) {
+    if (samples.isEmpty) return;
+    buffer.writeln('\n### $heading');
+    for (final title in samples.take(5)) {
+      buffer.writeln('- $title');
+    }
   }
 }
 
@@ -218,7 +254,6 @@ class OrientationGatherer {
   }) async {
     final targetDir = workingDirectory ?? Directory.current.path;
 
-    // Remote repo target explicitly passed
     if (repo != null && repo.isNotEmpty) {
       return _gatherGitHub(
         targetDir,
@@ -227,14 +262,12 @@ class OrientationGatherer {
       );
     }
 
-    // Check if in Google3
     if (targetDir.contains('/google3') ||
         File(p.join(targetDir, 'WORKSPACE')).existsSync() ||
         Directory(p.join(targetDir, 'google3')).existsSync()) {
       return _gatherGoogle3(targetDir, sampleLimit: sampleLimit);
     }
 
-    // Default to local GitHub / Git clone
     return _gatherGitHub(targetDir, sampleLimit: sampleLimit);
   }
 
@@ -243,22 +276,7 @@ class OrientationGatherer {
     String? remoteRepo,
     required int sampleLimit,
   }) async {
-    String? repoSlug = remoteRepo;
-    if (repoSlug == null) {
-      try {
-        final repoViewOut = await runCmd('gh', [
-          'repo',
-          'view',
-          '--json',
-          'nameWithOwner',
-        ], workingDirectory: targetDir);
-        final json = jsonDecode(repoViewOut) as Map<String, dynamic>;
-        repoSlug = json['nameWithOwner'] as String?;
-      } catch (_) {
-        // Non-fatal if gh repo view fails
-      }
-    }
-
+    final repoSlug = await _resolveRepoSlug(targetDir, remoteRepo);
     final repoArgs = repoSlug != null ? ['-R', repoSlug] : <String>[];
 
     final maintainers = <String>{};
@@ -266,7 +284,78 @@ class OrientationGatherer {
     final prPrefixCounts = <String, int>{};
     final prLabels = <String>{};
 
-    // 1. Fetch merged PRs to discover maintainers and PR conventions
+    await _fetchMergedPrs(
+      targetDir,
+      repoArgs,
+      sampleLimit,
+      maintainers,
+      prTitles,
+      prPrefixCounts,
+      prLabels,
+    );
+
+    final issueTitles = <String>[];
+    final issuePrefixCounts = <String, int>{};
+    final issueLabels = <String>{};
+
+    await _fetchIssues(
+      targetDir,
+      repoArgs,
+      sampleLimit,
+      issueTitles,
+      issuePrefixCounts,
+      issueLabels,
+    );
+
+    final detectedTemplates = <String>[];
+    final templateSchemas = <String, List<String>>{};
+
+    await _scanTemplates(
+      targetDir,
+      remoteRepo,
+      detectedTemplates,
+      templateSchemas,
+    );
+
+    return RepositoryOrientation(
+      environment: 'GitHub',
+      repoSlug: repoSlug,
+      maintainers: maintainers.toList(),
+      commonIssuePrefixes: _sortPrefixes(issuePrefixCounts),
+      commonPrPrefixes: _sortPrefixes(prPrefixCounts),
+      detectedLabels: {...issueLabels, ...prLabels}.toList(),
+      detectedTemplates: detectedTemplates,
+      templateSchemas: templateSchemas,
+      sampleIssueTitles: issueTitles,
+      samplePrTitles: prTitles,
+    );
+  }
+
+  Future<String?> _resolveRepoSlug(String targetDir, String? remoteRepo) async {
+    if (remoteRepo != null) return remoteRepo;
+    try {
+      final repoViewOut = await runCmd('gh', [
+        'repo',
+        'view',
+        '--json',
+        'nameWithOwner',
+      ], workingDirectory: targetDir);
+      final json = jsonDecode(repoViewOut) as Map<String, dynamic>;
+      return json['nameWithOwner'] as String?;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _fetchMergedPrs(
+    String targetDir,
+    List<String> repoArgs,
+    int sampleLimit,
+    Set<String> maintainers,
+    List<String> prTitles,
+    Map<String, int> prPrefixCounts,
+    Set<String> prLabels,
+  ) async {
     try {
       final prsJsonOut = await runCmd('gh', [
         'pr',
@@ -283,57 +372,40 @@ class OrientationGatherer {
       final prsList = jsonDecode(prsJsonOut) as List<dynamic>;
       for (final pr in prsList) {
         if (pr is! Map<String, dynamic>) continue;
-        final authorMap = pr['author'] as Map<String, dynamic>?;
-        final login = authorMap?['login'] as String?;
-        if (login != null && login.isNotEmpty && !isBotAccount(login)) {
-          maintainers.add(login);
-        }
+        _addMaintainer(maintainers, pr['author']);
 
         final reviews = pr['reviews'] as List<dynamic>?;
         if (reviews != null) {
           for (final review in reviews) {
             if (review is Map<String, dynamic>) {
-              final reviewAuthor = review['author'] as Map<String, dynamic>?;
-              final rLogin = reviewAuthor?['login'] as String?;
-              if (rLogin != null &&
-                  rLogin.isNotEmpty &&
-                  !isBotAccount(rLogin)) {
-                maintainers.add(rLogin);
-              }
+              _addMaintainer(maintainers, review['author']);
             }
           }
         }
 
-        final title = pr['title'] as String?;
-        if (title != null && title.isNotEmpty) {
-          prTitles.add(title);
-          final prefix = extractPrefix(title);
-          if (prefix != null) {
-            prPrefixCounts[prefix] = (prPrefixCounts[prefix] ?? 0) + 1;
-          }
-        }
-
-        final labels = pr['labels'] as List<dynamic>?;
-        if (labels != null) {
-          for (final label in labels) {
-            if (label is Map<String, dynamic>) {
-              final lName = label['name'] as String?;
-              if (lName != null && lName.isNotEmpty) {
-                prLabels.add(lName);
-              }
-            }
-          }
-        }
+        _recordTitle(pr['title'] as String?, prTitles, prPrefixCounts);
+        prLabels.addAll(_extractLabels(pr['labels'] as List<dynamic>?));
       }
-    } catch (_) {
-      // Non-fatal if gh pr list fails
+    } catch (_) {}
+  }
+
+  void _addMaintainer(Set<String> maintainers, dynamic authorMap) {
+    if (authorMap is Map<String, dynamic>) {
+      final login = authorMap['login'] as String?;
+      if (login != null && login.isNotEmpty && !isBotAccount(login)) {
+        maintainers.add(login);
+      }
     }
+  }
 
-    // 2. Fetch issues to discover issue conventions and labels
-    final issueTitles = <String>[];
-    final issuePrefixCounts = <String, int>{};
-    final issueLabels = <String>{};
-
+  Future<void> _fetchIssues(
+    String targetDir,
+    List<String> repoArgs,
+    int sampleLimit,
+    List<String> issueTitles,
+    Map<String, int> issuePrefixCounts,
+    Set<String> issueLabels,
+  ) async {
     try {
       final issuesJsonOut = await runCmd('gh', [
         'issue',
@@ -350,138 +422,159 @@ class OrientationGatherer {
       final issuesList = jsonDecode(issuesJsonOut) as List<dynamic>;
       for (final issue in issuesList) {
         if (issue is! Map<String, dynamic>) continue;
-        final title = issue['title'] as String?;
-        if (title != null && title.isNotEmpty) {
-          issueTitles.add(title);
-          final prefix = extractPrefix(title);
-          if (prefix != null) {
-            issuePrefixCounts[prefix] = (issuePrefixCounts[prefix] ?? 0) + 1;
-          }
-        }
-
-        final labels = issue['labels'] as List<dynamic>?;
-        if (labels != null) {
-          for (final label in labels) {
-            if (label is Map<String, dynamic>) {
-              final lName = label['name'] as String?;
-              if (lName != null && lName.isNotEmpty) {
-                issueLabels.add(lName);
-              }
-            }
-          }
-        }
+        _recordTitle(issue['title'] as String?, issueTitles, issuePrefixCounts);
+        issueLabels.addAll(_extractLabels(issue['labels'] as List<dynamic>?));
       }
-    } catch (_) {
-      // Non-fatal if gh issue list fails
-    }
+    } catch (_) {}
+  }
 
-    // 3. Scan local filesystem or remote API for issue/PR templates and parse YAML forms
-    final detectedTemplates = <String>[];
-    final templateSchemas = <String, List<String>>{};
-
+  Future<void> _scanTemplates(
+    String targetDir,
+    String? remoteRepo,
+    List<String> detectedTemplates,
+    Map<String, List<String>> templateSchemas,
+  ) async {
     if (remoteRepo != null) {
-      // Fetch templates via GitHub API
-      try {
-        final apiOut = await runCmd('gh', [
-          'api',
-          'repos/$remoteRepo/contents/.github/ISSUE_TEMPLATE',
-        ], workingDirectory: targetDir);
-        final list = jsonDecode(apiOut) as List<dynamic>;
-        for (final item in list) {
-          if (item is Map<String, dynamic>) {
-            final path = item['path'] as String?;
-            final downloadUrl = item['download_url'] as String?;
-            if (path != null) {
-              detectedTemplates.add(path);
-              if (downloadUrl != null &&
-                  (path.endsWith('.yml') || path.endsWith('.yaml'))) {
-                try {
-                  final content = await runCmd('gh', [
-                    'api',
-                    'repos/$remoteRepo/contents/$path',
-                    '--jq',
-                    '.content',
-                  ], workingDirectory: targetDir);
-                  final decoded = utf8.decode(
-                    base64.decode(content.replaceAll('\n', '')),
-                  );
-                  final fields = extractYamlFormFields(decoded);
-                  if (fields.isNotEmpty) {
-                    templateSchemas[path] = fields;
-                  }
-                } catch (_) {}
-              }
-            }
-          }
-        }
-      } catch (_) {}
+      await _scanRemoteTemplates(
+        targetDir,
+        remoteRepo,
+        detectedTemplates,
+        templateSchemas,
+      );
     } else {
-      // Scan local workspace
-      final templateDirs = [
-        p.join(targetDir, '.github', 'ISSUE_TEMPLATE'),
-        p.join(targetDir, '.github', 'PULL_REQUEST_TEMPLATE'),
-      ];
-      for (final dirPath in templateDirs) {
-        final dir = Directory(dirPath);
-        if (dir.existsSync()) {
-          for (final file in dir.listSync(recursive: true).whereType<File>()) {
-            final rel = p.relative(file.path, from: targetDir);
-            detectedTemplates.add(rel);
-            if (rel.endsWith('.yml') || rel.endsWith('.yaml')) {
-              try {
-                final content = file.readAsStringSync();
-                final fields = extractYamlFormFields(content);
-                if (fields.isNotEmpty) {
-                  templateSchemas[rel] = fields;
-                }
-              } catch (_) {}
+      _scanLocalTemplates(targetDir, detectedTemplates, templateSchemas);
+    }
+  }
+
+  Future<void> _scanRemoteTemplates(
+    String targetDir,
+    String remoteRepo,
+    List<String> detectedTemplates,
+    Map<String, List<String>> templateSchemas,
+  ) async {
+    try {
+      final apiOut = await runCmd('gh', [
+        'api',
+        'repos/$remoteRepo/contents/.github/ISSUE_TEMPLATE',
+      ], workingDirectory: targetDir);
+      final list = jsonDecode(apiOut) as List<dynamic>;
+      for (final item in list) {
+        if (item is Map<String, dynamic>) {
+          final path = item['path'] as String?;
+          final downloadUrl = item['download_url'] as String?;
+          if (path != null) {
+            detectedTemplates.add(path);
+            if (downloadUrl != null &&
+                (path.endsWith('.yml') || path.endsWith('.yaml'))) {
+              await _fetchRemoteYamlSchema(
+                targetDir,
+                remoteRepo,
+                path,
+                templateSchemas,
+              );
             }
           }
         }
       }
-      final rootPrTemplate = File(
-        p.join(targetDir, '.github', 'pull_request_template.md'),
-      );
-      if (rootPrTemplate.existsSync()) {
-        detectedTemplates.add('.github/pull_request_template.md');
+    } catch (_) {}
+  }
+
+  Future<void> _fetchRemoteYamlSchema(
+    String targetDir,
+    String remoteRepo,
+    String path,
+    Map<String, List<String>> templateSchemas,
+  ) async {
+    try {
+      final content = await runCmd('gh', [
+        'api',
+        'repos/$remoteRepo/contents/$path',
+        '--jq',
+        '.content',
+      ], workingDirectory: targetDir);
+      final decoded = utf8.decode(base64.decode(content.replaceAll('\n', '')));
+      final fields = extractYamlFormFields(decoded);
+      if (fields.isNotEmpty) {
+        templateSchemas[path] = fields;
+      }
+    } catch (_) {}
+  }
+
+  void _scanLocalTemplates(
+    String targetDir,
+    List<String> detectedTemplates,
+    Map<String, List<String>> templateSchemas,
+  ) {
+    final templateDirs = [
+      p.join(targetDir, '.github', 'ISSUE_TEMPLATE'),
+      p.join(targetDir, '.github', 'PULL_REQUEST_TEMPLATE'),
+    ];
+    for (final dirPath in templateDirs) {
+      final dir = Directory(dirPath);
+      if (!dir.existsSync()) continue;
+      for (final file in dir.listSync(recursive: true).whereType<File>()) {
+        _processLocalTemplateFile(
+          file,
+          targetDir,
+          detectedTemplates,
+          templateSchemas,
+        );
       }
     }
-
-    // Sort prefixes by frequency
-    final sortedIssuePrefixes = issuePrefixCounts.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-    final sortedPrPrefixes = prPrefixCounts.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-
-    return RepositoryOrientation(
-      environment: 'GitHub',
-      repoSlug: repoSlug,
-      maintainers: maintainers.toList(),
-      commonIssuePrefixes: sortedIssuePrefixes.map((e) => e.key).toList(),
-      commonPrPrefixes: sortedPrPrefixes.map((e) => e.key).toList(),
-      detectedLabels: {...issueLabels, ...prLabels}.toList(),
-      detectedTemplates: detectedTemplates,
-      templateSchemas: templateSchemas,
-      sampleIssueTitles: issueTitles,
-      samplePrTitles: prTitles,
+    final rootPrTemplate = File(
+      p.join(targetDir, '.github', 'pull_request_template.md'),
     );
+    if (rootPrTemplate.existsSync()) {
+      detectedTemplates.add('.github/pull_request_template.md');
+    }
+  }
+
+  void _processLocalTemplateFile(
+    File file,
+    String targetDir,
+    List<String> detectedTemplates,
+    Map<String, List<String>> templateSchemas,
+  ) {
+    final rel = p.relative(file.path, from: targetDir);
+    detectedTemplates.add(rel);
+    if (!rel.endsWith('.yml') && !rel.endsWith('.yaml')) return;
+    try {
+      final fields = extractYamlFormFields(file.readAsStringSync());
+      if (fields.isNotEmpty) {
+        templateSchemas[rel] = fields;
+      }
+    } catch (_) {}
+  }
+
+  List<String> _sortPrefixes(Map<String, int> prefixCounts) {
+    final sorted = prefixCounts.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    return sorted.map((e) => e.key).toList();
   }
 
   Future<RepositoryOrientation> _gatherGoogle3(
     String targetDir, {
     required int sampleLimit,
   }) async {
-    final maintainers = <String>{};
-    final detectedTemplates = <String>[];
+    final maintainers = _findGoogle3Owners(targetDir);
+    final sampleCls = await _fetchP4Changes(targetDir, sampleLimit);
 
-    // Find nearest OWNERS file
+    return RepositoryOrientation(
+      environment: 'Google3 / Piper',
+      repoSlug: targetDir,
+      maintainers: maintainers,
+      samplePrTitles: sampleCls,
+    );
+  }
+
+  List<String> _findGoogle3Owners(String targetDir) {
+    final maintainers = <String>{};
     Directory? curr = Directory(targetDir);
     while (curr != null && curr.path != curr.parent.path) {
       final ownersFile = File(p.join(curr.path, 'OWNERS'));
       if (ownersFile.existsSync()) {
         try {
-          final lines = ownersFile.readAsLinesSync();
-          for (final line in lines) {
+          for (final line in ownersFile.readAsLinesSync()) {
             final trimmed = line.trim();
             if (trimmed.isNotEmpty &&
                 !trimmed.startsWith('#') &&
@@ -490,12 +583,17 @@ class OrientationGatherer {
             }
           }
         } catch (_) {}
-        detectedTemplates.add(p.relative(ownersFile.path, from: targetDir));
         break;
       }
       curr = curr.parent;
     }
+    return maintainers.toList();
+  }
 
+  Future<List<String>> _fetchP4Changes(
+    String targetDir,
+    int sampleLimit,
+  ) async {
     final sampleCls = <String>[];
     try {
       final p4Out = await runCmd('p4', [
@@ -513,14 +611,7 @@ class OrientationGatherer {
         }
       }
     } catch (_) {}
-
-    return RepositoryOrientation(
-      environment: 'Google3 / Piper',
-      repoSlug: targetDir,
-      maintainers: maintainers.toList(),
-      samplePrTitles: sampleCls,
-      detectedTemplates: detectedTemplates,
-    );
+    return sampleCls;
   }
 }
 
