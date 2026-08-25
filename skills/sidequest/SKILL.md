@@ -80,7 +80,8 @@ sidequest reopen 1.1
 sidequest remove 1.1.2
 ```
 
-**User Output:** Output a brief, punchy chat summary covering active `⚔️ Main Quest`, current `🛡️ Sub-Quest`, VCS status, and recommended next step.
+**User Output:** Output a brief, punchy chat summary covering active `⚔️ Main Quest`, current `🛡️ Sub-Quest`, VCS status, and recommended next step. Always place the clickable link to the generated artifact at the very **BOTTOM** of the chat reply with an emoji anchor so it is easy to find and click:
+> `🗺️ Full Session Map: [sidequest.md](file:///path/to/sidequest.md)`
 
 ### Mode B: Subagent Transcript Rebuild (`/sidequest rebuild`)
 Use **only** when initializing from long unmapped history or explicitly requested via `/sidequest rebuild`:
