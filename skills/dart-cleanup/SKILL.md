@@ -51,8 +51,8 @@ If a target `SKILL.md` is selected but missing from the local filesystem, output
   * *Path*: [SKILL.md](file://~/github/kevmoo/analytica.dart/skills/dart-cognitive-complexity/SKILL.md)
 * **`dart-undead`**: Audits, triages, and safely remediates unreachable and dead declarations in Dart and Flutter codebases using deterministic reachability analysis (`pkg:undead`).
   * *Path*: [SKILL.md](file://~/github/kevmoo/analytica.dart/skills/dart-undead/SKILL.md)
-* **`deslop-duplication-audit`**: Detects, audits, and remediates structural code duplication across Dart and Flutter repositories using the standalone Deslop CLI tool and empirical test gating.
-  * *Path*: [SKILL.md](file://~/github/kevmoo/kevmoo_skills/skills/deslop-duplication-audit/SKILL.md)
+* **`dart-dedupe`**: Detects, audits, and safely remediates structural code duplication across Dart and Flutter repositories using the standalone Dedupe engine (`pkg:dedupe`) and empirical test gating.
+  * *Path*: [SKILL.md](file://~/github/kevmoo/analytica.dart/skills/dart-dedupe/SKILL.md)
 * **`dart-build-cli-app`**: CLI entrypoint structure, argument parsing, cross-platform scripts, exit codes.
   * *Path*: [SKILL.md](file://~/github/dart-lang/skills/skills/dart-build-cli-app/SKILL.md)
 
