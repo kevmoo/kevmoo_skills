@@ -252,6 +252,59 @@ void main() {
       final markdown = MarkdownEmitter.emit(data);
       check(markdown).not((c) => c.contains('> [!CAUTION]'));
     });
+
+    test('omits CAUTION header when quests have null vcs', () {
+      final data = SidequestData(
+        version: 1,
+        quests: [
+          MainQuest(
+            id: '1',
+            title: 'Fresh Quest',
+            status: QuestStatus.active,
+            vcs: null,
+          ),
+        ],
+      );
+
+      final markdown = MarkdownEmitter.emit(data);
+      check(markdown).not((c) => c.contains('> [!CAUTION]'));
+    });
+
+    test('omits CAUTION header for completed quests even if vcs was dirty', () {
+      final data = SidequestData(
+        version: 1,
+        quests: [
+          MainQuest(
+            id: '1',
+            title: 'Completed Quest with Stale Dirty State',
+            status: QuestStatus.completed,
+            vcs: const VcsState(
+              stage: VcsStage.dirty,
+              modifiedFiles: ['lib/stale.dart'],
+            ),
+            sideQuests: [
+              SideQuest(
+                id: 'S1',
+                title: 'Completed Side Quest with Stale Dirty State',
+                status: SideQuestStatus.completed,
+                vcs: const VcsState(stage: VcsStage.dirty),
+              ),
+            ],
+          ),
+        ],
+        globalSideQuests: [
+          SideQuest(
+            id: 'G1',
+            title: 'Completed Global Side Quest with Stale Dirty State',
+            status: SideQuestStatus.completed,
+            vcs: const VcsState(stage: VcsStage.dirty),
+          ),
+        ],
+      );
+
+      final markdown = MarkdownEmitter.emit(data);
+      check(markdown).not((c) => c.contains('> [!CAUTION]'));
+    });
   });
 
   group('SessionStore & Atomic Persistence', () {

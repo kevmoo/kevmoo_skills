@@ -33,6 +33,7 @@ class MarkdownEmitter {
     final dirtyLines = <String>[];
 
     for (final sq in data.globalSideQuests) {
+      if (sq.status == SideQuestStatus.completed) continue;
       final vcs = sq.vcs;
       if (vcs != null && _isVcsDirty(vcs)) {
         final statusLabel = switch (sq.status) {
@@ -45,12 +46,14 @@ class MarkdownEmitter {
     }
 
     for (final quest in data.quests) {
+      if (quest.status == QuestStatus.completed) continue;
       final vcs = quest.vcs;
       if (vcs != null && _isVcsDirty(vcs)) {
         dirtyLines.add(_formatDirtyLine('Main Quest ${quest.id}', vcs));
       }
 
       for (final sq in quest.sideQuests) {
+        if (sq.status == SideQuestStatus.completed) continue;
         final sqVcs = sq.vcs;
         if (sqVcs != null && _isVcsDirty(sqVcs)) {
           final statusLabel = switch (sq.status) {

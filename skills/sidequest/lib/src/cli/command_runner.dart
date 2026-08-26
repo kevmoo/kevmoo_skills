@@ -203,12 +203,7 @@ class QuestAddCommand extends SidequestCommand {
         data.quests.map((q) => int.tryParse(q.id) ?? 0).fold(0, max) + 1;
     final newId = '$nextQuestNumber';
     data.quests.add(
-      MainQuest(
-        id: newId,
-        title: title,
-        status: QuestStatus.active,
-        vcs: const VcsState(stage: VcsStage.dirty),
-      ),
+      MainQuest(id: newId, title: title, status: QuestStatus.active, vcs: null),
     );
     await store.save(data);
     stdout.writeln('✔ Added Main Quest $newId: "$title"');
