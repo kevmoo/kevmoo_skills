@@ -1069,7 +1069,9 @@ void _applyBatchQuestAdd(SidequestData data, Map<String, dynamic> op) {
       id: '$nextQuestNumber',
       title: title,
       status: QuestStatus.active,
-      vcs: const VcsState(stage: VcsStage.dirty),
+      vcs: op['vcs'] != null
+          ? VcsState.fromJson(op['vcs'] as Map<String, dynamic>)
+          : null,
     ),
   );
 }
