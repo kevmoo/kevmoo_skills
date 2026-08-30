@@ -62,20 +62,23 @@ Execute `sidequest` (or `dart run <path-to-skill>/bin/sidequest.dart`):
 # 1. Inspect Current State (Outputs compact overview to stdout)
 sidequest status
 
-# 2. Add Quests, Sub-Quests, Steps, Blockers (Auto-initializes if not present)
-sidequest quest add "Title"
+# 2. Initialize or Add Quests, Sub-Quests, Steps, Blockers
+sidequest init "Title"
 sidequest subquest add 1 "UI Implementation"
 sidequest step add 1.1 "Draft UI widget"
 sidequest blocker add 1.1 "Broken build dependency"
 sidequest sidequest add "Tangent item" [--global] [--parked] [--note="..."]
 
-# 3. Complete One or Multiple Items (Atomic disk write & star update)
+# 3. Batch Operations (Atomic multi-item execution in a single call)
+sidequest batch '[{"op":"subquest_add","quest_id":"1","title":"Backend"},{"op":"step_add","subquest_id":"1.2","title":"API client"}]'
+
+# 4. Complete One or Multiple Items (Atomic disk write & star update)
 sidequest complete 1.1.1 1.1.2 1.1
 
-# 4. Update VCS Lifecycle
+# 5. Update VCS Lifecycle
 sidequest vcs 1 --stage=dirty|local_commit|uploaded|merged|clean [--branch=B] [--files=F]
 
-# 5. Reopen or Remove
+# 6. Reopen or Remove
 sidequest reopen 1.1
 sidequest remove 1.1.2
 ```

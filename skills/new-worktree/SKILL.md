@@ -63,16 +63,21 @@ When creating a worktree, observe strict placement and naming rules:
 1. **Verify Pre-Flight Boundaries**: Confirm location under `~/github`, confirm
    Git repository status, and ensure the repo is not the Dart SDK. Do not require
    a clean working directory; worktrees allow branching safely from a dirty tree.
-2. **Fetch Latest Remote State**: Run `git fetch origin` to ensure local tracking
-   branches are up to date. Always base new branches on the latest public default
-   branch (`origin/main`, `origin/master`, or `origin/HEAD`).
+2. **Fetch Latest Remote State & Resolve Base Branch**: Run `git fetch origin` to ensure
+   local tracking branches are up to date. Dynamically resolve the remote default
+   branch (`origin/HEAD`, `origin/main`, or `origin/master`):
+   ```bash
+   TARGET_BASE=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null || (git show-ref --verify --quiet refs/remotes/origin/main && echo "origin/main") || echo "origin/master")
+   ```
 3. **Formulate Target Names**: Determine `{branch_name}` and sibling directory
    path `{sibling_worktree_path}` based on naming rules.
-4. **Execute Worktree Creation**:
+4. **Collision Pre-Flight & Stale Worktree Pruning**:
+   - Check if `{sibling_worktree_path}` or local `{branch_name}` already exists.
+   - If previous worktrees were removed manually, run `git worktree prune` to clear stale metadata.
+5. **Execute Worktree Creation**:
    ```bash
-   git worktree add -b {branch_name} {sibling_worktree_path} origin/main
+   git worktree add -b {branch_name} {sibling_worktree_path} ${TARGET_BASE}
    ```
-   *(Substitute `origin/master` or `origin/HEAD` if appropriate for the repo).*
-5. **Output Clickable Link**: Provide the user with a clickable link to the new
+6. **Output Clickable Link**: Provide the user with a clickable link to the new
    worktree using the precise scheme `[link text](file:///absolute/path/to/worktree)`.
    Never wrap link text or syntax in backticks.

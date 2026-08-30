@@ -193,7 +193,7 @@ key_features:
        `git add <files>` or `git add .` if no untracked scratch files exist)
        and create a descriptive commit.
      - If pushing is selected, run `git push`.
-     - If replying and resolving is selected, execute the `gh api` commands
+     - If replying and resolving is selected, execute the `triage.dart resolve` commands
        using the patterns listed below.
 
 ## Replying and Resolving Comments
@@ -203,12 +203,14 @@ For every addressed review thread, you MUST execute thread resolution (thread re
 Use the `resolve` subcommand in `triage.dart` to programmatically reply to comments and resolve threads without shell-escaping issues:
 
 ```bash
-# Reply to a comment and resolve its thread:
-dart run <path-to-github-pr-triage-skill>/bin/triage.dart resolve <thread_graphql_id> <comment_database_id> "<your reply body>"
+# Reply to a comment and resolve its thread (pass --dir if outside target repo):
+dart run <path-to-github-pr-triage-skill>/bin/triage.dart resolve --dir <path-to-target-repository> <thread_graphql_id> <comment_database_id> "<your reply body>"
 
 # Or resolve a thread without posting a reply:
-dart run <path-to-github-pr-triage-skill>/bin/triage.dart resolve <thread_graphql_id>
+dart run <path-to-github-pr-triage-skill>/bin/triage.dart resolve --dir <path-to-target-repository> <thread_graphql_id>
 ```
+
+*Note: `<thread_graphql_id>` is the GraphQL node ID (e.g., `PRRT_...`) and `<comment_database_id>` is the numeric database ID (e.g., `3438780787`), exactly as output in `raw_triage_output.md`.*
 
 
 ## Constraints

@@ -1,0 +1,23 @@
+{
+  "repo_criteria": [
+    "evals/code_quality_rubric.json"
+  ],
+  "evals": [
+    {
+      "id": "pr_triage_task_1",
+      "prompt": "Run github-pr-triage on a PR with review comments. Assess its triage capabilities.",
+      "expected_chat_output": [
+        "Agent outputs a raw_triage_output.md initially, identifies reviewer comments and builds a triage plan.",
+        "Generates pr_triage_report.md before applying fixes.",
+        "A unified completion menu is presented if the working tree has uncommitted fixes."
+      ],
+      "expected_repo_state": [
+        "raw_triage_output.md is present in artifacts.",
+        "pr_triage_report.md is generated containing Thread/Comment IDs.",
+        "Local changes match the agreed fixes.",
+        "No commit --amend or git push -f operations are executed."
+      ],
+      "agent_config": "bare-agent"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "repo_criteria": [
+    "evals/code_quality_rubric.json"
+  ],
+  "evals": [
+    {
+      "id": "quick_question_1",
+      "prompt": "qq why does flutter use dart?",
+      "expected_chat_output": [
+        "Provides a brief TL;DR directly in chat.",
+        "Uses bullet points instead of a markdown table.",
+        "Does NOT ask questions via ask_question.",
+        "Does NOT create a .md artifact."
+      ],
+      "expected_repo_state": [
+        "No artifact files are written to disk.",
+        "No codebase modifications occur."
+      ],
+      "agent_config": "bare-agent"
+    }
+  ]
+}

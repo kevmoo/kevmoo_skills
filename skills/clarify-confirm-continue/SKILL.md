@@ -110,11 +110,11 @@ Configure the `options` array with:
 - **If "Open in artifact"**: Use `write_to_file` to save the structured summary
   and execution plan as a markdown artifact (`.md` file) in the session's
   artifact directory. Configure the file to request interactive
-  approval/feedback (e.g., set `RequestFeedback: true` in Antigravity's
-  `ArtifactMetadata` to render a 'Proceed' button). If the harness does not
-  support interactive gates, instruct the user in chat to review the file and
-  reply 'Proceed' when they are ready. Stop calling tools and go idle to await
-  reactive wakeup.
+  approval/feedback (e.g., set `ArtifactMetadata` with `UserFacing: true`,
+  `RequestFeedback: true`, and a concise `Summary` to render an interactive
+  'Proceed' button). If the harness does not support interactive gates,
+  instruct the user in chat to review the file and reply 'Proceed' when they are
+  ready. Stop calling tools and go idle to await reactive wakeup.
 - **If "No, adjust in chat" or Custom Write-In**: Apply user feedback, adjust
   the scope or plan accordingly, and re-confirm if substantial changes were
   made.
