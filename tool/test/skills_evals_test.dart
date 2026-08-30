@@ -198,7 +198,8 @@ void main() {
                 .where(
                   (File f) =>
                       f.path.endsWith('.json') &&
-                      !f.path.endsWith('_evals.json'),
+                      !f.path.endsWith('_evals.json') &&
+                      p.basename(f.path) != 'evals.json',
                 )
                 .toList()
               ..sort((a, b) => a.path.compareTo(b.path));
