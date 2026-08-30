@@ -1,0 +1,21 @@
+{
+  "repo_criteria": [
+    "evals/code_quality_rubric.json"
+  ],
+  "evals": [
+    {
+      "id": "just_brainstorm_1",
+      "prompt": "Just brainstorming here - what if we migrated our auth module to use Spanner instead of Bigtable?",
+      "expected_chat_output": [
+        "Generates the brainstorming output to a Markdown artifact.",
+        "Does not make any code changes."
+      ],
+      "expected_repo_state": [
+        "A .md artifact is created containing pros/cons and tradeoffs.",
+        "The artifact uses RequestFeedback: false.",
+        "No original project files are modified or overwritten."
+      ],
+      "agent_config": "bare-agent"
+    }
+  ]
+}

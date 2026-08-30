@@ -1,0 +1,22 @@
+{
+  "repo_criteria": [
+    "evals/code_quality_rubric.json"
+  ],
+  "evals": [
+    {
+      "id": "sidequest_task_1",
+      "prompt": "Start a new sidequest mapping. Add a main quest and complete two steps.",
+      "expected_chat_output": [
+        "Outputs a brief, punchy chat summary.",
+        "Places the clickable link to the generated artifact at the very BOTTOM of the chat reply with an emoji anchor."
+      ],
+      "expected_repo_state": [
+        "Creates sidequest.json and sidequest.md in the artifact directory.",
+        "sidequest.json maintains the deterministic state model.",
+        "sidequest.md visual hierarchy uses [#N ⭐] tags for latest completion.",
+        "No manual text modifications of sidequest.json occurred (only via CLI)."
+      ],
+      "agent_config": "bare-agent"
+    }
+  ]
+}

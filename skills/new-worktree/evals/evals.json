@@ -1,0 +1,31 @@
+{
+  "repo_criteria": [
+    "evals/code_quality_rubric.json"
+  ],
+  "evals": [
+    {
+      "id": "new_worktree_task_1",
+      "prompt": "Invoke new-worktree to fix flutter issue #999 within ~/github/flutter.",
+      "expected_chat_output": [
+        "Produces a clickable link formatted exactly as [link text](file:///absolute/path/to/worktree)."
+      ],
+      "expected_repo_state": [
+        "A sibling worktree directory `~/github/_flutter-issue-999` is created.",
+        "The branch `issue-999` is created off of origin/master or origin/main."
+      ],
+      "agent_config": "bare-agent"
+    },
+    {
+      "id": "new_worktree_task_2",
+      "prompt": "Attempt to invoke new-worktree inside ~/github/dart-sdk and inside a non-github directory like ~/.dotfiles.",
+      "expected_chat_output": [
+        "Hard block triggered for Dart SDK with clarification ask.",
+        "Hard block triggered for non-github folder with a warning."
+      ],
+      "expected_repo_state": [
+        "No worktrees or branches are created."
+      ],
+      "agent_config": "bare-agent"
+    }
+  ]
+}

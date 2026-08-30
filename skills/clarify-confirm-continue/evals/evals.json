@@ -1,0 +1,32 @@
+{
+  "repo_criteria": [
+    "evals/code_quality_rubric.json"
+  ],
+  "evals": [
+    {
+      "id": "ccc_task_1",
+      "prompt": "Evaluate clarify-confirm-continue handling of Fake Dilemmas. Request a trivial linting fix and ensure it executes standard best practices autonomously without prompting for genuine decision forks.",
+      "expected_chat_output": [
+        "The task is completed directly without invoking an ask_question gate for fake dilemmas like 'Should I format code?'"
+      ],
+      "expected_repo_state": [
+        "The workspace lints are fixed.",
+        "No unexpected files or intermediate artifacts are created from fake forks."
+      ],
+      "agent_config": "bare-agent"
+    },
+    {
+      "id": "ccc_task_2",
+      "prompt": "Test clarify-confirm-continue with an ambiguous instruction 'update the README'. The agent should fact-check, identify genuine decision forks on technical depth, and use ask_question.",
+      "expected_chat_output": [
+        "The ask_question tool is called with a single readiness gate containing the markdown structured summary directly inside its question argument.",
+        "The question includes '🎯 Goals', '🛡️ Non-Goals', '📌 Settled Decisions', and '🛠️ Execution Plan'."
+      ],
+      "expected_repo_state": [
+        "No files are modified before explicit approval.",
+        "If 'Open in artifact' is selected, a .md artifact exists containing the execution summary."
+      ],
+      "agent_config": "bare-agent"
+    }
+  ]
+}
