@@ -5,7 +5,7 @@
   "evals": [
     {
       "id": "sem_task_1_external_boundary",
-      "prompt": "We want to analyze how the external type 'DartType' (from package:analyzer) impacts our local codebase. What commands should we run using sem-semantic-diff?",
+      "prompt": "We want to analyze how the external type 'DartType' (from package:analyzer) impacts our local codebase. What commands should we run using sem-cli?",
       "expected_chat_output": [
         "Explains that sem only indexes local repository entities and running 'sem impact DartType' directly will fail with 'Entity not found'.",
         "Recommends first running grep/ripgrep (or 'sem grep') to find import statements and locate local wrapper classes or functions, then running 'sem impact <local_entity> --json' on those local entities."
@@ -17,7 +17,7 @@
     },
     {
       "id": "sem_task_2_flag_precision",
-      "prompt": "Using the sem-semantic-diff skill, give me the exact CLI commands to: (1) output a semantic diff of staged changes as markdown, and (2) output the affected tests for the function 'authenticateUser' as JSON.",
+      "prompt": "Using the sem-cli skill, give me the exact CLI commands to: (1) output a semantic diff of staged changes as markdown, and (2) output the affected tests for the function 'authenticateUser' as JSON.",
       "expected_chat_output": [
         "Uses 'sem diff --staged --format markdown' for the semantic diff.",
         "Uses 'sem impact authenticateUser --tests --json' (using '--json' rather than '--format json') for the impact analysis."
@@ -29,7 +29,7 @@
     },
     {
       "id": "sem_task_3_hotspots_and_callers",
-      "prompt": "Using sem-semantic-diff, how do I find the most frequently modified hotspot entities and co-change pairs across the repository, and how do I quickly list direct callers of 'diff_command' in JSON?",
+      "prompt": "Using sem-cli, how do I find the most frequently modified hotspot entities and co-change pairs across the repository, and how do I quickly list direct callers of 'diff_command' in JSON?",
       "expected_chat_output": [
         "Provides 'sem log --json' (or 'sem log --limit 200 --json') with no entity argument to discover repository hotspots and co-change pairs.",
         "Provides 'sem callers diff_command --json' for the instant mmap-backed direct caller lookup."
@@ -41,7 +41,7 @@
     },
     {
       "id": "sem_task_4_headers_and_hops",
-      "prompt": "Using sem-semantic-diff, how do I pack context for two entities ('authenticateUser' and 'verifyToken') within a 6000-token budget, bounded to 2 graph hops, outputting only signatures and doc-comments so the context window covers a much wider map?",
+      "prompt": "Using sem-cli, how do I pack context for two entities ('authenticateUser' and 'verifyToken') within a 6000-token budget, bounded to 2 graph hops, outputting only signatures and doc-comments so the context window covers a much wider map?",
       "expected_chat_output": [
         "Uses 'sem context --entity authenticateUser --entity verifyToken --hops 2 --headers --budget 6000 --json' (including the '--headers', '--hops 2', and repeatable '--entity' flags)."
       ],
@@ -52,7 +52,7 @@
     },
     {
       "id": "sem_task_5_text_search_and_jj_patch",
-      "prompt": "Using sem-semantic-diff: (1) How do I search for the exact string 'PERMISSION_DENIED' inside entity bodies in 'src/' and get back the enclosing AST entity IDs in JSON? (2) How do I run an entity-level semantic diff with formatting/comment changes stripped inside a Jujutsu (jj) workspace where no .git folder exists?",
+      "prompt": "Using sem-cli: (1) How do I search for the exact string 'PERMISSION_DENIED' inside entity bodies in 'src/' and get back the enclosing AST entity IDs in JSON? (2) How do I run an entity-level semantic diff with formatting/comment changes stripped inside a Jujutsu (jj) workspace where no .git folder exists?",
       "expected_chat_output": [
         "Provides 'sem entities src/ --text \"PERMISSION_DENIED\" --json' for entity-addressed substring search.",
         "Provides 'jj diff --git | sem diff --patch --no-cosmetics --format json' to pipe unified diff output into sem diff with cosmetic changes stripped."

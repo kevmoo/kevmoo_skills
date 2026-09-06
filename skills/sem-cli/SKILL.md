@@ -1,28 +1,27 @@
 ---
-name: sem-semantic-diff
-description: Use the `sem` CLI to view semantic codebase diffs, evaluate dependency graphs, perform impact analysis, discover repository hotspots and co-change pairs, and investigate code history without formatting noise. Use instead of standard git diff/log when analyzing structural code changes.
+name: sem-cli
+description: Use the `sem` CLI (`sem-cli`) for fast local code exploration, instant call-graph navigation (`callers`/`refs`), signature-only context packing (`--headers`), hotspot and co-change discovery (`sem log`), transitive impact analysis (`sem impact`), and entity-level semantic diffs (`sem diff`).
 key_features:
-  - Semantic diffs
-  - impact analysis
-  - dependency graphs
-  - cold-start caller/callee lookups
-  - hotspot and co-change analysis
+  - Instant call-graph navigation
   - signature-only context packing
   - entity-addressed substring search
+  - hotspot and co-change analysis
+  - transitive impact analysis
+  - semantic diffs
 ---
 
-# `sem` Semantic Diff Skill (`sem-cli v0.24+`)
+# `sem-cli` Skill (`sem v0.24+`)
 
-This skill provides instructions on how to use `sem`, a semantic version control tool that tracks functions, classes, methods, and types rather than lines of text.
+This skill provides instructions on how to use `sem` (`sem-cli`), an AST entity indexer, call-graph navigator, and semantic version control tool that tracks functions, classes, methods, and types across 39 languages and data formats.
 
 ## Capabilities & Limitations (What `sem` Does Well and Does Not Do)
 
 ### What `sem` Does Well
-- **Local Codebase Navigation:** Builds a precise semantic dependency graph of all classes, functions, methods, and properties defined within the local repository across 39 programming and data formats (including first-class `.dart` support).
-- **Structural Diffs & History:** Shows added, modified, renamed, or deleted entities across commits without formatting or whitespace noise (`structuralChange: false` or `--no-cosmetics`).
-- **Internal Impact Analysis:** Tracing the transitive impact (`sem impact`) or direct callers/callees (`sem callers`, `sem refs`, `sem graph`) of local entities across the workspace.
+- **Instant Cold-Start Code Exploration:** Builds an on-disk mmap query index (`index.sem`) that answers definition lookups (`sem find`), direct callers (`sem callers`), direct callees (`sem refs`), and trigram regex searches (`sem grep`) in **~7ms warm** without running an LSP daemon.
+- **Signature-Only Context Packing:** Fits **5–10x wider call-graph maps** into LLM context windows using `sem context --headers`.
+- **Entity-Addressed Substring Search:** Searches entity bodies (`sem entities --text`) and returns the **enclosing AST entity ID** (`file::kind::name`) rather than raw `grep` line numbers.
 - **Hotspot & Co-Change Discovery:** Identifies most-modified entities and co-change pairs ("if you touch X, don't forget Y") via `sem log`.
-- **Signature-Only Context Packing:** Fits 5–10x wider call-graph maps into LLM context windows using `--headers`.
+- **Structural Diffs & History:** Shows added, modified, renamed, or deleted entities across commits without formatting or whitespace noise (`structuralChange: false` or `--no-cosmetics`).
 
 ### What `sem` Does Not Do (Important Limitations)
 - **External Dependencies:** `sem` only indexes entities defined within the local repository's source files. It **does not** parse or track external packages or transitive library dependencies (e.g., from `pubspec.yaml`, `node_modules`, `Cargo.toml`, etc.).
