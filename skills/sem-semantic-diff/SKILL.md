@@ -1,162 +1,162 @@
 ---
 name: sem-semantic-diff
-description: Use the `sem` CLI to view semantic codebase diffs, evaluate dependency graphs, perform impact analysis, and investigate code history without formatting noise. Use instead of standard git diff/log when analyzing structural code changes.
+description: Use the `sem` CLI to view semantic codebase diffs, evaluate dependency graphs, perform impact analysis, discover repository hotspots and co-change pairs, and investigate code history without formatting noise. Use instead of standard git diff/log when analyzing structural code changes.
 key_features:
   - Semantic diffs
   - impact analysis
   - dependency graphs
+  - cold-start caller/callee lookups
+  - hotspot and co-change analysis
 ---
 
-# `sem` Semantic Diff Skill
+# `sem` Semantic Diff Skill (`sem-cli v0.24+`)
 
-This skill provides instructions on how to use `sem`, a semantic version control tool that tracks functions, classes, and types rather than just lines of text.
+This skill provides instructions on how to use `sem`, a semantic version control tool that tracks functions, classes, methods, and types rather than lines of text.
 
 ## Capabilities & Limitations (What `sem` Does Well and Does Not Do)
 
 ### What `sem` Does Well
-- **Local Codebase Navigation:** Builds a precise semantic dependency graph of all classes, functions, methods, and properties defined within the local repository.
-- **Structural Diffs & History:** Shows added, modified, renamed, or deleted entities across commits without formatting or whitespace noise.
-- **Internal Impact Analysis:** Tracing the transitive impact (`sem impact`) or callers/callees (`sem graph`) of local entities across the workspace.
+- **Local Codebase Navigation:** Builds a precise semantic dependency graph of all classes, functions, methods, and properties defined within the local repository across 39 programming and data formats (including first-class `.dart` support).
+- **Structural Diffs & History:** Shows added, modified, renamed, or deleted entities across commits without formatting or whitespace noise (`structuralChange: false`).
+- **Internal Impact Analysis:** Tracing the transitive impact (`sem impact`) or direct callers/callees (`sem callers`, `sem refs`, `sem graph`) of local entities across the workspace.
+- **Hotspot & Co-Change Discovery:** Identifies most-modified entities and co-change pairs ("if you touch X, don't forget Y") via `sem log`.
 
 ### What `sem` Does Not Do (Important Limitations)
 - **External Dependencies:** `sem` only indexes entities defined within the local repository's source files. It **does not** parse or track external packages or transitive library dependencies (e.g., from `pubspec.yaml`, `node_modules`, `Cargo.toml`, etc.).
 - **External Impact Analysis:** Running `sem impact` on an external type or class (e.g., `DartType` or `ClassElement` from an external package) will fail with `error: Entity '...' not found`.
-- **Workflow for External Packages:** If tasked with evaluating how an external package is used across a codebase, **do not start with `sem`**. Use standard `grep` or `ripgrep` to find `import` statements and locate local wrapper classes or helper functions. Once local wrapper entities are identified, use `sem impact` on those local entities to trace their usage across the codebase.
+- **Workflow for External Packages:** If tasked with evaluating how an external package is used across a codebase, **do not start with `sem`**. Use standard `grep` or `ripgrep` (`sem grep` or `rg`) to find `import` statements and locate local wrapper classes or helper functions. Once local wrapper entities are identified, use `sem impact` on those local entities to trace their usage across the codebase.
 
 ## Finding Entities (`<entity_name>`)
 
-Many `sem` commands require an `<entity_name>`. You can discover the exact names or IDs of entities in the codebase using the following methods:
+Many `sem` commands require an `<entity_name>`. Discover exact names or IDs using:
 
-1. **List entities in a file or directory:**
-   Use `sem entities [PATH]` to see all parsed functions, classes, and types in a specific file or directory.
+1. **Instant Cold-Start Lookups (`sem find` / `sem callers` / `sem refs`):**
+   Backed by an on-disk mmap-able query index (`index.sem`), warm lookups take ~7ms without a daemon:
    ```bash
-   sem entities src/utils.ts
+   # Find where an entity is defined
+   sem find "function diff_command" --json
 
-   # For agentic/programmatic parsing:
-   sem entities src/utils.ts --format json
+   # Who calls it directly
+   sem callers diff_command --json
+
+   # What it calls directly
+   sem refs diff_command --json
    ```
 
-2. **From semantic diffs:**
-   When you run `sem diff`, the output will list the names of the entities that have been added, modified, or deleted.
+2. **List entities in a file or directory (`sem entities`):**
+   ```bash
+   sem entities src/utils.ts --json
+   ```
 
-3. **Entity IDs:**
-   If a name is ambiguous (e.g., multiple files have a `setup()` function), you can use the fully qualified `entity_id` provided in the JSON output of `sem diff` or `sem entities` (e.g., `--entity-id "src/utils.ts::function::setup"`).
+3. **Entity IDs for Disambiguation:**
+   If a name is ambiguous (e.g., multiple files define a `setup()` function), pass `--file <path>` or use the fully qualified `entity_id` returned by `--json` output (e.g., `--entity-id "src/utils.ts::function::setup"`).
 
-## Core Commands & Full Options Reference (No Need to Run `--help`)
+## Core Commands & Flag Reference (`sem v0.24+`)
 
-To avoid running `--help`, use this comprehensive reference of available commands and their flags. Always use `--format json` when parsing programmatically to guarantee consistency across all subcommands.
+> **Important Flag Distinction (`--format` vs. `--json`):**
+> - Only `sem diff` uses `--format <json|markdown|plain>`.
+> - **All other subcommands** (`sem impact`, `sem blame`, `sem log`, `sem entities`, `sem context`, `sem find`, `sem callers`, `sem refs`, `sem grep`, `sem graph`) use `--json` directly. Do **not** pass `--format json` to `sem impact` or `sem log`.
 
 ### 1. Semantic Diff (`sem diff`)
-Show added, modified, deleted, or renamed entities in the working tree or between commits.
+Show added, modified, deleted, renamed, or moved entities in the working tree, between commits, or between any two files.
 
 ```bash
-# View semantic changes in the working directory
+# View semantic changes in working directory
 sem diff
 
 # View only staged changes
 sem diff --staged
 
-# Show changes from a specific commit
+# Show changes from a specific commit or range
 sem diff --commit <COMMIT>
-
-# View diff between two commits
 sem diff --from <COMMIT_1> --to <COMMIT_2>
 
-# Get verbose inline content diffs for modified entities
+# Verbose inline word-level diffs for modified entities
 sem diff -v
 
-# Output in JSON format
+# Output formats: json, markdown, or plain
 sem diff --format json
+sem diff --format markdown
+
+# Compare any two files directly (no git repo required)
+sem diff file1.dart file2.dart
 ```
-*Additional options:* `-C, --cwd <DIR>` (Run as if started in directory), `--file-exts <EXTS>...` (Filter by extensions).
+*Additional options:* `--file-exts <EXTS>...` (Filter by extensions, e.g., `--file-exts .dart`).
 
 ### 2. Impact Analysis (`sem impact`)
 Analyze the transitive impact of changing an entity (BFS traversal).
 
 ```bash
-# See what else is affected if you change an entity
-sem impact <entity_name>
+# Full transitive impact analysis in JSON
+sem impact <entity_name> --json
 
-# Look up entity by fully qualified ID
-sem impact --entity-id "src/utils.ts::function::setup"
+# Disambiguate by file or fully qualified ID
+sem impact setup --file src/test_utils.ts --json
+sem impact --entity-id "src/utils.ts::function::setup" --json
 
-# Disambiguate by specifying the file containing the entity
-sem impact setup --file src/test_utils.ts
-
-# Output as JSON
-sem impact <entity_name> --format json
-
-# Show direct dependencies only
-sem impact <entity_name> --deps
-
-# Show direct dependents only
-sem impact <entity_name> --dependents
+# Direct dependencies or dependents only
+sem impact <entity_name> --deps --json
+sem impact <entity_name> --dependents --json
 
 # Show only affected tests
-sem impact <entity_name> --tests
-```
-*Additional options:* `--depth <DEPTH>` (Max traversal depth, default 2, 0 = unlimited), `--file-exts <EXTS>...`, `--no-cache`.
+sem impact <entity_name> --tests --json
 
-### 3. Dependency Graph (`sem graph`)
-View the full entity dependency graph for the codebase.
+# Include generated, fixture, vendor, benchmark, and build trees
+sem impact <entity_name> --no-default-excludes --json
+```
+
+### 3. Repository Hotspots & Entity History (`sem log`)
+Show the evolution of an entity through git history, or analyze repository-wide churn and co-change pairs.
 
 ```bash
-# View graph for current directory
-sem graph
+# Repository hotspots (most-modified entities + author counts) & co-change pairs
+sem log --limit 200 --json
 
-# View graph for specific path in JSON format
-sem graph src/ --format json
+# Scoped hotspots & co-change pairs for a specific directory/file
+sem log --file src/auth.ts --json
+
+# Track a specific entity's evolution through git history
+sem log <entity_name> --json
+sem log <entity_name> -v
 ```
-*Additional options:* `--format <FORMAT>` (terminal, json), `--file-exts <EXTS>...`, `--no-cache`.
 
-### 4. Semantic Blame (`sem blame`)
-Identify who last modified each function or class within a file.
+### 4. Instant Index Lookups (`sem find`, `sem callers`, `sem refs`, `sem grep`)
+Fast cold/warm lookups backed by `index.sem`:
 
 ```bash
-sem blame <file_path>
+# Locate entity definition
+sem find <entity_name> --json
+
+# Direct callers of an entity
+sem callers <entity_name> --json
+
+# Direct callees referenced by an entity
+sem refs <entity_name> --json
+
+# Trigram text search across indexed source files
+sem grep "TODO"
 ```
 
-### 5. Semantic Log (`sem log`)
-Show the evolution of an entity through git history.
+### 5. Token-Budgeted Context (`sem context`)
+Fit an entity, its dependencies, and its dependents into a strict token budget for LLM consumption:
 
 ```bash
-sem log <entity_name>
+sem context <entity_name> --budget 8000 --json
 ```
 
-### 6. Entity Context (`sem context`)
-Show token-budgeted context for an entity. This is intended for providing code snippets directly to an LLM's context window.
+### 6. Dependency Graph (`sem graph`) & Entity Blame (`sem blame`)
 
 ```bash
-# Show context with token budget (default 8000)
-sem context <entity_name> --budget 8000
+# Full entity dependency graph edge list
+sem graph --json
 
-# Output in JSON
-sem context <entity_name> --format json
-```
-*Additional options:* `--entity-id <ID>`, `--file <FILE>`, `--file-exts <EXTS>...`, `--no-cache`.
-
-### 7. List Entities (`sem entities`)
-List entities under a file or directory path.
-
-```bash
-# List entities in current directory or specific path
-sem entities src/
-
-# Output in JSON format
-sem entities src/ --format json
+# Entity-level git blame for a file
+sem blame <file_path> --json
 ```
 
-## Best Practices
-- **JSON Output for Processing**: Always use `--format json` when you need to parse the output programmatically. This ensures 100% consistency across all `sem` commands (as `sem diff` requires `--format json` and does not support a `--json` shorthand).
-- **File Extensions**: Use `--file-exts .ts .js` to filter large codebases.
-- **Handling Ambiguity**: If multiple entities have the same name (e.g., a `setup` function in multiple test files), use `--file <FILE>` or `--entity-id <ENTITY_ID>` to disambiguate:
-  ```bash
-  sem impact setup --file src/test_utils.ts
-  # OR
-  sem impact --entity-id "src/test_utils.ts::function::setup"
-  ```
+## Troubleshooting & Environment Gotchas
 
-### Asynchronous Execution for Heavy Codebases
-On very large codebases, generating the initial dependency graph (`sem graph` or `sem impact`) can take considerable time and block the session:
-- **Background Execution**: Propose the command asynchronously (e.g., in Antigravity, set `WaitMsBeforeAsync: 500` or let it background) and schedule a `schedule` wakeup timer to monitor the task status, keeping the main thread free.
-- **Harness-Agnostic Fallback**: Propose running the graph indexing command as a POSIX background job redirecting output (e.g., `sem graph --format json > graph.json 2>&1 &`) and check the process PID or verify the output file existence in subsequent turns.
+- **GNU Parallel Binary Collision (`/usr/bin/sem`):**
+  GNU Parallel installs `/usr/bin/sem` as a symlink to `parallel`. If `sem` hangs or rejects subcommands, verify the binary with `sem --version` or `which sem`. Ensure Homebrew (`$(brew --prefix)/bin/sem`) or Cargo (`~/.cargo/bin/sem`) precedes `/usr/bin` in `PATH`.
+- **Asynchronous Execution for Large Graphs:**
+  On very large repositories, the initial index/graph build can take several seconds. Run `sem impact` or `sem graph` with a background timeout (`WaitMsBeforeAsync`) if cold-starting on a massive monorepo.
