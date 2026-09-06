@@ -7,6 +7,8 @@ key_features:
   - dependency graphs
   - cold-start caller/callee lookups
   - hotspot and co-change analysis
+  - signature-only context packing
+  - entity-addressed substring search
 ---
 
 # `sem` Semantic Diff Skill (`sem-cli v0.24+`)
@@ -17,9 +19,10 @@ This skill provides instructions on how to use `sem`, a semantic version control
 
 ### What `sem` Does Well
 - **Local Codebase Navigation:** Builds a precise semantic dependency graph of all classes, functions, methods, and properties defined within the local repository across 39 programming and data formats (including first-class `.dart` support).
-- **Structural Diffs & History:** Shows added, modified, renamed, or deleted entities across commits without formatting or whitespace noise (`structuralChange: false`).
+- **Structural Diffs & History:** Shows added, modified, renamed, or deleted entities across commits without formatting or whitespace noise (`structuralChange: false` or `--no-cosmetics`).
 - **Internal Impact Analysis:** Tracing the transitive impact (`sem impact`) or direct callers/callees (`sem callers`, `sem refs`, `sem graph`) of local entities across the workspace.
 - **Hotspot & Co-Change Discovery:** Identifies most-modified entities and co-change pairs ("if you touch X, don't forget Y") via `sem log`.
+- **Signature-Only Context Packing:** Fits 5–10x wider call-graph maps into LLM context windows using `--headers`.
 
 ### What `sem` Does Not Do (Important Limitations)
 - **External Dependencies:** `sem` only indexes entities defined within the local repository's source files. It **does not** parse or track external packages or transitive library dependencies (e.g., from `pubspec.yaml`, `node_modules`, `Cargo.toml`, etc.).
@@ -43,9 +46,14 @@ Many `sem` commands require an `<entity_name>`. Discover exact names or IDs usin
    sem refs diff_command --json
    ```
 
-2. **List entities in a file or directory (`sem entities`):**
+2. **Entity-Addressed Substring Search (`sem entities --text`):**
+   Search entity bodies for an exact substring and get back the **enclosing AST entity ID** (`file::kind::name`), avoiding manual line-to-function mapping:
    ```bash
-   sem entities src/utils.ts --json
+   # Search for a string inside entity bodies and return enclosing entity IDs
+   sem entities src/ --text "PERMISSION_DENIED" --json
+
+   # Filter by AST entity kind (--only / --except)
+   sem entities src/ --only function --only class --json
    ```
 
 3. **Entity IDs for Disambiguation:**
@@ -58,7 +66,7 @@ Many `sem` commands require an `<entity_name>`. Discover exact names or IDs usin
 > - **All other subcommands** (`sem impact`, `sem blame`, `sem log`, `sem entities`, `sem context`, `sem find`, `sem callers`, `sem refs`, `sem grep`, `sem graph`) use `--json` directly. Do **not** pass `--format json` to `sem impact` or `sem log`.
 
 ### 1. Semantic Diff (`sem diff`)
-Show added, modified, deleted, renamed, or moved entities in the working tree, between commits, or between any two files.
+Show added, modified, deleted, renamed, or moved entities in the working tree, between commits, between any two files, or piped from unified diffs.
 
 ```bash
 # View semantic changes in working directory
@@ -66,6 +74,9 @@ sem diff
 
 # View only staged changes
 sem diff --staged
+
+# Strip formatting, whitespace, and comment-only changes
+sem diff --no-cosmetics
 
 # Show changes from a specific commit or range
 sem diff --commit <COMMIT>
@@ -77,6 +88,9 @@ sem diff -v
 # Output formats: json, markdown, or plain
 sem diff --format json
 sem diff --format markdown
+
+# Pipe any unified diff via stdin (works in Jujutsu / CitC workspaces without .git)
+jj diff --git | sem diff --patch --no-cosmetics --format json
 
 # Compare any two files directly (no git repo required)
 sem diff file1.dart file2.dart
@@ -98,7 +112,7 @@ sem impact --entity-id "src/utils.ts::function::setup" --json
 sem impact <entity_name> --deps --json
 sem impact <entity_name> --dependents --json
 
-# Show only affected tests
+# Show only affected tests (uses call graph + lexical/IDF fallback)
 sem impact <entity_name> --tests --json
 
 # Include generated, fixture, vendor, benchmark, and build trees
@@ -141,7 +155,14 @@ sem grep "TODO"
 Fit an entity, its dependencies, and its dependents into a strict token budget for LLM consumption:
 
 ```bash
+# Standard full-body context packing
 sem context <entity_name> --budget 8000 --json
+
+# Signature-only packing (signature + first doc-comment line; ~5-10x wider map)
+sem context <entity_name> --headers --budget 4000 --json
+
+# Pack multiple entities into a single shared budget, bounded by graph hops
+sem context --entity <entity_A> --entity <entity_B> --hops 2 --headers --budget 6000 --json
 ```
 
 ### 6. Dependency Graph (`sem graph`) & Entity Blame (`sem blame`)
