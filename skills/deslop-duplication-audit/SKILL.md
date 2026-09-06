@@ -36,8 +36,8 @@ using Deslop (a tree-sitter structural duplicate code detection engine).
     accessible on `$PATH`.
   - _Sandbox note for Dart repositories_: In restricted container or sandbox
     environments where `.dart_tool` pre-compilation encounters atomic rename
-    exceptions (`PathNotFoundException`, `errno = 2`), pass `--no-precompile`
-    (e.g., `dart test --no-precompile`).
+    exceptions (`PathNotFoundException`, `errno = 2`), pass `-c source`
+    (e.g., `dart test -c source`) or run `dart pub get --no-precompile` beforehand.
 
 ## 2. Phase 1: Read-Only Discovery Scans & Reporting
 
