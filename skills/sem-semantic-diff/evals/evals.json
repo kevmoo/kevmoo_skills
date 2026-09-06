@@ -38,6 +38,29 @@
         "No files are modified."
       ],
       "agent_config": "bare-agent"
+    },
+    {
+      "id": "sem_task_4_headers_and_hops",
+      "prompt": "Using sem-semantic-diff, how do I pack context for two entities ('authenticateUser' and 'verifyToken') within a 6000-token budget, bounded to 2 graph hops, outputting only signatures and doc-comments so the context window covers a much wider map?",
+      "expected_chat_output": [
+        "Uses 'sem context --entity authenticateUser --entity verifyToken --hops 2 --headers --budget 6000 --json' (including the '--headers', '--hops 2', and repeatable '--entity' flags)."
+      ],
+      "expected_repo_state": [
+        "No files are modified."
+      ],
+      "agent_config": "bare-agent"
+    },
+    {
+      "id": "sem_task_5_text_search_and_jj_patch",
+      "prompt": "Using sem-semantic-diff: (1) How do I search for the exact string 'PERMISSION_DENIED' inside entity bodies in 'src/' and get back the enclosing AST entity IDs in JSON? (2) How do I run an entity-level semantic diff with formatting/comment changes stripped inside a Jujutsu (jj) workspace where no .git folder exists?",
+      "expected_chat_output": [
+        "Provides 'sem entities src/ --text \"PERMISSION_DENIED\" --json' for entity-addressed substring search.",
+        "Provides 'jj diff --git | sem diff --patch --no-cosmetics --format json' to pipe unified diff output into sem diff with cosmetic changes stripped."
+      ],
+      "expected_repo_state": [
+        "No files are modified."
+      ],
+      "agent_config": "bare-agent"
     }
   ]
 }
