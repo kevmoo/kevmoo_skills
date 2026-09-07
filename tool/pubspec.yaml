@@ -12,8 +12,6 @@ dependencies:
 
 dev_dependencies:
   checks: ^0.3.0
-  deslop_duplication_audit:
-    path: ../skills/deslop-duplication-audit
   github_post:
     path: ../skills/github-post
   logging: ^1.3.0
