@@ -69,6 +69,16 @@ output:
 ## 📋 Skill Catalog & Path Priority
 
 <!-- DART_CLEANUP_CATALOG_START -->
+### Required Local Repositories
+
+<!-- mdformat off(prevent table wrapping) -->
+| Repository | Local Directory | Synced Commit |
+| :--- | :--- | :--- |
+| [`dart-lang/skills`](https://github.com/dart-lang/skills) | `~/github/skills` | [`26b2dcc`](https://github.com/dart-lang/skills/commit/26b2dcc5654cbbc3b2ec56ea94719469bc8bae9e) |
+| [`kevmoo/analytica.dart`](https://github.com/kevmoo/analytica.dart) | `~/github/kevmoo/analytica.dart` | [`1bba4de`](https://github.com/kevmoo/analytica.dart/commit/1bba4de81a526b3805561227fb1adeed4e3feb45) |
+| [`kevmoo/dash_skills`](https://github.com/kevmoo/dash_skills) | `~/github/kevmoo/dash_skills` | [`949bd00`](https://github.com/kevmoo/dash_skills/commit/949bd00b69fc8449c535aeb4f4970c7ec5e21b49) |
+<!-- mdformat on -->
+
 ### A. Refactoring & Code Quality
 * **`dart-build-cli-app`**: CLI entrypoint structure, argument parsing
   (`package:args`), cross-platform scripts, exit codes, and compilation.

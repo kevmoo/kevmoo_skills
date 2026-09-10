@@ -2,15 +2,21 @@
   "repositories": {
     "skills": {
       "path": "~/github/skills",
-      "cloneUrl": "https://github.com/dart-lang/skills.git"
+      "cloneUrl": "https://github.com/dart-lang/skills.git",
+      "commitSha": "26b2dcc5654cbbc3b2ec56ea94719469bc8bae9e",
+      "commitDate": "2026-09-10T12:45:58-07:00"
     },
     "dash_skills": {
       "path": "~/github/kevmoo/dash_skills",
-      "cloneUrl": "https://github.com/kevmoo/dash_skills.git"
+      "cloneUrl": "https://github.com/kevmoo/dash_skills.git",
+      "commitSha": "949bd00b69fc8449c535aeb4f4970c7ec5e21b49",
+      "commitDate": "2026-09-07T18:31:46-07:00"
     },
     "analytica.dart": {
       "path": "~/github/kevmoo/analytica.dart",
-      "cloneUrl": "https://github.com/kevmoo/analytica.dart.git"
+      "cloneUrl": "https://github.com/kevmoo/analytica.dart.git",
+      "commitSha": "1bba4de81a526b3805561227fb1adeed4e3feb45",
+      "commitDate": "2026-08-29T00:10:54-07:00"
     }
   },
   "categories": [

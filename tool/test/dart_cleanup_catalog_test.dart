@@ -5,6 +5,7 @@ import 'package:test/test.dart';
 void main() {
   group('dart_cleanup_catalog data integrity', () {
     late Map<String, dynamic> catalogData;
+    late Map<String, dynamic> repositories;
     late List<dynamic> categories;
 
     setUpAll(() {
@@ -15,7 +16,45 @@ void main() {
       final file = File(catalogPath);
       expect(file.existsSync(), isTrue, reason: 'Catalog JSON must exist');
       catalogData = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
+      repositories = catalogData['repositories'] as Map<String, dynamic>;
       categories = catalogData['categories'] as List<dynamic>;
+    });
+
+    test('repositories have valid paths, cloneUrls, and pinned commits', () {
+      expect(repositories, isNotEmpty);
+      final shaRegex = RegExp(r'^[0-9a-f]{40}$');
+
+      for (final entry in repositories.entries) {
+        final config = entry.value as Map<String, dynamic>;
+        final rawPath = config['path'] as String?;
+        expect(rawPath, isNotNull, reason: 'Repo ${entry.key} must have path');
+        expect(rawPath, startsWith('~/github/'));
+
+        final cloneUrl = config['cloneUrl'] as String?;
+        expect(cloneUrl, isNotNull);
+        expect(cloneUrl, startsWith('https://github.com/'));
+        expect(cloneUrl, endsWith('.git'));
+
+        final commitSha = config['commitSha'] as String?;
+        if (commitSha != null) {
+          expect(
+            shaRegex.hasMatch(commitSha),
+            isTrue,
+            reason:
+                'Commit SHA for ${entry.key} must be 40-char hex string: $commitSha',
+          );
+        }
+
+        final commitDate = config['commitDate'] as String?;
+        if (commitDate != null) {
+          expect(
+            DateTime.tryParse(commitDate),
+            isNotNull,
+            reason:
+                'Commit date for ${entry.key} must be valid ISO-8601: $commitDate',
+          );
+        }
+      }
     });
 
     test('categories are not empty and have distinct names', () {
@@ -62,7 +101,6 @@ void main() {
     });
 
     test('skills define valid repositories', () {
-      final repos = catalogData['repositories'] as Map<String, dynamic>;
       for (final cat in categories) {
         final catMap = cat as Map<String, dynamic>;
         final skills = catMap['skills'] as List<dynamic>;
@@ -70,7 +108,7 @@ void main() {
           final skill = s as Map<String, dynamic>;
           final repo = skill['repo'] as String;
           expect(
-            repos.containsKey(repo),
+            repositories.containsKey(repo),
             isTrue,
             reason: 'Unknown repo "$repo" for skill "${skill['name']}"',
           );

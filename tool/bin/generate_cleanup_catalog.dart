@@ -113,15 +113,24 @@ int _run(List<String> arguments) {
     if (envIssues.any(
       (i) =>
           i.contains('⚠️ [UNCATALOGED SKILL]') ||
-          i.contains('⚠️ [MISSING SKILL]'),
+          i.contains('⚠️ [MISSING SKILL]') ||
+          i.contains('⚠️ [MISMATCHED REPO REMOTE]') ||
+          i.contains('⚠️ [NOT A GIT REPO]'),
     )) {
       return ExitCode.config.code;
     }
     return ExitCode.success.code;
   }
 
+  // If in write mode, capture latest commit SHA and dates if available
+  if (writeMode) {
+    _syncRepositoryCommits(repositories);
+    const encoder = JsonEncoder.withIndent('  ');
+    catalogJsonFile.writeAsStringSync('${encoder.convert(catalogData)}\n');
+  }
+
   // Validate catalog data structure and sorting
-  final validationErrors = validateCatalogStructure(categories);
+  final validationErrors = validateCatalogStructure(categories, repositories);
   if (validationErrors.isNotEmpty) {
     stderr.writeln('Catalog validation errors:');
     for (final err in validationErrors) {
@@ -183,7 +192,7 @@ int _run(List<String> arguments) {
   if (writeMode) {
     targetSkillFile.writeAsStringSync(updatedContent);
     stdout.writeln(
-      'Successfully updated skills/dart-cleanup/SKILL.md with latest catalog!',
+      'Successfully updated skills/dart-cleanup/SKILL.md and catalog JSON with latest catalog!',
     );
   } else {
     stdout
@@ -195,6 +204,41 @@ int _run(List<String> arguments) {
       );
   }
   return ExitCode.success.code;
+}
+
+void _syncRepositoryCommits(Map<String, dynamic> repositories) {
+  final home = Platform.environment['HOME'] ?? '';
+  for (final entry in repositories.entries) {
+    final repoConfig = entry.value as Map<String, dynamic>;
+    final rawPath = repoConfig['path'] as String? ?? '';
+    final resolvedPath = rawPath.replaceFirst('~', home);
+    final repoDir = Directory(resolvedPath);
+
+    if (!repoDir.existsSync()) continue;
+
+    final shaResult = Process.runSync('git', [
+      'rev-parse',
+      'HEAD',
+    ], workingDirectory: resolvedPath);
+    if (shaResult.exitCode == 0) {
+      final sha = shaResult.stdout.toString().trim();
+      if (sha.isNotEmpty) {
+        repoConfig['commitSha'] = sha;
+      }
+    }
+
+    final dateResult = Process.runSync('git', [
+      'log',
+      '-1',
+      '--format=%cI',
+    ], workingDirectory: resolvedPath);
+    if (dateResult.exitCode == 0) {
+      final date = dateResult.stdout.toString().trim();
+      if (date.isNotEmpty) {
+        repoConfig['commitDate'] = date;
+      }
+    }
+  }
 }
 
 List<String> checkLocalEnvironment(
@@ -237,6 +281,40 @@ List<String> checkLocalEnvironment(
       continue;
     }
 
+    // Verify directory is a git repository
+    final gitCheck = Process.runSync('git', [
+      'rev-parse',
+      '--is-inside-work-tree',
+    ], workingDirectory: resolvedPath);
+    if (gitCheck.exitCode != 0) {
+      issues.add(
+        '⚠️ [NOT A GIT REPO] Directory at $resolvedPath is not a git repository.\n'
+        '   Fix: Ensure a valid git clone of $cloneUrl is placed at $resolvedPath\n',
+      );
+      continue;
+    }
+
+    // Verify git remote origin aligns with cloneUrl
+    final remoteCheck = Process.runSync('git', [
+      'config',
+      '--get',
+      'remote.origin.url',
+    ], workingDirectory: resolvedPath);
+    if (remoteCheck.exitCode == 0) {
+      final actualUrl = remoteCheck.stdout.toString().trim();
+      final actualSlug = parseRepoSlugFromUrl(actualUrl);
+      final expectedSlug = parseRepoSlugFromUrl(cloneUrl);
+      if (actualSlug != null &&
+          expectedSlug != null &&
+          actualSlug != expectedSlug) {
+        issues.add(
+          '⚠️ [MISMATCHED REPO REMOTE] Directory "$resolvedPath" points to remote "$actualUrl" ($actualSlug),\n'
+          '   expected "$cloneUrl" ($expectedSlug).\n'
+          '   Fix: Ensure the correct repository is checked out at $resolvedPath\n',
+        );
+      }
+    }
+
     final skillsDir = Directory(p.join(repoDir.path, 'skills'));
     if (!skillsDir.existsSync()) {
       continue;
@@ -276,9 +354,33 @@ List<String> checkLocalEnvironment(
   return issues;
 }
 
-List<String> validateCatalogStructure(List<dynamic> categories) {
+List<String> validateCatalogStructure(
+  List<dynamic> categories,
+  Map<String, dynamic> repositories,
+) {
   final errors = <String>[];
   final seenSkills = <String>{};
+
+  for (final entry in repositories.entries) {
+    final key = entry.key;
+    final config = entry.value;
+    if (config is! Map<String, dynamic>) {
+      errors.add('Repository "$key" configuration must be a JSON object.');
+      continue;
+    }
+    final rawPath = config['path'] as String? ?? '';
+    final cloneUrl = config['cloneUrl'] as String? ?? '';
+    if (rawPath.isEmpty) {
+      errors.add('Repository "$key" missing "path".');
+    }
+    if (cloneUrl.isEmpty) {
+      errors.add('Repository "$key" missing "cloneUrl".');
+    } else if (parseRepoSlugFromUrl(cloneUrl) == null) {
+      errors.add(
+        'Repository "$key" cloneUrl "$cloneUrl" is not a valid GitHub URL.',
+      );
+    }
+  }
 
   for (final cat in categories) {
     if (cat is! Map<String, dynamic>) {
@@ -300,9 +402,15 @@ List<String> validateCatalogStructure(List<dynamic> categories) {
         continue;
       }
       final name = s['name'] as String? ?? '';
+      final repo = s['repo'] as String? ?? '';
       if (name.isEmpty) {
         errors.add('Skill missing name in category "$catName"');
         continue;
+      }
+      if (!repositories.containsKey(repo)) {
+        errors.add(
+          'Skill "$name" references unknown repository key "$repo" in category "$catName".',
+        );
       }
       if (seenSkills.contains(name)) {
         errors.add('Duplicate skill "$name" found across categories.');
@@ -326,6 +434,43 @@ String generateCatalogMarkdown(
   Map<String, dynamic> repositories,
 ) {
   final buffer = StringBuffer();
+
+  // 1. Required Local Repositories table
+  buffer.writeln('### Required Local Repositories');
+  buffer.writeln();
+  buffer.writeln('<!-- mdformat off(prevent table wrapping) -->');
+  buffer.writeln('| Repository | Local Directory | Synced Commit |');
+  buffer.writeln('| :--- | :--- | :--- |');
+
+  final sortedEntries = repositories.entries.toList()
+    ..sort((a, b) {
+      final slugA =
+          parseRepoSlugFromUrl(a.value['cloneUrl'] as String? ?? '') ?? a.key;
+      final slugB =
+          parseRepoSlugFromUrl(b.value['cloneUrl'] as String? ?? '') ?? b.key;
+      return slugA.compareTo(slugB);
+    });
+
+  for (final entry in sortedEntries) {
+    final config = entry.value as Map<String, dynamic>;
+    final cloneUrl = config['cloneUrl'] as String? ?? '';
+    final rawPath = config['path'] as String? ?? '';
+    final slug = parseRepoSlugFromUrl(cloneUrl) ?? entry.key;
+    final commitSha = config['commitSha'] as String?;
+
+    final webUrl = 'https://github.com/$slug';
+    final repoLink = '[`$slug`]($webUrl)';
+    final commitLink = commitSha != null && commitSha.length >= 7
+        ? '[`${commitSha.substring(0, 7)}`]($webUrl/commit/$commitSha)'
+        : '*(unpinned)*';
+
+    buffer.writeln('| $repoLink | `$rawPath` | $commitLink |');
+  }
+
+  buffer.writeln('<!-- mdformat on -->');
+  buffer.writeln();
+
+  // 2. Categorized Skills
   const letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 
   for (var i = 0; i < categories.length; i++) {
@@ -403,6 +548,33 @@ String _wrapProse(
     lines.add(currentLine);
   }
   return lines.join('\n');
+}
+
+String? parseRepoSlugFromUrl(String rawUrl) {
+  var url = rawUrl.trim();
+  if (!url.contains('://') && url.contains('@') && url.contains(':')) {
+    url = 'ssh://${url.replaceFirst(':', '/')}';
+  }
+
+  final uri = Uri.tryParse(url);
+  if (uri == null || uri.host.toLowerCase() != 'github.com') {
+    return null;
+  }
+
+  if (uri.pathSegments.where((s) => s.isNotEmpty).toList() case [
+    final owner,
+    var repo,
+    ...,
+  ]) {
+    if (repo.endsWith('.git')) {
+      repo = repo.substring(0, repo.length - 4);
+    }
+    if (owner.isNotEmpty && repo.isNotEmpty) {
+      return '$owner/$repo';
+    }
+  }
+
+  return null;
 }
 
 Directory? _findRepoRoot(Directory startDir) {
