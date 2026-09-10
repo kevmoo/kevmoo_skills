@@ -68,99 +68,101 @@ output:
 
 ## 📋 Skill Catalog & Path Priority
 
+<!-- DART_CLEANUP_CATALOG_START -->
 ### A. Refactoring & Code Quality
+* **`dart-build-cli-app`**: CLI entrypoint structure, argument parsing
+  (`package:args`), cross-platform scripts, exit codes, and compilation.
+  * *Path*: `~/github/skills/skills/dart-build-cli-app/SKILL.md`
 * **`dart-cognitive-complexity`**: Reduces cognitive complexity, nested loops,
   and deep conditionals via pattern matching & guard clauses. Includes a gated
   Tier 3 method-object reference for extreme cases.
-  * *Path*: [SKILL.md](file://~/github/kevmoo/analytica.dart/skills/dart-cognitive-complexity/SKILL.md)
-* **`dart-undead`**: Audits, triages, and safely remediates unreachable and
-  dead declarations in Dart and Flutter codebases using deterministic
-  reachability analysis (`pkg:undead`).
-  * *Path*: [SKILL.md](file://~/github/kevmoo/analytica.dart/skills/dart-undead/SKILL.md)
+  * *Path*: `~/github/kevmoo/analytica.dart/skills/dart-cognitive-complexity/SKILL.md`
 * **`dart-dedupe`**: Detects, audits, and safely remediates structural code
   duplication across Dart and Flutter repositories using the standalone Dedupe
   engine (`pkg:dedupe`) and empirical test gating.
-  * *Path*: [SKILL.md](file://~/github/kevmoo/analytica.dart/skills/dart-dedupe/SKILL.md)
-* **`dart-use-path-package`**: Cross-platform file and directory path
-  manipulation, segment splitting, and extension extraction using
-  `package:path` and `package:file`.
-  * *Path*: [SKILL.md](file://~/github/skills/skills/dart-use-path-package/SKILL.md)
-* **`dart-build-cli-app`**: CLI entrypoint structure, argument parsing
-  (`package:args`), cross-platform scripts, exit codes, and compilation.
-  * *Path*: [SKILL.md](file://~/github/skills/skills/dart-build-cli-app/SKILL.md)
-* **`dart-run-static-analysis`**: Executes `dart analyze` to catch issues and
-  `dart fix --apply` to automatically resolve mechanical lint warnings.
-  * *Path*: [SKILL.md](file://~/github/skills/skills/dart-run-static-analysis/SKILL.md)
+  * *Path*: `~/github/kevmoo/analytica.dart/skills/dart-dedupe/SKILL.md`
 * **`dart-fix-runtime-errors`**: Resolves runtime errors, inspects active stack
   traces via `get_runtime_errors` and LSP, and verifies with hot reload.
-  * *Path*: [SKILL.md](file://~/github/skills/skills/dart-fix-runtime-errors/SKILL.md)
+  * *Path*: `~/github/skills/skills/dart-fix-runtime-errors/SKILL.md`
+* **`dart-run-static-analysis`**: Executes `dart analyze` to catch issues and
+  `dart fix --apply` to automatically resolve mechanical lint warnings.
+  * *Path*: `~/github/skills/skills/dart-run-static-analysis/SKILL.md`
+* **`dart-undead`**: Audits, triages, and safely remediates unreachable and dead
+  declarations in Dart and Flutter codebases using deterministic reachability
+  analysis (`pkg:undead`).
+  * *Path*: `~/github/kevmoo/analytica.dart/skills/dart-undead/SKILL.md`
+* **`dart-use-path-package`**: Cross-platform file and directory path
+  manipulation, segment splitting, and extension extraction using `package:path`
+  and `package:file`.
+  * *Path*: `~/github/skills/skills/dart-use-path-package/SKILL.md`
 * **`profile-dart-code`**: Profiles Dart CLI applications using the VM Service
   protocol to capture CPU samples and pinpoint performance bottlenecks.
-  * *Path*: [SKILL.md](file://~/github/kevmoo/dash_skills/skills/profile-dart-code/SKILL.md)
+  * *Path*: `~/github/kevmoo/dash_skills/skills/profile-dart-code/SKILL.md`
 
 ### B. Language Modernization & Syntax
-* **`dart-use-pattern-matching`**: Applies Dart 3 pattern matching, switch
-  expressions, and destructuring to validate schemas and simplify control flow.
-  * *Path*: [SKILL.md](file://~/github/skills/skills/dart-use-pattern-matching/SKILL.md)
-* **`dart-use-primary-constructors`**: Adopts primary constructor syntax,
-  empty-body semicolon syntax, in-body initializers, and concise forms.
-  * *Path*: [SKILL.md](file://~/github/skills/skills/dart-use-primary-constructors/SKILL.md)
-* **`dart-modern-features`**: Records, pattern matching, switch expressions,
-  extension types, and class modifiers (`interface`, `base`, `sealed`, `final`).
-  * *Path*: [SKILL.md](file://~/github/kevmoo/dash_skills/skills/dart-modern-features/SKILL.md)
 * **`dart-best-practices`**: Effective Dart guidelines, class design, null
   safety, and idiomatic style conventions.
-  * *Path*: [SKILL.md](file://~/github/kevmoo/dash_skills/skills/dart-best-practices/SKILL.md)
-* **`dart-multiline-strings`**: Converts consecutive print statements and
-  string concatenations into clean triple-quoted multiline strings.
-  * *Path*: [SKILL.md](file://~/github/kevmoo/dash_skills/skills/dart-multiline-strings/SKILL.md)
+  * *Path*: `~/github/kevmoo/dash_skills/skills/dart-best-practices/SKILL.md`
 * **`dart-long-lines`**: Formats and refactors code to adhere to the 80-column
   line limit (`lines_longer_than_80_chars`).
-  * *Path*: [SKILL.md](file://~/github/kevmoo/dash_skills/skills/dart-long-lines/SKILL.md)
+  * *Path*: `~/github/kevmoo/dash_skills/skills/dart-long-lines/SKILL.md`
+* **`dart-modern-features`**: Records, pattern matching, switch expressions,
+  extension types, and class modifiers (`interface`, `base`, `sealed`, `final`).
+  * *Path*: `~/github/kevmoo/dash_skills/skills/dart-modern-features/SKILL.md`
+* **`dart-multiline-strings`**: Converts consecutive print statements and string
+  concatenations into clean triple-quoted multiline strings.
+  * *Path*: `~/github/kevmoo/dash_skills/skills/dart-multiline-strings/SKILL.md`
+* **`dart-use-pattern-matching`**: Applies Dart 3 pattern matching, switch
+  expressions, and destructuring to validate schemas and simplify control flow.
+  * *Path*: `~/github/skills/skills/dart-use-pattern-matching/SKILL.md`
+* **`dart-use-primary-constructors`**: Adopts primary constructor syntax,
+  empty-body semicolon syntax, in-body initializers, and concise forms.
+  * *Path*: `~/github/skills/skills/dart-use-primary-constructors/SKILL.md`
 
 ### C. Testing & Assertions
-* **`dart-migrate-to-checks-package`**: Migrates legacy `expect(a, equals(b))`
-  matchers from `package:matcher` to fluent `package:checks` syntax.
-  * *Path*: [SKILL.md](file://~/github/skills/skills/dart-migrate-to-checks-package/SKILL.md)
 * **`dart-add-unit-test`**: Writes and organizes unit tests for functions,
   methods, and classes using `package:test` with clean structure.
-  * *Path*: [SKILL.md](file://~/github/skills/skills/dart-add-unit-test/SKILL.md)
-* **`dart-generate-test-mocks`**: Defines and generates mock objects for
-  external dependencies using `package:mockito` and `build_runner`.
-  * *Path*: [SKILL.md](file://~/github/skills/skills/dart-generate-test-mocks/SKILL.md)
-* **`dart-test-fundamentals`**: Core `package:test` practices, test grouping,
-  `setUp`/`tearDown` lifecycles, and `dart_test.yaml` configuration.
-  * *Path*: [SKILL.md](file://~/github/kevmoo/dash_skills/skills/dart-test-fundamentals/SKILL.md)
-* **`dart-matcher-best-practices`**: Best practices, custom matchers, and async
-  matcher patterns for legacy `package:matcher` assertions.
-  * *Path*: [SKILL.md](file://~/github/kevmoo/dash_skills/skills/dart-matcher-best-practices/SKILL.md)
+  * *Path*: `~/github/skills/skills/dart-add-unit-test/SKILL.md`
 * **`dart-collect-coverage`**: Collects test coverage using `package:coverage`
   and generates LCOV reports.
-  * *Path*: [SKILL.md](file://~/github/skills/skills/dart-collect-coverage/SKILL.md)
+  * *Path*: `~/github/skills/skills/dart-collect-coverage/SKILL.md`
+* **`dart-generate-test-mocks`**: Defines and generates mock objects for
+  external dependencies using `package:mockito` and `build_runner`.
+  * *Path*: `~/github/skills/skills/dart-generate-test-mocks/SKILL.md`
+* **`dart-matcher-best-practices`**: Best practices, custom matchers, and async
+  matcher patterns for legacy `package:matcher` assertions.
+  * *Path*: `~/github/kevmoo/dash_skills/skills/dart-matcher-best-practices/SKILL.md`
+* **`dart-migrate-to-checks-package`**: Migrates legacy `expect(a, equals(b))`
+  matchers from `package:matcher` to fluent `package:checks` syntax.
+  * *Path*: `~/github/skills/skills/dart-migrate-to-checks-package/SKILL.md`
 * **`dart-test-coverage`**: Inspects, analyzes, and improves test coverage
   across a Dart package, locating missed lines.
-  * *Path*: [SKILL.md](file://~/github/kevmoo/dash_skills/skills/dart-test-coverage/SKILL.md)
+  * *Path*: `~/github/kevmoo/dash_skills/skills/dart-test-coverage/SKILL.md`
+* **`dart-test-fundamentals`**: Core `package:test` practices, test grouping,
+  `setUp`/`tearDown` lifecycles, and `dart_test.yaml` configuration.
+  * *Path*: `~/github/kevmoo/dash_skills/skills/dart-test-fundamentals/SKILL.md`
 
 ### D. Documentation, Packaging & Native Interop
-* **`dart-write-documentation`**: Effective Dart `///` doc comment
-  conventions, API documentation rules, and reference linking.
-  * *Path*: [SKILL.md](file://~/github/skills/skills/dart-write-documentation/SKILL.md)
-* **`dart-use-doc-examples`**: Injects external code examples into Dartdoc via
-  `{@example}` directives and filters with `#region` tags.
-  * *Path*: [SKILL.md](file://~/github/skills/skills/dart-use-doc-examples/SKILL.md)
 * **`dart-doc-validation`**: Validates doc comments using `dart doc` to catch
   broken or unresolved references and macros.
-  * *Path*: [SKILL.md](file://~/github/kevmoo/dash_skills/skills/dart-doc-validation/SKILL.md)
-* **`dart-use-ffigen`**: Automatically generates C/Objective-C/Swift FFI
-  bindings using `package:ffigen` instead of hand-crafting `dart:ffi`.
-  * *Path*: [SKILL.md](file://~/github/skills/skills/dart-use-ffigen/SKILL.md)
-* **`dart-setup-ffi-assets`**: Compiles and packages C/C++ native assets using
-  Dart's Native Assets hook system (`hook/build.dart` and `hook/link.dart`).
-  * *Path*: [SKILL.md](file://~/github/skills/skills/dart-setup-ffi-assets/SKILL.md)
-* **`dart-resolve-package-conflicts`**: Resolves package dependency version
-  conflicts when `pub get` fails due to incompatible constraints.
-  * *Path*: [SKILL.md](file://~/github/skills/skills/dart-resolve-package-conflicts/SKILL.md)
+  * *Path*: `~/github/kevmoo/dash_skills/skills/dart-doc-validation/SKILL.md`
 * **`dart-package-maintenance`**: Best practices for package maintenance,
   versioning, changelog curation, and publishing workflows.
-  * *Path*: [SKILL.md](file://~/github/kevmoo/dash_skills/skills/dart-package-maintenance/SKILL.md)
+  * *Path*: `~/github/kevmoo/dash_skills/skills/dart-package-maintenance/SKILL.md`
+* **`dart-resolve-package-conflicts`**: Resolves package dependency version
+  conflicts when `pub get` fails due to incompatible constraints.
+  * *Path*: `~/github/skills/skills/dart-resolve-package-conflicts/SKILL.md`
+* **`dart-setup-ffi-assets`**: Compiles and packages C/C++ native assets using
+  Dart's Native Assets hook system (`hook/build.dart` and `hook/link.dart`).
+  * *Path*: `~/github/skills/skills/dart-setup-ffi-assets/SKILL.md`
+* **`dart-use-doc-examples`**: Injects external code examples into Dartdoc via
+  `{@example}` directives and filters with `#region` tags.
+  * *Path*: `~/github/skills/skills/dart-use-doc-examples/SKILL.md`
+* **`dart-use-ffigen`**: Automatically generates C/Objective-C/Swift FFI
+  bindings using `package:ffigen` instead of hand-crafting `dart:ffi`.
+  * *Path*: `~/github/skills/skills/dart-use-ffigen/SKILL.md`
+* **`dart-write-documentation`**: Effective Dart `///` doc comment conventions,
+  API documentation rules, and reference linking.
+  * *Path*: `~/github/skills/skills/dart-write-documentation/SKILL.md`
+<!-- DART_CLEANUP_CATALOG_END -->
 
