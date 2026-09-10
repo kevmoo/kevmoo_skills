@@ -9,6 +9,7 @@ dependencies:
   yaml: ^3.1.0
   args: ^2.4.0
   path: ^1.9.0
+  io: ^1.0.5
 
 dev_dependencies:
   checks: ^0.3.0

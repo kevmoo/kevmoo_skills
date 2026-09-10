@@ -1,0 +1,184 @@
+{
+  "repositories": {
+    "skills": {
+      "path": "~/github/skills",
+      "cloneUrl": "https://github.com/dart-lang/skills.git",
+      "commitSha": "26b2dcc5654cbbc3b2ec56ea94719469bc8bae9e",
+      "commitDate": "2026-09-10T12:45:58-07:00"
+    },
+    "dash_skills": {
+      "path": "~/github/kevmoo/dash_skills",
+      "cloneUrl": "https://github.com/kevmoo/dash_skills.git",
+      "commitSha": "949bd00b69fc8449c535aeb4f4970c7ec5e21b49",
+      "commitDate": "2026-09-07T18:31:46-07:00"
+    },
+    "analytica.dart": {
+      "path": "~/github/kevmoo/analytica.dart",
+      "cloneUrl": "https://github.com/kevmoo/analytica.dart.git",
+      "commitSha": "1bba4de81a526b3805561227fb1adeed4e3feb45",
+      "commitDate": "2026-08-29T00:10:54-07:00"
+    }
+  },
+  "categories": [
+    {
+      "name": "Refactoring & Code Quality",
+      "skills": [
+        {
+          "name": "dart-build-cli-app",
+          "repo": "skills",
+          "summary": "CLI entrypoint structure, argument parsing (`package:args`), cross-platform scripts, exit codes, and compilation."
+        },
+        {
+          "name": "dart-cognitive-complexity",
+          "repo": "analytica.dart",
+          "summary": "Reduces cognitive complexity, nested loops, and deep conditionals via pattern matching & guard clauses. Includes a gated Tier 3 method-object reference for extreme cases."
+        },
+        {
+          "name": "dart-dedupe",
+          "repo": "analytica.dart",
+          "summary": "Detects, audits, and safely remediates structural code duplication across Dart and Flutter repositories using the standalone Dedupe engine (`pkg:dedupe`) and empirical test gating."
+        },
+        {
+          "name": "dart-fix-runtime-errors",
+          "repo": "skills",
+          "summary": "Resolves runtime errors, inspects active stack traces via `get_runtime_errors` and LSP, and verifies with hot reload."
+        },
+        {
+          "name": "dart-run-static-analysis",
+          "repo": "skills",
+          "summary": "Executes `dart analyze` to catch issues and `dart fix --apply` to automatically resolve mechanical lint warnings."
+        },
+        {
+          "name": "dart-undead",
+          "repo": "analytica.dart",
+          "summary": "Audits, triages, and safely remediates unreachable and dead declarations in Dart and Flutter codebases using deterministic reachability analysis (`pkg:undead`)."
+        },
+        {
+          "name": "dart-use-path-package",
+          "repo": "skills",
+          "summary": "Cross-platform file and directory path manipulation, segment splitting, and extension extraction using `package:path` and `package:file`."
+        },
+        {
+          "name": "profile-dart-code",
+          "repo": "dash_skills",
+          "summary": "Profiles Dart CLI applications using the VM Service protocol to capture CPU samples and pinpoint performance bottlenecks."
+        }
+      ]
+    },
+    {
+      "name": "Language Modernization & Syntax",
+      "skills": [
+        {
+          "name": "dart-best-practices",
+          "repo": "dash_skills",
+          "summary": "Effective Dart guidelines, class design, null safety, and idiomatic style conventions."
+        },
+        {
+          "name": "dart-long-lines",
+          "repo": "dash_skills",
+          "summary": "Formats and refactors code to adhere to the 80-column line limit (`lines_longer_than_80_chars`)."
+        },
+        {
+          "name": "dart-modern-features",
+          "repo": "dash_skills",
+          "summary": "Records, pattern matching, switch expressions, extension types, and class modifiers (`interface`, `base`, `sealed`, `final`)."
+        },
+        {
+          "name": "dart-multiline-strings",
+          "repo": "dash_skills",
+          "summary": "Converts consecutive print statements and string concatenations into clean triple-quoted multiline strings."
+        },
+        {
+          "name": "dart-use-pattern-matching",
+          "repo": "skills",
+          "summary": "Applies Dart 3 pattern matching, switch expressions, and destructuring to validate schemas and simplify control flow."
+        },
+        {
+          "name": "dart-use-primary-constructors",
+          "repo": "skills",
+          "summary": "Adopts primary constructor syntax, empty-body semicolon syntax, in-body initializers, and concise forms."
+        }
+      ]
+    },
+    {
+      "name": "Testing & Assertions",
+      "skills": [
+        {
+          "name": "dart-add-unit-test",
+          "repo": "skills",
+          "summary": "Writes and organizes unit tests for functions, methods, and classes using `package:test` with clean structure."
+        },
+        {
+          "name": "dart-collect-coverage",
+          "repo": "skills",
+          "summary": "Collects test coverage using `package:coverage` and generates LCOV reports."
+        },
+        {
+          "name": "dart-generate-test-mocks",
+          "repo": "skills",
+          "summary": "Defines and generates mock objects for external dependencies using `package:mockito` and `build_runner`."
+        },
+        {
+          "name": "dart-matcher-best-practices",
+          "repo": "dash_skills",
+          "summary": "Best practices, custom matchers, and async matcher patterns for legacy `package:matcher` assertions."
+        },
+        {
+          "name": "dart-migrate-to-checks-package",
+          "repo": "skills",
+          "summary": "Migrates legacy `expect(a, equals(b))` matchers from `package:matcher` to fluent `package:checks` syntax."
+        },
+        {
+          "name": "dart-test-coverage",
+          "repo": "dash_skills",
+          "summary": "Inspects, analyzes, and improves test coverage across a Dart package, locating missed lines."
+        },
+        {
+          "name": "dart-test-fundamentals",
+          "repo": "dash_skills",
+          "summary": "Core `package:test` practices, test grouping, `setUp`/`tearDown` lifecycles, and `dart_test.yaml` configuration."
+        }
+      ]
+    },
+    {
+      "name": "Documentation, Packaging & Native Interop",
+      "skills": [
+        {
+          "name": "dart-doc-validation",
+          "repo": "dash_skills",
+          "summary": "Validates doc comments using `dart doc` to catch broken or unresolved references and macros."
+        },
+        {
+          "name": "dart-package-maintenance",
+          "repo": "dash_skills",
+          "summary": "Best practices for package maintenance, versioning, changelog curation, and publishing workflows."
+        },
+        {
+          "name": "dart-resolve-package-conflicts",
+          "repo": "skills",
+          "summary": "Resolves package dependency version conflicts when `pub get` fails due to incompatible constraints."
+        },
+        {
+          "name": "dart-setup-ffi-assets",
+          "repo": "skills",
+          "summary": "Compiles and packages C/C++ native assets using Dart's Native Assets hook system (`hook/build.dart` and `hook/link.dart`)."
+        },
+        {
+          "name": "dart-use-doc-examples",
+          "repo": "skills",
+          "summary": "Injects external code examples into Dartdoc via `{@example}` directives and filters with `#region` tags."
+        },
+        {
+          "name": "dart-use-ffigen",
+          "repo": "skills",
+          "summary": "Automatically generates C/Objective-C/Swift FFI bindings using `package:ffigen` instead of hand-crafting `dart:ffi`."
+        },
+        {
+          "name": "dart-write-documentation",
+          "repo": "skills",
+          "summary": "Effective Dart `///` doc comment conventions, API documentation rules, and reference linking."
+        }
+      ]
+    }
+  ]
+}
