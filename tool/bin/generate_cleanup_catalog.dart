@@ -110,13 +110,7 @@ int _run(List<String> arguments) {
   }
 
   if (checkEnvMode) {
-    if (envIssues.any(
-      (i) =>
-          i.contains('⚠️ [UNCATALOGED SKILL]') ||
-          i.contains('⚠️ [MISSING SKILL]') ||
-          i.contains('⚠️ [MISMATCHED REPO REMOTE]') ||
-          i.contains('⚠️ [NOT A GIT REPO]'),
-    )) {
+    if (envIssues.any((i) => i.isFatal)) {
       return ExitCode.config.code;
     }
     return ExitCode.success.code;
@@ -241,11 +235,43 @@ void _syncRepositoryCommits(Map<String, dynamic> repositories) {
   }
 }
 
-List<String> checkLocalEnvironment(
+enum EnvIssueType {
+  missingRepo('MISSING REPO', isFatal: false),
+  notGitRepo('NOT A GIT REPO', isFatal: true),
+  mismatchedRemote('MISMATCHED REPO REMOTE', isFatal: true),
+  uncatalogedSkill('UNCATALOGED SKILL', isFatal: true),
+  missingSkill('MISSING SKILL', isFatal: true);
+
+  const EnvIssueType(this.tag, {required this.isFatal});
+
+  final String tag;
+  final bool isFatal;
+}
+
+class EnvIssue {
+  const EnvIssue(this.type, this.message, {this.fix});
+
+  final EnvIssueType type;
+  final String message;
+  final String? fix;
+
+  bool get isFatal => type.isFatal;
+
+  @override
+  String toString() {
+    final buffer = StringBuffer('⚠️ [${type.tag}] $message\n');
+    if (fix != null) {
+      buffer.writeln('   Fix: $fix');
+    }
+    return buffer.toString();
+  }
+}
+
+List<EnvIssue> checkLocalEnvironment(
   Map<String, dynamic> repositories,
   List<dynamic> categories,
 ) {
-  final issues = <String>[];
+  final issues = <EnvIssue>[];
   final home = Platform.environment['HOME'] ?? '';
   final allConfiguredSkills = <String, String>{}; // skill -> repoKey
 
@@ -274,9 +300,11 @@ List<String> checkLocalEnvironment(
 
     if (!repoDir.existsSync()) {
       issues.add(
-        '⚠️ [MISSING REPO] Repository "$repoKey" not found at $resolvedPath\n'
-        '   Fix: Clone it via:\n'
-        '   git clone $cloneUrl $resolvedPath\n',
+        EnvIssue(
+          EnvIssueType.missingRepo,
+          'Repository "$repoKey" not found at $resolvedPath',
+          fix: 'Clone it via:\n   git clone $cloneUrl $resolvedPath',
+        ),
       );
       continue;
     }
@@ -288,8 +316,12 @@ List<String> checkLocalEnvironment(
     ], workingDirectory: resolvedPath);
     if (gitCheck.exitCode != 0) {
       issues.add(
-        '⚠️ [NOT A GIT REPO] Directory at $resolvedPath is not a git repository.\n'
-        '   Fix: Ensure a valid git clone of $cloneUrl is placed at $resolvedPath\n',
+        EnvIssue(
+          EnvIssueType.notGitRepo,
+          'Directory at $resolvedPath is not a git repository.',
+          fix:
+              'Ensure a valid git clone of $cloneUrl is placed at $resolvedPath',
+        ),
       );
       continue;
     }
@@ -308,9 +340,13 @@ List<String> checkLocalEnvironment(
           expectedSlug != null &&
           actualSlug != expectedSlug) {
         issues.add(
-          '⚠️ [MISMATCHED REPO REMOTE] Directory "$resolvedPath" points to remote "$actualUrl" ($actualSlug),\n'
-          '   expected "$cloneUrl" ($expectedSlug).\n'
-          '   Fix: Ensure the correct repository is checked out at $resolvedPath\n',
+          EnvIssue(
+            EnvIssueType.mismatchedRemote,
+            'Directory "$resolvedPath" points to remote "$actualUrl" ($actualSlug),\n'
+            '   expected "$cloneUrl" ($expectedSlug).',
+            fix:
+                'Ensure the correct repository is checked out at $resolvedPath',
+          ),
         );
       }
     }
@@ -330,8 +366,12 @@ List<String> checkLocalEnvironment(
 
         if (!allConfiguredSkills.containsKey(skillName)) {
           issues.add(
-            '⚠️ [UNCATALOGED SKILL] Found skill "$skillName" in "$repoKey" not listed in tool/data/dart_cleanup_catalog.json.\n'
-            '   Fix: Add "$skillName" to a category in tool/data/dart_cleanup_catalog.json with a summary.\n',
+            EnvIssue(
+              EnvIssueType.uncatalogedSkill,
+              'Found skill "$skillName" in "$repoKey" not listed in tool/data/dart_cleanup_catalog.json.',
+              fix:
+                  'Add "$skillName" to a category in tool/data/dart_cleanup_catalog.json with a summary.',
+            ),
           );
         }
       }
@@ -343,8 +383,12 @@ List<String> checkLocalEnvironment(
         final skillName = skillEntry.key;
         if (!onDiskSkills.contains(skillName)) {
           issues.add(
-            '⚠️ [MISSING SKILL] Skill "$skillName" configured for "$repoKey" was not found on disk at ${p.join(skillsDir.path, skillName, 'SKILL.md')}\n'
-            '   Fix: Verify the skill exists in the repo or remove it from tool/data/dart_cleanup_catalog.json.\n',
+            EnvIssue(
+              EnvIssueType.missingSkill,
+              'Skill "$skillName" configured for "$repoKey" was not found on disk at ${p.join(skillsDir.path, skillName, 'SKILL.md')}',
+              fix:
+                  'Verify the skill exists in the repo or remove it from tool/data/dart_cleanup_catalog.json.',
+            ),
           );
         }
       }

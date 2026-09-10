@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:test/test.dart';
+import '../bin/generate_cleanup_catalog.dart';
 
 void main() {
   group('dart_cleanup_catalog data integrity', () {
@@ -138,4 +139,26 @@ void main() {
       );
     },
   );
+
+  group('EnvIssue and EnvIssueType', () {
+    test('issue types declare correct fatal statuses', () {
+      expect(EnvIssueType.missingRepo.isFatal, isFalse);
+      expect(EnvIssueType.notGitRepo.isFatal, isTrue);
+      expect(EnvIssueType.mismatchedRemote.isFatal, isTrue);
+      expect(EnvIssueType.uncatalogedSkill.isFatal, isTrue);
+      expect(EnvIssueType.missingSkill.isFatal, isTrue);
+    });
+
+    test('EnvIssue formats readable output with tag and fix', () {
+      const issue = EnvIssue(
+        EnvIssueType.uncatalogedSkill,
+        'Found foo in bar',
+        fix: 'Add foo to catalog',
+      );
+      expect(issue.isFatal, isTrue);
+      final rendered = issue.toString();
+      expect(rendered, contains('⚠️ [UNCATALOGED SKILL] Found foo in bar'));
+      expect(rendered, contains('Fix: Add foo to catalog'));
+    });
+  });
 }
