@@ -1,13 +1,24 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:args/args.dart';
+import 'package:io/io.dart';
 import 'package:path/path.dart' as p;
 
 const startTag = '<!-- DART_CLEANUP_CATALOG_START -->';
 const endTag = '<!-- DART_CLEANUP_CATALOG_END -->';
 
 void main(List<String> arguments) {
+  exitCode = _run(arguments);
+}
+
+int _run(List<String> arguments) {
   final parser = ArgParser()
+    ..addFlag(
+      'help',
+      abbr: 'h',
+      negatable: false,
+      help: 'Print usage information.',
+    )
     ..addFlag(
       'write',
       abbr: 'w',
@@ -25,15 +36,35 @@ void main(List<String> arguments) {
       help: 'Checks local repositories for missing or uncataloged skills.',
     );
 
-  final results = parser.parse(arguments);
-  final writeMode = results['write'] as bool;
-  final validateMode = results['validate'] as bool;
-  final checkEnvMode = results['check-env'] as bool;
+  final ArgResults results;
+  try {
+    results = parser.parse(arguments);
+  } on FormatException catch (e) {
+    stderr
+      ..writeln('Error: ${e.message}\n')
+      ..writeln('Usage: dart tool/bin/generate_cleanup_catalog.dart [flags]\n')
+      ..writeln(parser.usage);
+    return ExitCode.usage.code;
+  }
+
+  if (results.flag('help')) {
+    stdout
+      ..writeln(
+        'Generates and validates the dart-cleanup skill routing catalog.\n',
+      )
+      ..writeln('Usage: dart tool/bin/generate_cleanup_catalog.dart [flags]\n')
+      ..writeln(parser.usage);
+    return ExitCode.success.code;
+  }
+
+  final writeMode = results.flag('write');
+  final validateMode = results.flag('validate');
+  final checkEnvMode = results.flag('check-env');
 
   final repoRoot = _findRepoRoot(Directory.current);
   if (repoRoot == null) {
     stderr.writeln('Error: Could not find repository root containing skills.');
-    exit(1);
+    return ExitCode.config.code;
   }
 
   final catalogJsonFile = File(
@@ -43,7 +74,7 @@ void main(List<String> arguments) {
     stderr.writeln(
       'Error: Catalog JSON file not found at ${catalogJsonFile.path}',
     );
-    exit(1);
+    return ExitCode.config.code;
   }
 
   final dynamic catalogData;
@@ -51,12 +82,12 @@ void main(List<String> arguments) {
     catalogData = jsonDecode(catalogJsonFile.readAsStringSync());
   } catch (e) {
     stderr.writeln('Error parsing catalog JSON: $e');
-    exit(1);
+    return ExitCode.data.code;
   }
 
   if (catalogData is! Map<String, dynamic>) {
     stderr.writeln('Error: Catalog JSON root must be a JSON object.');
-    exit(1);
+    return ExitCode.data.code;
   }
 
   final repositories =
@@ -66,12 +97,16 @@ void main(List<String> arguments) {
   // Check environment & local system setup
   final envIssues = checkLocalEnvironment(repositories, categories);
   if (envIssues.isNotEmpty) {
-    print('------------------------------------------------------------');
-    print('🔍 Local System Environment Audit:');
+    stderr.writeln(
+      '------------------------------------------------------------',
+    );
+    stderr.writeln('🔍 Local System Environment Audit:');
     for (final issue in envIssues) {
-      print(issue);
+      stderr.writeln(issue);
     }
-    print('------------------------------------------------------------');
+    stderr.writeln(
+      '------------------------------------------------------------',
+    );
   }
 
   if (checkEnvMode) {
@@ -80,9 +115,9 @@ void main(List<String> arguments) {
           i.contains('⚠️ [UNCATALOGED SKILL]') ||
           i.contains('⚠️ [MISSING SKILL]'),
     )) {
-      exit(1);
+      return ExitCode.config.code;
     }
-    exit(0);
+    return ExitCode.success.code;
   }
 
   // Validate catalog data structure and sorting
@@ -92,7 +127,7 @@ void main(List<String> arguments) {
     for (final err in validationErrors) {
       stderr.writeln('  * $err');
     }
-    exit(1);
+    return ExitCode.data.code;
   }
 
   // Generate markdown
@@ -103,7 +138,7 @@ void main(List<String> arguments) {
   );
   if (!targetSkillFile.existsSync()) {
     stderr.writeln('Error: SKILL.md not found at ${targetSkillFile.path}');
-    exit(1);
+    return ExitCode.config.code;
   }
 
   final skillContent = targetSkillFile.readAsStringSync();
@@ -113,13 +148,14 @@ void main(List<String> arguments) {
       : skillContent.indexOf(endTag, startIndex);
 
   if (startIndex == -1 || endIndex == -1) {
-    stderr.writeln(
-      'Error: Could not find markers $startTag and $endTag in ${targetSkillFile.path}',
-    );
-    stderr.writeln(
-      'Please add the markers around the catalog section in SKILL.md.',
-    );
-    exit(1);
+    stderr
+      ..writeln(
+        'Error: Could not find markers $startTag and $endTag in ${targetSkillFile.path}',
+      )
+      ..writeln(
+        'Please add the markers around the catalog section in SKILL.md.',
+      );
+    return ExitCode.data.code;
   }
 
   final updatedContent = skillContent.replaceRange(
@@ -132,32 +168,33 @@ void main(List<String> arguments) {
     final normalizedOriginal = skillContent.replaceAll('\r\n', '\n');
     final normalizedUpdated = updatedContent.replaceAll('\r\n', '\n');
     if (normalizedOriginal == normalizedUpdated) {
-      print('skills/dart-cleanup/SKILL.md catalog is up-to-date!');
-      exit(0);
+      stdout.writeln('skills/dart-cleanup/SKILL.md catalog is up-to-date!');
+      return ExitCode.success.code;
     } else {
-      stderr.writeln(
-        'Error: skills/dart-cleanup/SKILL.md catalog is out-of-date.',
-      );
-      stderr.writeln(
-        'Run `dart tool/bin/generate_cleanup_catalog.dart --write` to update it.',
-      );
-      exit(1);
+      stderr
+        ..writeln('Error: skills/dart-cleanup/SKILL.md catalog is out-of-date.')
+        ..writeln(
+          'Run `dart tool/bin/generate_cleanup_catalog.dart --write` to update it.',
+        );
+      return ExitCode.data.code;
     }
   }
 
   if (writeMode) {
     targetSkillFile.writeAsStringSync(updatedContent);
-    print(
+    stdout.writeln(
       'Successfully updated skills/dart-cleanup/SKILL.md with latest catalog!',
     );
   } else {
-    print('--- Generated Catalog Markdown ---');
-    print(generatedMarkdown);
-    print('----------------------------------');
-    print(
-      'Run with --write (or -w) to save changes to skills/dart-cleanup/SKILL.md.',
-    );
+    stdout
+      ..writeln('--- Generated Catalog Markdown ---')
+      ..writeln(generatedMarkdown)
+      ..writeln('----------------------------------')
+      ..writeln(
+        'Run with --write (or -w) to save changes to skills/dart-cleanup/SKILL.md.',
+      );
   }
+  return ExitCode.success.code;
 }
 
 List<String> checkLocalEnvironment(
