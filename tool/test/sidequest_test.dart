@@ -643,6 +643,56 @@ void main() {
     );
 
     test(
+      'successfully applies batch mutations using documented aliases (#105)',
+      () async {
+        final runner = SidequestCliRunner(store: store);
+
+        final aliasBatchJson = jsonEncode([
+          {'op': 'subquest_add', 'quest_id': '1', 'title': 'Alias SubQuest'},
+          {'op': 'step_add', 'subquest_id': '1.1', 'title': 'Alias Step'},
+          {'op': 'blocker_add', 'subquest_id': '1.1', 'title': 'Alias Blocker'},
+          {
+            'op': 'sidequest_add',
+            'quest_id': '1',
+            'title': 'Scoped SideQuest with quest_id',
+          },
+          {
+            'op': 'sidequest_add',
+            'global': true,
+            'title': 'Global SideQuest with op alias',
+          },
+          {'op': 'complete', 'id': '1.1.1'},
+        ]);
+
+        final code = await runner.run(['batch', aliasBatchJson]);
+        check(code).equals(0);
+
+        final data = (await store.load())!;
+        check(data.quests[0].subQuests.length).equals(1);
+        check(data.quests[0].subQuests[0].title).equals('Alias SubQuest');
+        check(data.quests[0].subQuests[0].items.length).equals(2);
+        check(data.quests[0].subQuests[0].items[0].title).equals('Alias Step');
+        check(
+          data.quests[0].subQuests[0].items[0].status,
+        ).equals(TaskStatus.completed);
+        check(
+          data.quests[0].subQuests[0].items[1].title,
+        ).equals('Alias Blocker');
+
+        // Verify sidequest scoping with quest_id attaches to Quest 1 rather than globalSideQuests
+        check(data.quests[0].sideQuests.length).equals(1);
+        check(
+          data.quests[0].sideQuests[0].title,
+        ).equals('Scoped SideQuest with quest_id');
+
+        check(data.globalSideQuests.length).equals(1);
+        check(
+          data.globalSideQuests[0].title,
+        ).equals('Global SideQuest with op alias');
+      },
+    );
+
+    test(
       'fails explicitly without mutating for bad batch schemas (#105)',
       () async {
         final runner = SidequestCliRunner(store: store);
@@ -690,6 +740,18 @@ void main() {
         data = (await store.load())!;
         // The first subquest should NOT be saved
         check(data.quests[0].subQuests.length).equals(0);
+
+        // Case 4: Non-collection primitive payload throws
+        final primitiveJson = jsonEncode(123);
+        final code4 = await runner.run(['batch', primitiveJson]);
+        check(code4).equals(1);
+
+        // Case 5: Complete operation with empty IDs throws
+        final emptyCompleteJson = jsonEncode([
+          {'type': 'complete', 'ids': []},
+        ]);
+        final code5 = await runner.run(['batch', emptyCompleteJson]);
+        check(code5).equals(1);
       },
     );
 
