@@ -116,7 +116,7 @@ Evaluate the diff against [`RUBRIC.md`](RUBRIC.md):
    ```markdown
    # Code Review: <Repo> PR #<Number> — <PR Title>
 
-   **PR**: [<owner>/<repo>#<number>](<PR URL>) | **Base**: `<baseRef>` | **Head**: `<headRef>` (`<headSHA>`)
+   **PR**: [<owner>/<repo>#<number>](https://github.com/<owner>/<repo>/pull/<number>) | **Base**: `<baseRef>` | **Head**: `<headRef>` (`<headSHA>`)
    **Verdict**: `✅ Approved` | `⚠️ Approved with suggestions` | `❌ Changes requested`
 
    ---
