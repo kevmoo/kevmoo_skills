@@ -642,6 +642,119 @@ void main() {
       },
     );
 
+    test(
+      'successfully applies batch mutations using documented aliases (#105)',
+      () async {
+        final runner = SidequestCliRunner(store: store);
+
+        final aliasBatchJson = jsonEncode([
+          {'op': 'subquest_add', 'quest_id': '1', 'title': 'Alias SubQuest'},
+          {'op': 'step_add', 'subquest_id': '1.1', 'title': 'Alias Step'},
+          {'op': 'blocker_add', 'subquest_id': '1.1', 'title': 'Alias Blocker'},
+          {
+            'op': 'sidequest_add',
+            'quest_id': '1',
+            'title': 'Scoped SideQuest with quest_id',
+          },
+          {
+            'op': 'sidequest_add',
+            'global': true,
+            'title': 'Global SideQuest with op alias',
+          },
+          {'op': 'complete', 'id': '1.1.1'},
+        ]);
+
+        final code = await runner.run(['batch', aliasBatchJson]);
+        check(code).equals(0);
+
+        final data = (await store.load())!;
+        check(data.quests[0].subQuests.length).equals(1);
+        check(data.quests[0].subQuests[0].title).equals('Alias SubQuest');
+        check(data.quests[0].subQuests[0].items.length).equals(2);
+        check(data.quests[0].subQuests[0].items[0].title).equals('Alias Step');
+        check(
+          data.quests[0].subQuests[0].items[0].status,
+        ).equals(TaskStatus.completed);
+        check(
+          data.quests[0].subQuests[0].items[1].title,
+        ).equals('Alias Blocker');
+
+        // Verify sidequest scoping with quest_id attaches to Quest 1 rather than globalSideQuests
+        check(data.quests[0].sideQuests.length).equals(1);
+        check(
+          data.quests[0].sideQuests[0].title,
+        ).equals('Scoped SideQuest with quest_id');
+
+        check(data.globalSideQuests.length).equals(1);
+        check(
+          data.globalSideQuests[0].title,
+        ).equals('Global SideQuest with op alias');
+      },
+    );
+
+    test(
+      'fails explicitly without mutating for bad batch schemas (#105)',
+      () async {
+        final runner = SidequestCliRunner(store: store);
+
+        // Original state
+        final initialData = (await store.load())!;
+        check(initialData.quests.length).equals(1);
+        check(initialData.quests[0].subQuests.length).equals(0);
+
+        // Case 1: The documented 'op' key works, but with a non-existent 'quest_id' it throws and aborts.
+        final missingQuestJson = jsonEncode([
+          {
+            'op': 'subquest_add',
+            'quest_id': 'invalid-id',
+            'title': 'Lost SubQuest',
+          },
+        ]);
+        final code1 = await runner.run(['batch', missingQuestJson]);
+        check(code1).equals(1);
+
+        var data = (await store.load())!;
+        // Make sure NO side effect occurred (atomicity check)
+        check(data.quests.length).equals(1);
+        check(data.quests[0].subQuests.length).equals(0);
+
+        // Case 2: Unknown 'type' key throws
+        final unknownTypeJson = jsonEncode([
+          {'type': 'some_unknown_op'},
+        ]);
+        final code2 = await runner.run(['batch', unknownTypeJson]);
+        check(code2).equals(1);
+
+        // Case 3: Mixed batch where one succeeds but the next fails, ensuring atomic rollback
+        final atomicRollbackJson = jsonEncode([
+          {
+            'op': 'subquest_add',
+            'quest_id': '1',
+            'title': 'Temporary SubQuest',
+          },
+          {'op': 'unknown_fail'},
+        ]);
+        final code3 = await runner.run(['batch', atomicRollbackJson]);
+        check(code3).equals(1);
+
+        data = (await store.load())!;
+        // The first subquest should NOT be saved
+        check(data.quests[0].subQuests.length).equals(0);
+
+        // Case 4: Non-collection primitive payload throws
+        final primitiveJson = jsonEncode(123);
+        final code4 = await runner.run(['batch', primitiveJson]);
+        check(code4).equals(1);
+
+        // Case 5: Complete operation with empty IDs throws
+        final emptyCompleteJson = jsonEncode([
+          {'type': 'complete', 'ids': []},
+        ]);
+        final code5 = await runner.run(['batch', emptyCompleteJson]);
+        check(code5).equals(1);
+      },
+    );
+
     test('updates VCS state via CLI and handles unknown items', () async {
       final runner = SidequestCliRunner(store: store);
 

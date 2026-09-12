@@ -70,7 +70,7 @@ sidequest blocker add 1.1 "Broken build dependency"
 sidequest sidequest add "Tangent item" [--global] [--parked] [--note="..."]
 
 # 3. Batch Operations (Atomic multi-item execution in a single call)
-sidequest batch '[{"op":"subquest_add","quest_id":"1","title":"Backend"},{"op":"step_add","subquest_id":"1.2","title":"API client"}]'
+sidequest batch '[{"type":"subquest_add","quest":"1","title":"Backend"},{"type":"step_add","subquest":"1.2","title":"API client"}]'
 
 # 4. Complete One or Multiple Items (Atomic disk write & star update)
 sidequest complete 1.1.1 1.1.2 1.1
