@@ -642,6 +642,57 @@ void main() {
       },
     );
 
+    test(
+      'fails explicitly without mutating for bad batch schemas (#105)',
+      () async {
+        final runner = SidequestCliRunner(store: store);
+
+        // Original state
+        final initialData = (await store.load())!;
+        check(initialData.quests.length).equals(1);
+        check(initialData.quests[0].subQuests.length).equals(0);
+
+        // Case 1: The documented 'op' key works, but with a non-existent 'quest_id' it throws and aborts.
+        final missingQuestJson = jsonEncode([
+          {
+            'op': 'subquest_add',
+            'quest_id': 'invalid-id',
+            'title': 'Lost SubQuest',
+          },
+        ]);
+        final code1 = await runner.run(['batch', missingQuestJson]);
+        check(code1).equals(1);
+
+        var data = (await store.load())!;
+        // Make sure NO side effect occurred (atomicity check)
+        check(data.quests.length).equals(1);
+        check(data.quests[0].subQuests.length).equals(0);
+
+        // Case 2: Unknown 'type' key throws
+        final unknownTypeJson = jsonEncode([
+          {'type': 'some_unknown_op'},
+        ]);
+        final code2 = await runner.run(['batch', unknownTypeJson]);
+        check(code2).equals(1);
+
+        // Case 3: Mixed batch where one succeeds but the next fails, ensuring atomic rollback
+        final atomicRollbackJson = jsonEncode([
+          {
+            'op': 'subquest_add',
+            'quest_id': '1',
+            'title': 'Temporary SubQuest',
+          },
+          {'op': 'unknown_fail'},
+        ]);
+        final code3 = await runner.run(['batch', atomicRollbackJson]);
+        check(code3).equals(1);
+
+        data = (await store.load())!;
+        // The first subquest should NOT be saved
+        check(data.quests[0].subQuests.length).equals(0);
+      },
+    );
+
     test('updates VCS state via CLI and handles unknown items', () async {
       final runner = SidequestCliRunner(store: store);
 

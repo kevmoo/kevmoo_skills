@@ -672,15 +672,34 @@ class BatchCommand extends SidequestCommand {
     }
     final decoded = jsonDecode(rest[0]);
     final data = await requireData();
+    final dataClone = SidequestData.fromJson(data.toJson());
 
-    if (decoded is List) {
-      _applyBatchList(data, decoded);
-    } else if (decoded is Map<String, dynamic>) {
-      _applyBatchMap(data, decoded);
+    int applied = 0;
+    int total = 0;
+
+    try {
+      if (decoded is List) {
+        total = decoded.length;
+        applied = _applyBatchList(dataClone, decoded);
+      } else if (decoded is Map<String, dynamic>) {
+        total = 1;
+        if (decoded['operations'] is List) {
+          total = (decoded['operations'] as List).length;
+        }
+        applied = _applyBatchMap(dataClone, decoded);
+      }
+    } catch (e) {
+      stderr.writeln('Error applying batch: $e');
+      return 1;
     }
 
-    await store.save(data);
-    stdout.writeln('✔ Executed batch operations');
+    if (total > 0 && applied == 0) {
+      stderr.writeln('Error: 0 of $total operations applied.');
+      return 1;
+    }
+
+    await store.save(dataClone);
+    stdout.writeln('✔ Executed $applied of $total batch operations');
     return 0;
   }
 }
@@ -973,36 +992,45 @@ bool _removeSingleItem(SidequestData data, String id) {
   return found;
 }
 
-void _applyBatchList(SidequestData data, List<dynamic> list) {
+int _applyBatchList(SidequestData data, List<dynamic> list) {
+  int count = 0;
   for (final op in list) {
     if (op is Map<String, dynamic>) {
       _applyBatchOp(data, op);
+      count++;
+    } else {
+      throw StateError('Invalid operation format: expected object.');
     }
   }
+  return count;
 }
 
-void _applyBatchMap(SidequestData data, Map<String, dynamic> map) {
+int _applyBatchMap(SidequestData data, Map<String, dynamic> map) {
   if (map['operations'] is List) {
-    _applyBatchList(data, map['operations'] as List);
-    return;
+    return _applyBatchList(data, map['operations'] as List);
   }
-  _applyLegacyBatchMap(data, map);
+  return _applyLegacyBatchMap(data, map);
 }
 
-void _applyLegacyBatchMap(SidequestData data, Map<String, dynamic> map) {
+int _applyLegacyBatchMap(SidequestData data, Map<String, dynamic> map) {
+  int count = 0;
   if (map['complete'] is List) {
     for (final id in map['complete'] as List) {
       final nextOrder = data.lastCompletionOrder + 1;
       final result = _completeSingleItem(data, id.toString(), nextOrder);
       if (result == _ItemCompleteResult.completedWithOrder) {
         data.lastCompletionOrder = nextOrder;
+      } else if (result == _ItemCompleteResult.notFound) {
+        throw StateError('Item "$id" not found for completion.');
       }
+      count++;
     }
   }
 
   if (map['addSubQuest'] is Map) {
     final sqMap = map['addSubQuest'] as Map<String, dynamic>;
-    final qId = sqMap['quest'] as String? ?? '1';
+    final qId =
+        sqMap['quest']?.toString() ?? sqMap['quest_id']?.toString() ?? '1';
     final quest = _findQuest(data, qId);
     if (quest != null) {
       final nextSubNumber = _nextSuffixNumber(
@@ -1016,12 +1044,15 @@ void _applyLegacyBatchMap(SidequestData data, Map<String, dynamic> map) {
           status: TaskStatus.inProgress,
         ),
       );
+      count++;
+    } else {
+      throw StateError('Main Quest "$qId" not found.');
     }
   }
 
   if (map['vcs'] is Map) {
     final vcsMap = map['vcs'] as Map<String, dynamic>;
-    final qId = vcsMap['quest'] as String? ?? '1';
+    final qId = vcsMap['quest']?.toString() ?? '1';
     final quest = _findQuest(data, qId);
     if (quest != null) {
       final files =
@@ -1032,12 +1063,17 @@ void _applyLegacyBatchMap(SidequestData data, Map<String, dynamic> map) {
         modifiedFiles: files,
         details: vcsMap['details'] as String?,
       );
+      count++;
+    } else {
+      throw StateError('Main Quest "$qId" not found.');
     }
   }
+  return count;
 }
 
 void _applyBatchOp(SidequestData data, Map<String, dynamic> op) {
-  final type = (op['type'] as String? ?? '').toLowerCase();
+  final type = (op['type']?.toString() ?? op['op']?.toString() ?? '')
+      .toLowerCase();
 
   switch (type) {
     case 'quest_add':
@@ -1054,6 +1090,8 @@ void _applyBatchOp(SidequestData data, Map<String, dynamic> op) {
       _applyBatchSideQuestAdd(data, op);
     case 'vcs':
       _applyBatchVcs(data, op);
+    default:
+      throw StateError('Unknown operation type: "$type"');
   }
 }
 
@@ -1086,12 +1124,18 @@ void _applyBatchComplete(SidequestData data, Map<String, dynamic> op) {
     final result = _completeSingleItem(data, id, nextOrder);
     if (result == _ItemCompleteResult.completedWithOrder) {
       data.lastCompletionOrder = nextOrder;
+    } else if (result == _ItemCompleteResult.notFound) {
+      throw StateError('Item "$id" not found for completion.');
     }
   }
 }
 
 void _applyBatchSubQuestAdd(SidequestData data, Map<String, dynamic> op) {
-  final qId = op['questId']?.toString() ?? op['quest']?.toString() ?? '1';
+  final qId =
+      op['questId']?.toString() ??
+      op['quest_id']?.toString() ??
+      op['quest']?.toString() ??
+      '1';
   final title =
       op['title']?.toString() ?? op['description']?.toString() ?? 'SubQuest';
   final quest = data.quests.where((q) => q.id == qId).firstOrNull;
@@ -1101,12 +1145,17 @@ void _applyBatchSubQuestAdd(SidequestData data, Map<String, dynamic> op) {
     quest.subQuests.add(
       SubQuest(id: subId, title: title, status: TaskStatus.inProgress),
     );
+  } else {
+    throw StateError('Main Quest "$qId" not found.');
   }
 }
 
 void _applyBatchStepAdd(SidequestData data, Map<String, dynamic> op) {
   final subId =
-      op['subquestId']?.toString() ?? op['subquest']?.toString() ?? '1.1';
+      op['subquestId']?.toString() ??
+      op['subquest_id']?.toString() ??
+      op['subquest']?.toString() ??
+      '1.1';
   final title =
       op['title']?.toString() ?? op['description']?.toString() ?? 'Step';
   final sub = _findSubQuest(data, subId);
@@ -1120,12 +1169,17 @@ void _applyBatchStepAdd(SidequestData data, Map<String, dynamic> op) {
         status: TaskStatus.pending,
       ),
     );
+  } else {
+    throw StateError('Sub-Quest "$subId" not found.');
   }
 }
 
 void _applyBatchBlockerAdd(SidequestData data, Map<String, dynamic> op) {
   final subId =
-      op['subquestId']?.toString() ?? op['subquest']?.toString() ?? '1.1';
+      op['subquestId']?.toString() ??
+      op['subquest_id']?.toString() ??
+      op['subquest']?.toString() ??
+      '1.1';
   final title =
       op['title']?.toString() ?? op['description']?.toString() ?? 'Blocker';
   final sub = _findSubQuest(data, subId);
@@ -1139,6 +1193,8 @@ void _applyBatchBlockerAdd(SidequestData data, Map<String, dynamic> op) {
         status: TaskStatus.inProgress,
       ),
     );
+  } else {
+    throw StateError('Sub-Quest "$subId" not found.');
   }
 }
 
@@ -1157,19 +1213,29 @@ void _applyBatchSideQuestAdd(SidequestData data, Map<String, dynamic> op) {
       SideQuest(id: id, title: title, status: status, note: note),
     );
   } else {
-    final qId = op['quest'].toString();
+    final qId =
+        op['quest']?.toString() ??
+        op['quest_id']?.toString() ??
+        op['questId']?.toString() ??
+        '1';
     final quest = data.quests.where((q) => q.id == qId).firstOrNull;
     if (quest != null) {
       final id = data.generateNextSideQuestId(quest);
       quest.sideQuests.add(
         SideQuest(id: id, title: title, status: status, note: note),
       );
+    } else {
+      throw StateError('Main Quest "$qId" not found.');
     }
   }
 }
 
 void _applyBatchVcs(SidequestData data, Map<String, dynamic> op) {
-  final qId = op['quest']?.toString() ?? '1';
+  final qId =
+      op['quest']?.toString() ??
+      op['quest_id']?.toString() ??
+      op['questId']?.toString() ??
+      '1';
   final quest = data.quests.where((q) => q.id == qId).firstOrNull;
   if (quest != null) {
     final files = (op['files'] as List<dynamic>?)?.cast<String>() ?? const [];
@@ -1179,6 +1245,8 @@ void _applyBatchVcs(SidequestData data, Map<String, dynamic> op) {
       modifiedFiles: files,
       details: op['details']?.toString(),
     );
+  } else {
+    throw StateError('Main Quest "$qId" not found.');
   }
 }
 
