@@ -1,0 +1,21 @@
+{
+  "repo_criteria": [
+    "evals/code_quality_rubric.json"
+  ],
+  "evals": [
+    {
+      "id": "review_pr_task_1",
+      "prompt": "Run review-pr on open PR #42 in ~/github/foo/bar. Assess its review findings and action gate.",
+      "expected_chat_output": [
+        "Audits diff against 13 angles in RUBRIC.md and applies Inquisitor filter.",
+        "Generates a structured review report with GitHub permalinks.",
+        "Presents an interactive 3-option action gate via ask_question (chat only, apply local fixes, or post inline)."
+      ],
+      "expected_repo_state": [
+        "A pr_review report artifact is generated.",
+        "No unauthorized write or push operations are executed autonomously."
+      ],
+      "agent_config": "bare-agent"
+    }
+  ]
+}
