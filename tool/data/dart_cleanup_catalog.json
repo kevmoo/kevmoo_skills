@@ -9,14 +9,14 @@
     "dash_skills": {
       "path": "~/github/kevmoo/dash_skills",
       "cloneUrl": "https://github.com/kevmoo/dash_skills.git",
-      "commitSha": "949bd00b69fc8449c535aeb4f4970c7ec5e21b49",
-      "commitDate": "2026-09-07T18:31:46-07:00"
+      "commitSha": "6c3900555225a113d4dbd89b4cda4b41c72130ae",
+      "commitDate": "2026-09-12T17:38:23-07:00"
     },
     "analytica.dart": {
       "path": "~/github/kevmoo/analytica.dart",
       "cloneUrl": "https://github.com/kevmoo/analytica.dart.git",
-      "commitSha": "1bba4de81a526b3805561227fb1adeed4e3feb45",
-      "commitDate": "2026-08-29T00:10:54-07:00"
+      "commitSha": "0114d16b76df87f7bea27f9b11888518fb787357",
+      "commitDate": "2026-09-12T15:57:20-07:00"
     }
   },
   "categories": [

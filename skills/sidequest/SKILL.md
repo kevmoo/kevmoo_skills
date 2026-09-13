@@ -21,41 +21,59 @@ Synthesizes task hierarchies and context drift into a visual session map.
 
 ## ⚠️ Mandatory Execution Contract (5 Core Rules)
 
-1. **Tool-Driven State Updates:** Always update state via the CLI tool (`sidequest`). Never edit `sidequest.json` manually.
-2. **Tool-Driven Map Compilation:** Always generate/compile `sidequest.md` via `sidequest`. Never format the markdown map by hand.
-3. **Strict Internal Privacy:** **NEVER** mention or reference `sidequest.json` in user-facing conversation. Treat JSON state as a private implementation detail.
-4. **Markdown User Interface:** Always reference `sidequest.md` or provide concise inline markdown summaries when communicating progress to the human.
-5. **Subagent History Ingestion:** Never read `transcript.jsonl` directly in the main conversation; delegate deep history rebuilds exclusively via `/sidequest rebuild`.
+1. **Tool-Driven State Updates:** Always update state via the CLI tool
+   (`sidequest`). Never edit `sidequest.json` manually.
+2. **Tool-Driven Map Compilation:** Always generate/compile `sidequest.md` via
+   `sidequest`. Never format the markdown map by hand.
+3. **Strict Internal Privacy:** **NEVER** mention or reference `sidequest.json`
+   in user-facing conversation. Treat JSON state as a private implementation
+   detail.
+4. **Markdown User Interface:** Always reference `sidequest.md` or provide
+   concise inline markdown summaries when communicating progress to the human.
+5. **Subagent History Ingestion:** Never read `transcript.jsonl` directly in the
+   main conversation; delegate deep history rebuilds exclusively via
+   `/sidequest rebuild`.
 
 ---
 
 ## 🏗️ Storage & Architecture
 
-- **Session-Private Artifacts:** All state files (`sidequest.json`, `sidequest.md`) reside strictly in the session artifact directory (auto-discovered via `ANTIGRAVITY_CONVERSATION_ID`, `CLAUDE_ARTIFACT_DIR`, `GEMINI_ARTIFACT_DIR`, or `--dir`). Never write to user repositories or dotfiles.
-- **Compaction Resilient:** `sidequest.json` maintains the deterministic state model (quests, completion orders, VCS state, step watermark) across context truncations.
+- **Session-Private Artifacts:** All state files (`sidequest.json`,
+  `sidequest.md`) reside strictly in the session artifact directory
+  (auto-discovered via `ANTIGRAVITY_CONVERSATION_ID`, `CLAUDE_ARTIFACT_DIR`,
+  `GEMINI_ARTIFACT_DIR`, or `--dir`). Never write to user repositories or
+  dotfiles.
+- **Compaction Resilient:** `sidequest.json` maintains the deterministic state
+  model (quests, completion orders, VCS state, step watermark) across context
+  truncations.
 
 ---
 
 ## 🧭 Hierarchy & Syntax Specification
 
-| Level | Syntax / Prefix | Description | Status Indicators |
-| :--- | :--- | :--- | :--- |
-| **Main Quest** | `Main Quest N:` | High-level initiatives / chapters | `⚔️ [ACTIVE]`, `🏆 [COMPLETED]`, `⏸️ [PAUSED]` |
-| **Sub-Quest** | `Sub-Quest N.M:` | Planned milestones | `🛡️` |
-| **Blocker** | `Blocker N.M.K:` | Critical-path unplanned blocker | `👾 Active`, `💀 ~~Resolved~~` |
-| **Step** | `Step N.M.K:` | Planned action item | `👣 Active`, `👣 ~~Done~~` |
-| **Side Quest** | `[Active]` / `🎒 [Parked]` | Tangents / rabbit holes (`G1`, `S1`) | `🌿` |
+| Level          | Syntax / Prefix            | Description                          | Status Indicators                              |
+| :------------- | :------------------------- | :----------------------------------- | :--------------------------------------------- |
+| **Main Quest** | `Main Quest N:`            | High-level initiatives / chapters    | `⚔️ [ACTIVE]`, `🏆 [COMPLETED]`, `⏸️ [PAUSED]` |
+| **Sub-Quest**  | `Sub-Quest N.M:`           | Planned milestones                   | `🛡️`                                           |
+| **Blocker**    | `Blocker N.M.K:`           | Critical-path unplanned blocker      | `👾 Active`, `💀 ~~Resolved~~`                 |
+| **Step**       | `Step N.M.K:`              | Planned action item                  | `👣 Active`, `👣 ~~Done~~`                     |
+| **Side Quest** | `[Active]` / `🎒 [Parked]` | Tangents / rabbit holes (`G1`, `S1`) | `🌿`                                           |
 
-- **Completion Order (`[#N ⭐]`):** Completed items receive sequential tags (`[#1]`, `[#2]`). The most recently completed item receives the star (`[#N ⭐]`).
-- **VCS Lifecycle:** Track working copy state per quest: `📝 Dirty` -> `📦 Local Commit` -> `🚀 Uploaded` -> `🎉 Merged` -> `🧹 Clean`.
+- **Completion Order (`[#N ⭐]`):** Completed items receive sequential tags
+  (`[#1]`, `[#2]`). The most recently completed item receives the star
+  (`[#N ⭐]`).
+- **VCS Lifecycle:** Track working copy state per quest: `📝 Dirty` ->
+  `📦 Local Commit` -> `🚀 Uploaded` -> `🎉 Merged` -> `🧹 Clean`.
 
 ---
 
 ## 🚀 Execution Workflow
 
-When `/sidequest` triggers (via `/sidequest`, "where are we?", or context drift):
+When `/sidequest` triggers (via `/sidequest`, "where are we?", or context
+drift):
 
 ### Mode A: In-Session CLI Mutation (Default `O(1)`)
+
 Execute `sidequest` (or `dart run <path-to-skill>/bin/sidequest.dart`):
 
 ```bash
@@ -83,18 +101,34 @@ sidequest reopen 1.1
 sidequest remove 1.1.2
 ```
 
-**User Output:** Output a brief, punchy chat summary covering active `⚔️ Main Quest`, current `🛡️ Sub-Quest`, VCS status, and recommended next step. Always place the clickable link to the generated artifact at the very **BOTTOM** of the chat reply with an emoji anchor so it is easy to find and click:
+**User Output:** Output a brief, punchy chat summary covering active
+`⚔️ Main Quest`, current `🛡️ Sub-Quest`, VCS status, and recommended next step.
+Always place the clickable link to the generated artifact at the very **BOTTOM**
+of the chat reply with an emoji anchor so it is easy to find and click:
+
 > `🗺️ Full Session Map: [sidequest.md](file:///path/to/sidequest.md)`
 
 ### Mode B: Subagent Transcript Rebuild (`/sidequest rebuild`)
-Use **only** when initializing from long unmapped history or explicitly requested via `/sidequest rebuild`:
-1. **Spawn Auditor Subagent:** `TypeName: "research"`, `Role: "Sidequest Log Auditor"`, passing baseline `sidequest.json` and [auditor_prompt.txt](resources/auditor_prompt.txt).
-2. **Delta Audit:** Subagent inspects `transcript.jsonl` from `watermark.stepIndex` onwards and returns audited JSON payload in `send_message`.
-3. **Merge & Emit:** Parent runs `sidequest merge-audit --input=<payload_file>` to update JSON and compile `sidequest.md`.
+
+Use **only** when initializing from long unmapped history or explicitly
+requested via `/sidequest rebuild`:
+
+1. **Spawn Auditor Subagent:** `TypeName: "research"`,
+   `Role: "Sidequest Log Auditor"`, passing baseline `sidequest.json` and
+   [auditor_prompt.txt](resources/auditor_prompt.txt).
+2. **Delta Audit:** Subagent inspects `transcript.jsonl` from
+   `watermark.stepIndex` onwards and returns audited JSON payload in
+   `send_message`.
+3. **Merge & Emit:** Parent runs `sidequest merge-audit --input=<payload_file>`
+   to update JSON and compile `sidequest.md`.
 
 ---
 
 ## 🤝 Parked Item Escalation
 
-When parking side quests (`🎒 [Parked / Tracked for Later]`), check available issue trackers and offer:
-> *"Would you like me to file an issue in your project tracker (`gh issue create` / local tracker) so this parked item survives across sessions?"*
+When parking side quests (`🎒 [Parked / Tracked for Later]`), check available
+issue trackers and offer:
+
+> _"Would you like me to file an issue in your project tracker
+> (`gh issue create` / local tracker) so this parked item survives across
+> sessions?"_

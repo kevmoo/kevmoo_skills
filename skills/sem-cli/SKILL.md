@@ -12,28 +12,54 @@ key_features:
 
 # `sem-cli` Skill (`sem v0.24+`)
 
-This skill provides instructions on how to use `sem` (`sem-cli`), an AST entity indexer, call-graph navigator, and semantic version control tool that tracks functions, classes, methods, and types across 39 languages and data formats.
+This skill provides instructions on how to use `sem` (`sem-cli`), an AST entity
+indexer, call-graph navigator, and semantic version control tool that tracks
+functions, classes, methods, and types across 39 languages and data formats.
 
 ## Capabilities & Limitations (What `sem` Does Well and Does Not Do)
 
 ### What `sem` Does Well
-- **Instant Cold-Start Code Exploration:** Builds an on-disk mmap query index (`index.sem`) that answers definition lookups (`sem find`), direct callers (`sem callers`), direct callees (`sem refs`), and trigram regex searches (`sem grep`) in **~7ms warm** without running an LSP daemon.
-- **Signature-Only Context Packing:** Fits **5–10x wider call-graph maps** into LLM context windows using `sem context --headers`.
-- **Entity-Addressed Substring Search:** Searches entity bodies (`sem entities --text`) and returns the **enclosing AST entity ID** (`file::kind::name`) rather than raw `grep` line numbers.
-- **Hotspot & Co-Change Discovery:** Identifies most-modified entities and co-change pairs ("if you touch X, don't forget Y") via `sem log`.
-- **Structural Diffs & History:** Shows added, modified, renamed, or deleted entities across commits without formatting or whitespace noise (`structuralChange: false` or `--no-cosmetics`).
+
+- **Instant Cold-Start Code Exploration:** Builds an on-disk mmap query index
+  (`index.sem`) that answers definition lookups (`sem find`), direct callers
+  (`sem callers`), direct callees (`sem refs`), and trigram regex searches
+  (`sem grep`) in **~7ms warm** without running an LSP daemon.
+- **Signature-Only Context Packing:** Fits **5–10x wider call-graph maps** into
+  LLM context windows using `sem context --headers`.
+- **Entity-Addressed Substring Search:** Searches entity bodies
+  (`sem entities --text`) and returns the **enclosing AST entity ID**
+  (`file::kind::name`) rather than raw `grep` line numbers.
+- **Hotspot & Co-Change Discovery:** Identifies most-modified entities and
+  co-change pairs ("if you touch X, don't forget Y") via `sem log`.
+- **Structural Diffs & History:** Shows added, modified, renamed, or deleted
+  entities across commits without formatting or whitespace noise
+  (`structuralChange: false` or `--no-cosmetics`).
 
 ### What `sem` Does Not Do (Important Limitations)
-- **External Dependencies:** `sem` only indexes entities defined within the local repository's source files. It **does not** parse or track external packages or transitive library dependencies (e.g., from `pubspec.yaml`, `node_modules`, `Cargo.toml`, etc.).
-- **External Impact Analysis:** Running `sem impact` on an external type or class (e.g., `DartType` or `ClassElement` from an external package) will fail with `error: Entity '...' not found`.
-- **Workflow for External Packages:** If tasked with evaluating how an external package is used across a codebase, **do not start with `sem`**. Use standard `grep` or `ripgrep` (`sem grep` or `rg`) to find `import` statements and locate local wrapper classes or helper functions. Once local wrapper entities are identified, use `sem impact` on those local entities to trace their usage across the codebase.
+
+- **External Dependencies:** `sem` only indexes entities defined within the
+  local repository's source files. It **does not** parse or track external
+  packages or transitive library dependencies (e.g., from `pubspec.yaml`,
+  `node_modules`, `Cargo.toml`, etc.).
+- **External Impact Analysis:** Running `sem impact` on an external type or
+  class (e.g., `DartType` or `ClassElement` from an external package) will fail
+  with `error: Entity '...' not found`.
+- **Workflow for External Packages:** If tasked with evaluating how an external
+  package is used across a codebase, **do not start with `sem`**. Use standard
+  `grep` or `ripgrep` (`sem grep` or `rg`) to find `import` statements and
+  locate local wrapper classes or helper functions. Once local wrapper entities
+  are identified, use `sem impact` on those local entities to trace their usage
+  across the codebase.
 
 ## Finding Entities (`<entity_name>`)
 
-Many `sem` commands require an `<entity_name>`. Discover exact names or IDs using:
+Many `sem` commands require an `<entity_name>`. Discover exact names or IDs
+using:
 
 1. **Instant Cold-Start Lookups (`sem find` / `sem callers` / `sem refs`):**
-   Backed by an on-disk mmap-able query index (`index.sem`), warm lookups take ~7ms without a daemon:
+   Backed by an on-disk mmap-able query index (`index.sem`), warm lookups take
+   ~7ms without a daemon:
+
    ```bash
    # Find where an entity is defined
    sem find "function diff_command" --json
@@ -45,8 +71,10 @@ Many `sem` commands require an `<entity_name>`. Discover exact names or IDs usin
    sem refs diff_command --json
    ```
 
-2. **Entity-Addressed Substring Search (`sem entities --text`):**
-   Search entity bodies for an exact substring and get back the **enclosing AST entity ID** (`file::kind::name`), avoiding manual line-to-function mapping:
+2. **Entity-Addressed Substring Search (`sem entities --text`):** Search entity
+   bodies for an exact substring and get back the **enclosing AST entity ID**
+   (`file::kind::name`), avoiding manual line-to-function mapping:
+
    ```bash
    # Search for a string inside entity bodies and return enclosing entity IDs
    sem entities src/ --text "PERMISSION_DENIED" --json
@@ -55,17 +83,25 @@ Many `sem` commands require an `<entity_name>`. Discover exact names or IDs usin
    sem entities src/ --only function --only class --json
    ```
 
-3. **Entity IDs for Disambiguation:**
-   If a name is ambiguous (e.g., multiple files define a `setup()` function), pass `--file <path>` or use the fully qualified `entity_id` returned by `--json` output (e.g., `--entity-id "src/utils.ts::function::setup"`).
+3. **Entity IDs for Disambiguation:** If a name is ambiguous (e.g., multiple
+   files define a `setup()` function), pass `--file <path>` or use the fully
+   qualified `entity_id` returned by `--json` output (e.g.,
+   `--entity-id "src/utils.ts::function::setup"`).
 
 ## Core Commands & Flag Reference (`sem v0.24+`)
 
 > **Important Flag Distinction (`--format` vs. `--json`):**
+>
 > - Only `sem diff` uses `--format <json|markdown|plain>`.
-> - **All other subcommands** (`sem impact`, `sem blame`, `sem log`, `sem entities`, `sem context`, `sem find`, `sem callers`, `sem refs`, `sem grep`, `sem graph`) use `--json` directly. Do **not** pass `--format json` to `sem impact` or `sem log`.
+> - **All other subcommands** (`sem impact`, `sem blame`, `sem log`,
+>   `sem entities`, `sem context`, `sem find`, `sem callers`, `sem refs`,
+>   `sem grep`, `sem graph`) use `--json` directly. Do **not** pass
+>   `--format json` to `sem impact` or `sem log`.
 
 ### 1. Semantic Diff (`sem diff`)
-Show added, modified, deleted, renamed, or moved entities in the working tree, between commits, between any two files, or piped from unified diffs.
+
+Show added, modified, deleted, renamed, or moved entities in the working tree,
+between commits, between any two files, or piped from unified diffs.
 
 ```bash
 # View semantic changes in working directory
@@ -94,9 +130,12 @@ jj diff --git | sem diff --patch --no-cosmetics --format json
 # Compare any two files directly (no git repo required)
 sem diff file1.dart file2.dart
 ```
-*Additional options:* `--file-exts <EXTS>...` (Filter by extensions, e.g., `--file-exts .dart`).
+
+_Additional options:_ `--file-exts <EXTS>...` (Filter by extensions, e.g.,
+`--file-exts .dart`).
 
 ### 2. Impact Analysis (`sem impact`)
+
 Analyze the transitive impact of changing an entity (BFS traversal).
 
 ```bash
@@ -119,7 +158,9 @@ sem impact <entity_name> --no-default-excludes --json
 ```
 
 ### 3. Repository Hotspots & Entity History (`sem log`)
-Show the evolution of an entity through git history, or analyze repository-wide churn and co-change pairs.
+
+Show the evolution of an entity through git history, or analyze repository-wide
+churn and co-change pairs.
 
 ```bash
 # Repository hotspots (most-modified entities + author counts) & co-change pairs
@@ -134,6 +175,7 @@ sem log <entity_name> -v
 ```
 
 ### 4. Instant Index Lookups (`sem find`, `sem callers`, `sem refs`, `sem grep`)
+
 Fast cold/warm lookups backed by `index.sem`:
 
 ```bash
@@ -151,7 +193,9 @@ sem grep "TODO"
 ```
 
 ### 5. Token-Budgeted Context (`sem context`)
-Fit an entity, its dependencies, and its dependents into a strict token budget for LLM consumption:
+
+Fit an entity, its dependencies, and its dependents into a strict token budget
+for LLM consumption:
 
 ```bash
 # Standard full-body context packing
@@ -176,7 +220,12 @@ sem blame <file_path> --json
 
 ## Troubleshooting & Environment Gotchas
 
-- **GNU Parallel Binary Collision (`/usr/bin/sem`):**
-  GNU Parallel installs `/usr/bin/sem` as a symlink to `parallel`. If `sem` hangs or rejects subcommands, verify the binary with `sem --version` or `which sem`. Ensure Homebrew (`$(brew --prefix)/bin/sem`) or Cargo (`~/.cargo/bin/sem`) precedes `/usr/bin` in `PATH`.
-- **Asynchronous Execution for Large Graphs:**
-  On very large repositories, the initial index/graph build can take several seconds. Run `sem impact` or `sem graph` with a background timeout (`WaitMsBeforeAsync`) if cold-starting on a massive monorepo.
+- **GNU Parallel Binary Collision (`/usr/bin/sem`):** GNU Parallel installs
+  `/usr/bin/sem` as a symlink to `parallel`. If `sem` hangs or rejects
+  subcommands, verify the binary with `sem --version` or `which sem`. Ensure
+  Homebrew (`$(brew --prefix)/bin/sem`) or Cargo (`~/.cargo/bin/sem`) precedes
+  `/usr/bin` in `PATH`.
+- **Asynchronous Execution for Large Graphs:** On very large repositories, the
+  initial index/graph build can take several seconds. Run `sem impact` or
+  `sem graph` with a background timeout (`WaitMsBeforeAsync`) if cold-starting
+  on a massive monorepo.

@@ -34,19 +34,19 @@ against the following boundaries:
      (`https://github.com/dart-lang/sdk`, e.g., located at `~/github/dart-sdk`).
    - **Hard Block**: If operating in the Dart SDK repository, stop immediately
      and ask if the user wants to use their specialized Dart SDK flow instead
-     (e.g., `dart-sdk-bootstrap`). Do not proceed without clarification. The Dart
-     SDK relies on specialized toolchains, `gclient` checkouts, and dedicated
-     bootstrap workflows that standard Git worktree operations break.
+     (e.g., `dart-sdk-bootstrap`). Do not proceed without clarification. The
+     Dart SDK relies on specialized toolchains, `gclient` checkouts, and
+     dedicated bootstrap workflows that standard Git worktree operations break.
 
 ## Location & Naming Conventions
 
 When creating a worktree, observe strict placement and naming rules:
 
-* **Location**: Place the new worktree directory right next to the source
+- **Location**: Place the new worktree directory right next to the source
   repository directory (as a direct sibling in the parent folder).
-* **Worktree Naming**: Format the folder name as
+- **Worktree Naming**: Format the folder name as
   `_[original repo folder name]-[branch-name]`.
-* **Branch Naming**: Derive a clean, hyphen-separated branch name from the user
+- **Branch Naming**: Derive a clean, hyphen-separated branch name from the user
   request (e.g., `issue-12345` or `fix-auth-crash`).
 
 ### Examples
@@ -61,11 +61,12 @@ When creating a worktree, observe strict placement and naming rules:
 ## Execution Steps
 
 1. **Verify Pre-Flight Boundaries**: Confirm location under `~/github`, confirm
-   Git repository status, and ensure the repo is not the Dart SDK. Do not require
-   a clean working directory; worktrees allow branching safely from a dirty tree.
-2. **Fetch Latest Remote State & Resolve Base Branch**: Run `git fetch origin` to ensure
-   local tracking branches are up to date. Dynamically resolve the remote default
-   branch (`origin/HEAD`, `origin/main`, or `origin/master`):
+   Git repository status, and ensure the repo is not the Dart SDK. Do not
+   require a clean working directory; worktrees allow branching safely from a
+   dirty tree.
+2. **Fetch Latest Remote State & Resolve Base Branch**: Run `git fetch origin`
+   to ensure local tracking branches are up to date. Dynamically resolve the
+   remote default branch (`origin/HEAD`, `origin/main`, or `origin/master`):
    ```bash
    TARGET_BASE=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null || (git show-ref --verify --quiet refs/remotes/origin/main && echo "origin/main") || echo "origin/master")
    ```
@@ -73,11 +74,13 @@ When creating a worktree, observe strict placement and naming rules:
    path `{sibling_worktree_path}` based on naming rules.
 4. **Collision Pre-Flight & Stale Worktree Pruning**:
    - Check if `{sibling_worktree_path}` or local `{branch_name}` already exists.
-   - If previous worktrees were removed manually, run `git worktree prune` to clear stale metadata.
+   - If previous worktrees were removed manually, run `git worktree prune` to
+     clear stale metadata.
 5. **Execute Worktree Creation**:
    ```bash
    git worktree add -b {branch_name} {sibling_worktree_path} ${TARGET_BASE}
    ```
 6. **Output Clickable Link**: Provide the user with a clickable link to the new
-   worktree using the precise scheme `[link text](file:///absolute/path/to/worktree)`.
-   Never wrap link text or syntax in backticks.
+   worktree using the precise scheme
+   `[link text](file:///absolute/path/to/worktree)`. Never wrap link text or
+   syntax in backticks.
