@@ -164,7 +164,7 @@ int _run(List<String> arguments) {
   final updatedContent = skillContent.replaceRange(
     startIndex,
     endIndex + endTag.length,
-    '$startTag\n$generatedMarkdown\n$endTag',
+    '$startTag\n\n<!-- prettier-ignore-start -->\n\n$generatedMarkdown\n\n<!-- prettier-ignore-end -->\n\n$endTag',
   );
 
   if (validateMode) {

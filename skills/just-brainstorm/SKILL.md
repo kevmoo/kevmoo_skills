@@ -13,10 +13,11 @@ key_features:
 
 ## When to use this skill
 
-Activate this skill when you need to think through a design, explore options,
-or evaluate the impact of a potential change before writing code.
+Activate this skill when you need to think through a design, explore options, or
+evaluate the impact of a potential change before writing code.
 
 Examples of trigger phrases:
+
 - "Let me brainstorm..."
 - "Just brainstorming here..."
 - "What if we [do specific change]..."
@@ -34,26 +35,32 @@ Examples of trigger phrases:
 ## Procedural Workflow
 
 ### 1. Gather Context & Empirical Data (Read-Only)
-- Inspect the codebase using read-only tools (`grep_search`, `view_file`, `list_dir`)
-  to ground your brainstorming or analysis in reality.
+
+- Inspect the codebase using read-only tools (`grep_search`, `view_file`,
+  `list_dir`) to ground your brainstorming or analysis in reality.
 - **For Impact Analysis ("What-if")**: Gather real statistics. Calculate usage
   counts, identify affected call sites, and map out dependencies. Do not guess.
 
 ### 2. Interactive Alignment (`ask_question`)
+
 - Use `ask_question` early if the goals, constraints, or the scope of the
   "what-if" scenario are unclear.
 
 ### 3. Generate the Artifact
+
 - Write the output to a `.md` file in the conversation artifacts directory.
-- Use `RequestFeedback: false` in the artifact metadata (do not block with "Proceed" gates).
+- Use `RequestFeedback: false` in the artifact metadata (do not block with
+  "Proceed" gates).
 - **Structure for Design Brainstorming**:
   - Present 2–4 distinct options.
   - Highlight tradeoffs (pros/cons) and relative complexity.
 - **Structure for Impact Analysis ("What-if")**:
   - Detail the step-by-step impact if the change were executed.
-  - List breaking changes, migration friction, and affected modules with metrics.
+  - List breaking changes, migration friction, and affected modules with
+    metrics.
   - Provide a summary risk/feasibility verdict.
 
 ### 4. Conclude with Next Steps
+
 - Suggest 1–3 actionable next steps (e.g., create an implementation plan,
   explore a specific option deeper, or start implementation).

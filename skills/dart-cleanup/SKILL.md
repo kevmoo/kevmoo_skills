@@ -12,11 +12,10 @@ compatibility: "Requires local checkouts in ~/github/kevmoo and ~/github/skills"
 
 # 🎯 Dart Cleanup & Refactoring Router
 
-> [!NOTE]
-> **Personal Environment Router**: This skill is optimized for `@kevmoo`'s
-> local development environment and assumes specialized skills are checked out
-> under `~/github/kevmoo/` and `~/github/skills/`. Other users should clone the
-> required repositories or adapt the catalog paths in
+> [!NOTE] **Personal Environment Router**: This skill is optimized for
+> `@kevmoo`'s local development environment and assumes specialized skills are
+> checked out under `~/github/kevmoo/` and `~/github/skills/`. Other users
+> should clone the required repositories or adapt the catalog paths in
 > [Skill Catalog](#-skill-catalog) to match their local layout.
 
 Orchestrates specialized Dart workflows from local GitHub checkouts without
@@ -32,34 +31,35 @@ When invoked with text (e.g. `/dart-cleanup convert expect matchers to checks`),
 evaluate the input against the [Skill Catalog](#-skill-catalog) using this
 3-tier confidence decision tree:
 
-* **Tier 1: Unambiguous Clear Match (High Confidence / 90%+ sure)**
-  * Exactly 1 skill in the catalog clearly maps to the requested
-    transformation.
-  * *Action*:
+- **Tier 1: Unambiguous Clear Match (High Confidence / 90%+ sure)**
+  - Exactly 1 skill in the catalog clearly maps to the requested transformation.
+  - _Action_:
     1. Check for the target `SKILL.md` at its candidate path in `~/github/`.
     2. If missing, output the
        [Missing Checkout Safety Net](#missing-checkout-safety-net).
     3. If present, call `view_file` on the target `SKILL.md`, hydrate its
-       untruncated instructions into active context, and execute the
-       refactoring immediately.
-* **Tier 2: Uncertain / Close Match (Medium Confidence)**
-  * A skill seems close or relevant, but there is ambiguity.
-  * *Action*: Stop and ask the user for confirmation before hydrating:
-    > *"I think you might mean **`<skill-name>`**"*
-    > *([SKILL.md](file:///path/to/SKILL.md)). Would you like me to load and*
-    > *run this workflow?"*
-* **Tier 3: No Clear Match or Bare Invocation (Low Confidence / Empty Input)**
-  * No skill matches the prompt, or `/dart-cleanup` was invoked with no
+       untruncated instructions into active context, and execute the refactoring
+       immediately.
+- **Tier 2: Uncertain / Close Match (Medium Confidence)**
+  - A skill seems close or relevant, but there is ambiguity.
+  - _Action_: Stop and ask the user for confirmation before hydrating:
+    > _"I think you might mean **`<skill-name>`**"_
+    > _([SKILL.md](file:///path/to/SKILL.md)). Would you like me to load and_
+    > _run this workflow?"_
+- **Tier 3: No Clear Match or Bare Invocation (Low Confidence / Empty Input)**
+  - No skill matches the prompt, or `/dart-cleanup` was invoked with no
     arguments.
-  * *Action*: Output:
-    > *"I couldn't find an unambiguous skill match for your request. Here is*
-    > *the catalog of available specialized Dart skills:"*
-    Render the categorized [Skill Catalog](#-skill-catalog) with clickable
-    `file://` links so the user can choose.
+  - _Action_: Output:
+    > _"I couldn't find an unambiguous skill match for your request. Here is_
+    > _the catalog of available specialized Dart skills:"_ Render the
+    > categorized [Skill Catalog](#-skill-catalog) with clickable `file://`
+    > links so the user can choose.
 
 ### 2. Missing Checkout Safety Net
+
 If a target `SKILL.md` is selected but missing from the local filesystem,
 output:
+
 > ⚠️ **Missing local checkout**: Target skill `<skill-name>` was not found at
 > `~/github/...`. Please ensure `https://github.com/<org>/<repo>` is cloned into
 > `~/github/`.
@@ -69,14 +69,17 @@ output:
 ## 📋 Skill Catalog & Path Priority
 
 <!-- DART_CLEANUP_CATALOG_START -->
+
+<!-- prettier-ignore-start -->
+
 ### Required Local Repositories
 
 <!-- mdformat off(prevent table wrapping) -->
 | Repository | Local Directory | Synced Commit |
 | :--- | :--- | :--- |
 | [`dart-lang/skills`](https://github.com/dart-lang/skills) | `~/github/skills` | [`26b2dcc`](https://github.com/dart-lang/skills/commit/26b2dcc5654cbbc3b2ec56ea94719469bc8bae9e) |
-| [`kevmoo/analytica.dart`](https://github.com/kevmoo/analytica.dart) | `~/github/kevmoo/analytica.dart` | [`1bba4de`](https://github.com/kevmoo/analytica.dart/commit/1bba4de81a526b3805561227fb1adeed4e3feb45) |
-| [`kevmoo/dash_skills`](https://github.com/kevmoo/dash_skills) | `~/github/kevmoo/dash_skills` | [`949bd00`](https://github.com/kevmoo/dash_skills/commit/949bd00b69fc8449c535aeb4f4970c7ec5e21b49) |
+| [`kevmoo/analytica.dart`](https://github.com/kevmoo/analytica.dart) | `~/github/kevmoo/analytica.dart` | [`0114d16`](https://github.com/kevmoo/analytica.dart/commit/0114d16b76df87f7bea27f9b11888518fb787357) |
+| [`kevmoo/dash_skills`](https://github.com/kevmoo/dash_skills) | `~/github/kevmoo/dash_skills` | [`6c39005`](https://github.com/kevmoo/dash_skills/commit/6c3900555225a113d4dbd89b4cda4b41c72130ae) |
 <!-- mdformat on -->
 
 ### A. Refactoring & Code Quality
@@ -174,5 +177,7 @@ output:
 * **`dart-write-documentation`**: Effective Dart `///` doc comment conventions,
   API documentation rules, and reference linking.
   * *Path*: `~/github/skills/skills/dart-write-documentation/SKILL.md`
-<!-- DART_CLEANUP_CATALOG_END -->
 
+<!-- prettier-ignore-end -->
+
+<!-- DART_CLEANUP_CATALOG_END -->

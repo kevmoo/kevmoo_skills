@@ -26,13 +26,13 @@ and synthesize a definitive decision matrix and action plan.
 
 ## Why This Approach Matters
 
-- **Avoids Premature Optimization:** Writing code before resolving
-  architectural contradictions leads to wasted effort and refactoring loops.
+- **Avoids Premature Optimization:** Writing code before resolving architectural
+  contradictions leads to wasted effort and refactoring loops.
 - **Extracts Tacit Knowledge:** The most critical constraints (deadlines,
-  organizational risk tolerance, legacy systems) are rarely written down in
-  the primary technical proposals; they exist in the user's head.
-- **Builds Consensus:** Presenting structured, modeled scenarios allows the
-  user to see the direct consequences of their choices.
+  organizational risk tolerance, legacy systems) are rarely written down in the
+  primary technical proposals; they exist in the user's head.
+- **Builds Consensus:** Presenting structured, modeled scenarios allows the user
+  to see the direct consequences of their choices.
 
 ---
 
@@ -42,13 +42,13 @@ Follow this sequence to guide the user from chaos to a clear action plan. Copy
 this checklist to track progress:
 
 - [ ] **Phase 1: Artifact Mapping & Contradiction Triage** → Output: Strategic
-  Landscape Analysis
-- [ ] **Phase 2: The Socratic Interview** → Output: Structured 4-6 Question
-  Quiz (Execution Halted)
-- [ ] **Phase 3: Scenario Modeling & Trade-Off Matrix** → Output: Clean
-  Markdown comparison table (Triggered by Quiz answers)
+      Landscape Analysis
+- [ ] **Phase 2: The Socratic Interview** → Output: Structured 4-6 Question Quiz
+      (Execution Halted)
+- [ ] **Phase 3: Scenario Modeling & Trade-Off Matrix** → Output: Clean Markdown
+      comparison table (Triggered by Quiz answers)
 - [ ] **Phase 4: Final Synthesis & Action Plan** → Output:
-  `DISTILLED_STRATEGY.md`
+      `DISTILLED_STRATEGY.md`
 
 ---
 
@@ -105,8 +105,13 @@ highly targeted, interactive quiz to extract the user's latent constraints.
 - Avoid vague questions (e.g., "What do you want?"). Use forced-choice or
   comparative questions.
 - **Interactive Option Selection**:
-  - If the hosting platform supports interactive choice modals (e.g., Antigravity's `ask_question` tool), you are strongly encouraged to present predictable or multiple-choice questions using that tool (configured with `is_multi_select: true` or single-select) to reduce user typing overhead.
-  - For open-ended questions, or if the harness does not support interactive question modals, fall back to outputting the quiz as a numbered Markdown list directly in chat.
+  - If the hosting platform supports interactive choice modals (e.g.,
+    Antigravity's `ask_question` tool), you are strongly encouraged to present
+    predictable or multiple-choice questions using that tool (configured with
+    `is_multi_select: true` or single-select) to reduce user typing overhead.
+  - For open-ended questions, or if the harness does not support interactive
+    question modals, fall back to outputting the quiz as a numbered Markdown
+    list directly in chat.
 - Structure the quiz into exactly three categories:
 
 1. **Hard Constraints & Guardrails:** Focus on unyielding boundaries (e.g.,
@@ -149,21 +154,20 @@ Please answer the following questions to help narrow down the path forward:
 
 ### Phase 3: Scenario Modeling & Trade-Off Matrix
 
-*(This phase activates ONLY after the user provides their answers to the Phase 2
-quiz.)*
+_(This phase activates ONLY after the user provides their answers to the Phase 2
+quiz.)_
 
 Evaluate the competing paths through the lens of the user's quiz responses.
-Synthesize these into a clean Markdown table comparing the top 2 viable
-options.
+Synthesize these into a clean Markdown table comparing the top 2 viable options.
 
 Use this exact schema:
 
-Dimension                                                              | Option A: {Name}                                       | Option B: {Name}
-:--------------------------------------------------------------------- | :----------------------------------------------------- | :--------
-**Core Concept**                                                       | *Brief description of this path.*                      | *Brief description of this path.*
-**Alignment with Your Goals**                                          | *Explain how this path satisfies or violates the specific preferences expressed in the quiz.*                       | *Explain how this path satisfies or violates the specific preferences expressed in the quiz.*
-**The Catch / Tax**                                                    | *What you explicitly sacrifice if you choose this path (e.g., developer speed, infrastructure cost, migration time).*         | *What you explicitly sacrifice if you choose this path.*
-**Execution Friction**                                                 | *Low / Medium / High, with a 1-sentence justification based on the artifacts.*                                 | *Low / Medium / High, with a 1-sentence justification based on the artifacts.*
+| Dimension                     | Option A: {Name}                                                                                                      | Option B: {Name}                                                                              |
+| :---------------------------- | :-------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------- |
+| **Core Concept**              | _Brief description of this path._                                                                                     | _Brief description of this path._                                                             |
+| **Alignment with Your Goals** | _Explain how this path satisfies or violates the specific preferences expressed in the quiz._                         | _Explain how this path satisfies or violates the specific preferences expressed in the quiz._ |
+| **The Catch / Tax**           | _What you explicitly sacrifice if you choose this path (e.g., developer speed, infrastructure cost, migration time)._ | _What you explicitly sacrifice if you choose this path._                                      |
+| **Execution Friction**        | _Low / Medium / High, with a 1-sentence justification based on the artifacts._                                        | _Low / Medium / High, with a 1-sentence justification based on the artifacts._                |
 
 ---
 
@@ -174,11 +178,12 @@ artifacts directory (`<appDataDir>/brain/<conversation-id>`) using the
 `write_to_file` tool. Save this document without requesting interactive
 approval/feedback (e.g., set `RequestFeedback: false` if using Antigravity's
 `ArtifactMetadata`), as it serves as a strategic record rather than an
-interactive gateway to immediate execution. This document serves as the source of truth for execution.
+interactive gateway to immediate execution. This document serves as the source
+of truth for execution.
 
 Structure the document as follows:
 
-1. **The Recommended Path:** A clear, singular recommendation. Justify *why*
+1. **The Recommended Path:** A clear, singular recommendation. Justify _why_
    this path is the optimal choice based on the intersection of the technical
    artifacts and the user's quiz inputs.
 2. **Immediate Next Steps (3-5 Actions):** Actionable, concrete steps to

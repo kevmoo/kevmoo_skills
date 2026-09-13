@@ -11,13 +11,13 @@ key_features:
 
 ## When to use this skill
 
-- Use this skill when asked to address review comments, pull request
-  feedback, or debug failing CI/CD runs on a GitHub pull request in an
-  interactive, single-pass manner.
-- This skill MUST be activated when the user asks you to "look at comments on
-  my PR", "address comments/reviews", "fix the build/checks", or provides a PR
+- Use this skill when asked to address review comments, pull request feedback,
+  or debug failing CI/CD runs on a GitHub pull request in an interactive,
+  single-pass manner.
+- This skill MUST be activated when the user asks you to "look at comments on my
+  PR", "address comments/reviews", "fix the build/checks", or provides a PR
   URL/branch and asks you to fix it.
-- *Note*: For continuous autonomous iteration loops with AI code review bots
+- _Note_: For continuous autonomous iteration loops with AI code review bots
   (such as Gemini Code Assist), use the `pr-loop` skill instead, which uses this
   skill's `triage.dart` script as its underlying triage engine.
 
@@ -27,19 +27,21 @@ key_features:
   AI bot like Gemini Code Assist or a human engineer — is infallible. AI review
   bots frequently hallucinate syntax limitations, suggest outdated patterns, or
   misunderstand broader repository architecture.
-- **Treat Severity Badges as Unverified External Claims**: Bot-generated severity
-  tags (such as `![critical]` or `![security-high]`) are unverified external claims,
-  NOT confirmed system diagnostics or compiler errors. Never blindly trust badges.
-- **Mandatory Pre-Edit Empirical Verification Gate**:
-  Before editing code for any reviewer comment claiming a syntax error, compilation
-  failure, or type issue, the agent MUST run static analysis (`dart analyze`) on
-  the **unmodified existing codebase** first.
-  - If `dart analyze` returns **0 issues**, the reviewer's claim is empirically false.
-    The item MUST be classified as `👎 Disagree (Hallucinated Syntax/Compile Error)` and
-    NO code changes may be made for that item.
+- **Treat Severity Badges as Unverified External Claims**: Bot-generated
+  severity tags (such as `![critical]` or `![security-high]`) are unverified
+  external claims, NOT confirmed system diagnostics or compiler errors. Never
+  blindly trust badges.
+- **Mandatory Pre-Edit Empirical Verification Gate**: Before editing code for
+  any reviewer comment claiming a syntax error, compilation failure, or type
+  issue, the agent MUST run static analysis (`dart analyze`) on the **unmodified
+  existing codebase** first.
+  - If `dart analyze` returns **0 issues**, the reviewer's claim is empirically
+    false. The item MUST be classified as
+    `👎 Disagree (Hallucinated Syntax/Compile Error)` and NO code changes may be
+    made for that item.
 - **You have the execution advantage**: External reviewers inspect static code,
-  whereas you can execute live compilers, static analyzers (`dart analyze`),
-  and test suites (`dart test`). Always empirically test claims before accepting
+  whereas you can execute live compilers, static analyzers (`dart analyze`), and
+  test suites (`dart test`). Always empirically test claims before accepting
   them.
 - **You are free to disagree**: If a reviewer's claim is technically wrong, if
   their suggestion introduces compiler warnings or regressions, or if the
@@ -56,38 +58,46 @@ key_features:
   the user (using `ask_question` or chat) to clarify which PR or branch to
   target before taking action.
 
-1. **Run the Triage Script**:
-   Execute the `triage.dart` helper script using the `run_command` tool.
-   Use the `--dir` (or `-C`) option to specify the path to the target
-   repository directory (the project you want to triage). This ensures that the
-   underlying `git` and `gh` commands resolve to the correct repository and
-   branch:
+1. **Run the Triage Script**: Execute the `triage.dart` helper script using the
+   `run_command` tool. Use the `--dir` (or `-C`) option to specify the path to
+   the target repository directory (the project you want to triage). This
+   ensures that the underlying `git` and `gh` commands resolve to the correct
+   repository and branch:
+
    ```bash
    dart run <path-to-github-pr-triage-skill>/bin/triage.dart --dir <path-to-target-repository>
    ```
-   *Note*: If you need to target a specific PR or URL, you can also pass `--pr`:
+
+   _Note_: If you need to target a specific PR or URL, you can also pass `--pr`:
+
    ```bash
    dart run <path-to-github-pr-triage-skill>/bin/triage.dart --dir <path-to-target-repository> --pr <pr-number-or-url>
    ```
+
    **Save the raw stdout of this script** as a new markdown artifact named
    `raw_triage_output.md` in the artifacts directory (using the `write_to_file`
    tool).
 
 2. **Verify Workspace State**:
    - The script output will show the PR URL, title, branch, Remote Commit SHA,
-     Local Commit SHA, and Sync Status (`in_sync`, `behind_remote`, `ahead_of_remote`, `diverged`, or `branch_mismatch`).
-   - Verify that your current git branch matches the PR source branch (`headRefName`).
+     Local Commit SHA, and Sync Status (`in_sync`, `behind_remote`,
+     `ahead_of_remote`, `diverged`, or `branch_mismatch`).
+   - Verify that your current git branch matches the PR source branch
+     (`headRefName`).
    - Check the **Sync Status**:
-     - If `Sync Status` is `behind_remote`, pull the latest remote commits (`git pull`) before making changes.
-     - If `Sync Status` is `ahead_of_remote` or `diverged`, push or sync local commits (`git push`).
-     - Do not start making code edits while the local workspace is out of sync with the remote PR.
+     - If `Sync Status` is `behind_remote`, pull the latest remote commits
+       (`git pull`) before making changes.
+     - If `Sync Status` is `ahead_of_remote` or `diverged`, push or sync local
+       commits (`git push`).
+     - Do not start making code edits while the local workspace is out of sync
+       with the remote PR.
 
 3. **Analyze Open Comments**:
    - The script lists all unresolved review threads, top-level review comments
      (overall review summaries), and general PR conversation comments.
    - Read the conversations carefully to understand what reviewers are
      requesting.
-   - Focus *only* on unresolved or actionable comments. Ignore comments marked
+   - Focus _only_ on unresolved or actionable comments. Ignore comments marked
      as resolved unless they provide necessary context.
    - Ignore comments from the PR author themselves unless they clarify a
      reviewer's comment.
@@ -97,15 +107,16 @@ key_features:
    - **Active/Pending CI Handling**: If any CI status checks are currently
      running or pending:
      - Inform the user and call `ask_question` to ask their preference:
-       * Option 1: `(Recommended) Proceed with triaging open comments now`
-       * Option 2: `Wait for active CI status checks to complete first`
-     - **MANDATORY HARD BLOCK**: When CI is pending, you MUST halt execution after
-       calling `ask_question`. Do NOT proceed to Step 5 (Generate a Triage Report)
-       or create the `pr_triage_report.md` artifact until the user has answered,
-       because final CI results might change the triage plan and action items.
-     - *(Note: This interactive prompt and hard block are bypassed when
-       operating within an outer orchestrator skill like `pr-loop`, which handles
-       background timers automatically)*.
+       - Option 1: `(Recommended) Proceed with triaging open comments now`
+       - Option 2: `Wait for active CI status checks to complete first`
+     - **MANDATORY HARD BLOCK**: When CI is pending, you MUST halt execution
+       after calling `ask_question`. Do NOT proceed to Step 5 (Generate a Triage
+       Report) or create the `pr_triage_report.md` artifact until the user has
+       answered, because final CI results might change the triage plan and
+       action items.
+     - _(Note: This interactive prompt and hard block are bypassed when
+       operating within an outer orchestrator skill like `pr-loop`, which
+       handles background timers automatically)_.
    - Analyze the stack traces, compile errors, or analyzer failures to
      understand why any failed checks failed.
 
@@ -127,27 +138,30 @@ key_features:
      - **Summary of Feedback/Failure**: A concise summary of the reviewer
        comment(s) or CI failure(s), including direct markdown links back to the
        comments/checks on GitHub. When linking to comments, use a descriptive
-       link that includes both the comment/review number and the GitHub username of the
-       reviewer (e.g. `[Comment #1 by @reviewer_username](#)` or `[Review #1 by @reviewer_username](#)`).
-     - **Thread & Comment/Review Identifiers (For Comments)**: Explicitly preserve the
-       `Thread ID` (e.g. `PRRT_...`), `Comment ID` (e.g. `3438780787`), or `Review ID`
-       (e.g. `PRR_...`) from the header in `raw_triage_output.md` under each action
-       item so the resolution step (`gh api` or `gh pr comment`) has immediate access
-       to the identifiers without extra API lookups.
+       link that includes both the comment/review number and the GitHub username
+       of the reviewer (e.g. `[Comment #1 by @reviewer_username](#)` or
+       `[Review #1 by @reviewer_username](#)`).
+     - **Thread & Comment/Review Identifiers (For Comments)**: Explicitly
+       preserve the `Thread ID` (e.g. `PRRT_...`), `Comment ID` (e.g.
+       `3438780787`), or `Review ID` (e.g. `PRR_...`) from the header in
+       `raw_triage_output.md` under each action item so the resolution step
+       (`gh api` or `gh pr comment`) has immediate access to the identifiers
+       without extra API lookups.
      - **Agent Assessment (For Comments)**:
        - **Agreement Level**: A short indicator of your agreement using one of
          these categories:
-         * `🔥 Urgent` (Critical fix for a crash, bug, or CI blocker; we should
+         - `🔥 Urgent` (Critical fix for a crash, bug, or CI blocker; we should
            fix immediately)
-         * `👍 Solid` (Good suggestion; we should implement it)
-         * `🤷 Meh` (Optional nit or stylistic preference; we could address
-           it, but it's low priority)
-         * `👎 Disagree` (Incorrect or counter-productive suggestion; we should
+         - `👍 Solid` (Good suggestion; we should implement it)
+         - `🤷 Meh` (Optional nit or stylistic preference; we could address it,
+           but it's low priority)
+         - `👎 Disagree` (Incorrect or counter-productive suggestion; we should
            explain why and propose no action)
-        - **Empirical Verification**: Output of `dart analyze` or `dart test` run on
-          the unmodified codebase before accepting any fix or classifying a claim.
-        - **Rationale**: Your technical explanation of why you agree,
-         disagree, or recommend a specific direction.
+       - **Empirical Verification**: Output of `dart analyze` or `dart test` run
+         on the unmodified codebase before accepting any fix or classifying a
+         claim.
+       - **Rationale**: Your technical explanation of why you agree, disagree,
+         or recommend a specific direction.
      - **Planned Action**:
        - The target file name(s) and specific line ranges.
        - The proposed changes (e.g. explanation, code snippet/diff, or "No
@@ -162,10 +176,10 @@ key_features:
 
 7. **Surgical Implementation & Verification**:
    - Once approved, address the comments and failures one by one.
-   - **Add tests for new behavior**: When a reviewer requests new behavior,
-     bug fixes, or edge-case handling, proactively write automated tests
-     (typically placed in the `test/` directory with a `_test.dart` suffix) to
-     verify the changes and prevent future regressions.
+   - **Add tests for new behavior**: When a reviewer requests new behavior, bug
+     fixes, or edge-case handling, proactively write automated tests (typically
+     placed in the `test/` directory with a `_test.dart` suffix) to verify the
+     changes and prevent future regressions.
    - Follow standard development workflows: run formatting, analysis, and tests
      locally to verify fixes before finishing.
 
@@ -190,17 +204,19 @@ key_features:
        2. `Do nothing`
    - **Execute Selected Actions**:
      - If committing is selected, stage all modified and new files (using
-       `git add <files>` or `git add .` if no untracked scratch files exist)
-       and create a descriptive commit.
+       `git add <files>` or `git add .` if no untracked scratch files exist) and
+       create a descriptive commit.
      - If pushing is selected, run `git push`.
-     - If replying and resolving is selected, execute the `triage.dart resolve` commands
-       using the patterns listed below.
+     - If replying and resolving is selected, execute the `triage.dart resolve`
+       commands using the patterns listed below.
 
 ## Replying and Resolving Comments
 
-For every addressed review thread, you MUST execute thread resolution (thread resolution is explicit, mandatory, and un-skippable).
+For every addressed review thread, you MUST execute thread resolution (thread
+resolution is explicit, mandatory, and un-skippable).
 
-Use the `resolve` subcommand in `triage.dart` to programmatically reply to comments and resolve threads without shell-escaping issues:
+Use the `resolve` subcommand in `triage.dart` to programmatically reply to
+comments and resolve threads without shell-escaping issues:
 
 ```bash
 # Reply to a comment and resolve its thread (pass --dir if outside target repo):
@@ -210,26 +226,28 @@ dart run <path-to-github-pr-triage-skill>/bin/triage.dart resolve --dir <path-to
 dart run <path-to-github-pr-triage-skill>/bin/triage.dart resolve --dir <path-to-target-repository> <thread_graphql_id>
 ```
 
-*Note: `<thread_graphql_id>` is the GraphQL node ID (e.g., `PRRT_...`) and `<comment_database_id>` is the numeric database ID (e.g., `3438780787`), exactly as output in `raw_triage_output.md`.*
-
+_Note: `<thread_graphql_id>` is the GraphQL node ID (e.g., `PRRT_...`) and
+`<comment_database_id>` is the numeric database ID (e.g., `3438780787`), exactly
+as output in `raw_triage_output.md`._
 
 ## Constraints
+
 - **Hard CI Gate**: If CI checks are running or pending, you MUST halt execution
   after calling `ask_question` in Step 4 and DO NOT proceed to Step 5 or
-  generate `pr_triage_report.md` until the user responds, as pending CI
-  results may alter the final triage plan. (Note: Bypassed ONLY IF operating
-  within an outer orchestrator skill like `pr-loop`).
+  generate `pr_triage_report.md` until the user responds, as pending CI results
+  may alter the final triage plan. (Note: Bypassed ONLY IF operating within an
+  outer orchestrator skill like `pr-loop`).
 - **CRITICAL**: You MUST NOT modify files or make any code edits to address PR
-  comments or CI failures before generating a `pr_triage_report.md` artifact
-  and obtaining explicit user approval on the plan. (Note: This constraint is
+  comments or CI failures before generating a `pr_triage_report.md` artifact and
+  obtaining explicit user approval on the plan. (Note: This constraint is
   bypassed ONLY IF operating within an outer orchestrator skill like `pr-loop`
   with upfront user consent).
 - **VCS Authorization**: Selecting an option in `ask_question` that explicitly
   mentions committing or pushing serves as the user's explicit permission to
-  perform those operations for the triage fixes. Do NOT ask for permission
-  a second time if the user selects one of those options. (Note: This
-  constraint is bypassed ONLY IF operating within an outer orchestrator skill
-  like `pr-loop` with upfront user consent).
+  perform those operations for the triage fixes. Do NOT ask for permission a
+  second time if the user selects one of those options. (Note: This constraint
+  is bypassed ONLY IF operating within an outer orchestrator skill like
+  `pr-loop` with upfront user consent).
 - **Sync Code Before Comments**: Do not post "Done" or "Fixed" comment replies
   or resolve threads on GitHub while the corresponding code fixes remain
   uncommitted or unpushed.

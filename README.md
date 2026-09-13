@@ -7,11 +7,14 @@ domains or tasks.
 ## Skills Inventory
 
 <!-- SKILLS_LIST_START -->
+
 To install any skill individually:
+
 ```bash
 npx skills add kevmoo/kevmoo_skills --skill <skill-name>
 ```
 
+<!-- prettier-ignore -->
 | Skill | Description | Key Features |
 |-------|-------------|--------------|
 | **[clarify-confirm-continue](skills/clarify-confirm-continue/SKILL.md)** | Orchestrates a disciplined task intake workflow across code, docs, and project files by autonomously fact-checking the workspace, resolving genuine decision forks, and confirming execution readiness via ask_question before making modifications. Use when starting multi-step tasks, refactorings, ambiguous feature requests, broad documentation updates, or when invoked via /clarify-confirm-continue or "ccc". Don't use for trivial single-turn lookups, straightforward single-line edits where intent is unambiguous, or emergency rollbacks. |  |
@@ -29,4 +32,5 @@ npx skills add kevmoo/kevmoo_skills --skill <skill-name>
 | **[review-pr](skills/review-pr/SKILL.md)** | Reviews GitHub Pull Requests or local Git branch diffs using an adversarial 13-angle review rubric and the Inquisitor Presumption of Theater doctrine to eliminate LLM noise. Evaluates code correctness, removed behavior, error handling, testing, and simplification, generates a ranked Markdown report with clickable line permalinks, and presents an interactive action gate (keep findings, apply local fixes, or post inline to GitHub). Use when reviewing a PR (#N or URL), auditing a local feature branch, or invoked via /review-pr. Don't use for Google3 Piper changelists (use /cl-finalize or review) or general formatting. | 13 analytical review angles (correctness, removed behavior, simplification, testing), Inquisitor Presumption of Theater doctrine (zero AI fluff or pedantry), Clickable GitHub permalinks to source lines, Interactive 3-way action gate (chat only, apply local fixes, post to GitHub) |
 | **[sem-cli](skills/sem-cli/SKILL.md)** | Use the `sem` CLI (`sem-cli`) for fast local code exploration, instant call-graph navigation (`callers`/`refs`), signature-only context packing (`--headers`), hotspot and co-change discovery (`sem log`), transitive impact analysis (`sem impact`), and entity-level semantic diffs (`sem diff`). | Instant call-graph navigation, signature-only context packing, entity-addressed substring search, hotspot and co-change analysis, transitive impact analysis, semantic diffs |
 | **[sidequest](skills/sidequest/SKILL.md)** | Synthesizes conversation history and active tasks into a visual hierarchy map (`sidequest.md`) backed by a deterministic JSON state file (`sidequest.json`). Supports multiple sequential and concurrent main quests, sub-quests, and side-quests with automatic hierarchical numbering and completion sequencing. Use when the user invokes `/sidequest`, asks where we are, what we were doing, or what's on our stack, or when the conversation branches across multiple topics, blockers, or digressions. Don't use for simple one-off questions. | Conversation mapping, Task hierarchy & numbering, VCS state tracking, Subagent history audits |
+
 <!-- SKILLS_LIST_END -->

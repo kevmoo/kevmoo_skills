@@ -51,20 +51,20 @@ doing any work:
    a **Pull Request**?
 2. **Target Repository**: Which exact GitHub repository (`owner/repo`)?
 
-> [!IMPORTANT]
-> **STOP. DON'T GUESS.**
-> If the user's intent is ambiguous (e.g. *"create a post for this"* without
-> specifying Issue vs. PR), or if the target repository cannot be deterministically
-> resolved from the current git checkout, or if multiple remotes/forks exist:
-> **The agent MUST STOP and explicitly ask the user for clarification** using
-> `ask_question` or chat before proceeding. Never guess or fabricate targets.
+> [!IMPORTANT] **STOP. DON'T GUESS.** If the user's intent is ambiguous (e.g.
+> _"create a post for this"_ without specifying Issue vs. PR), or if the target
+> repository cannot be deterministically resolved from the current git checkout,
+> or if multiple remotes/forks exist: **The agent MUST STOP and explicitly ask
+> the user for clarification** using `ask_question` or chat before proceeding.
+> Never guess or fabricate targets.
 
 ---
 
 ### Step 2: Repository Orientation
 
 Before drafting, run the bundled orientation tool to inspect the target
-repository's maintainers, title prefixes, label vocabulary, and native templates:
+repository's maintainers, title prefixes, label vocabulary, and native
+templates:
 
 ```bash
 # For a local git repository checkout:
@@ -74,12 +74,13 @@ dart run skills/github-post/bin/orient.dart
 dart run skills/github-post/bin/orient.dart -R invertase/melos
 ```
 
-* **What it gathers**:
-  * Active human maintainers and reviewers (filtering out automated bots).
-  * Common issue title prefixes (`request:`, `[analyzer]`, `area/foo:`).
-  * Common PR title prefixes (`feat(scope):`, `fix(scope):`, `chore:`).
-  * Repository label vocabulary and detected issue/PR form schemas (`.yml` field IDs).
-* **Slop Contagion Guardrail**: Use orientation output *strictly* for taxonomy,
+- **What it gathers**:
+  - Active human maintainers and reviewers (filtering out automated bots).
+  - Common issue title prefixes (`request:`, `[analyzer]`, `area/foo:`).
+  - Common PR title prefixes (`feat(scope):`, `fix(scope):`, `chore:`).
+  - Repository label vocabulary and detected issue/PR form schemas (`.yml` field
+    IDs).
+- **Slop Contagion Guardrail**: Use orientation output _strictly_ for taxonomy,
   prefixes, and template adherence. Do NOT adopt decorative slop, emojis, or
   conversational fluff found in historical repository posts.
 
@@ -91,10 +92,12 @@ Always draft the complete title and body into a dedicated Markdown artifact in
 the conversation artifact directory (`<appDataDir>/brain/<conversation-id>/`)
 before touching the GitHub CLI, explicitly namespaced by repository:
 
-* **For Issues**: `draft_github_<owner>_<repo>_issue.md`
-  *(e.g., `draft_github_invertase_melos_issue.md` or `draft_github_kevmoo_kevmoo_skills_issue.md`)*
-* **For Pull Requests**: `draft_github_<owner>_<repo>_pr.md`
-  *(e.g., `draft_github_invertase_melos_pr.md` or `draft_github_kevmoo_kevmoo_skills_pr.md`)*
+- **For Issues**: `draft_github_<owner>_<repo>_issue.md` _(e.g.,
+  `draft_github_invertase_melos_issue.md` or
+  `draft_github_kevmoo_kevmoo_skills_issue.md`)_
+- **For Pull Requests**: `draft_github_<owner>_<repo>_pr.md` _(e.g.,
+  `draft_github_invertase_melos_pr.md` or
+  `draft_github_kevmoo_kevmoo_skills_pr.md`)_
 
 Always provide `ArtifactMetadata` with `RequestFeedback: true` so the user can
 review the rendered draft directly in the UI.
@@ -104,29 +107,30 @@ review the rendered draft directly in the UI.
 Maintainers suffer from low-effort LLM fatigue. A good submission takes under 15
 seconds to triage. Strictly enforce:
 
-* **No Decorative Emojis**: Never prefix titles, headers, or bullet points with
+- **No Decorative Emojis**: Never prefix titles, headers, or bullet points with
   emojis (`🚀`, `🐛`, `📋`, `💡`, `✨`, `⚠️`, `🔍`).
-* **No Gratuitous Dividers**: Do not insert `---` horizontal rules between every
+- **No Gratuitous Dividers**: Do not insert `---` horizontal rules between every
   minor section. Standard Markdown headers (`###`) provide sufficient hierarchy.
-* **No Conversational Fluff or Pleasantries**:
-  * Omit opening pleasantries (*"While investigating the codebase..."*, *"I hope
-    this helps..."*).
-  * Omit closing pleasantries (*"Let me know what you think!"*, *"I would be
-    happy to submit a PR..."*).
-* **No Speculative Architecture Essays**:
-  * In bug reports: State the observed defect, provide exact error logs/repro steps,
-    and limit proposed fixes to 1–2 factual sentences (or omit entirely).
-  * In PRs: Explain strictly the rationale ("why") and the isolated diff ("what
+- **No Conversational Fluff or Pleasantries**:
+  - Omit opening pleasantries (_"While investigating the codebase..."_, _"I hope
+    this helps..."_).
+  - Omit closing pleasantries (_"Let me know what you think!"_, _"I would be
+    happy to submit a PR..."_).
+- **No Speculative Architecture Essays**:
+  - In bug reports: State the observed defect, provide exact error logs/repro
+    steps, and limit proposed fixes to 1–2 factual sentences (or omit entirely).
+  - In PRs: Explain strictly the rationale ("why") and the isolated diff ("what
     changed").
-* **No Inline Multiline Shell Escapes**: Never pass multiline Markdown inline via
-  `--body "line 1\nline 2"`. Always use `--body-file`.
+- **No Inline Multiline Shell Escapes**: Never pass multiline Markdown inline
+  via `--body "line 1\nline 2"`. Always use `--body-file`.
 
 ---
 
 ### Step 4: Mandatory Approval Gate (Hard Stop)
 
-Before running `gh issue create` or `gh pr create`, the agent MUST halt execution
-and prompt the user for explicit confirmation using the `ask_question` tool.
+Before running `gh issue create` or `gh pr create`, the agent MUST halt
+execution and prompt the user for explicit confirmation using the `ask_question`
+tool.
 
 ```dart
 // Example confirmation prompt
@@ -143,8 +147,8 @@ ask_question({
 });
 ```
 
-* **If Approved**: Proceed to Step 5.
-* **If Declined / Paused**: Keep the artifact as draft and yield cleanly.
+- **If Approved**: Proceed to Step 5.
+- **If Declined / Paused**: Keep the artifact as draft and yield cleanly.
 
 ---
 
@@ -165,7 +169,8 @@ ask_question({
    rm /tmp/post_body.md
    ```
 3. **Verify Output**: Confirm the submission succeeded and output the clickable
-   link (`https://github.com/owner/repo/issues/123` or `https://github.com/owner/repo/pull/123`).
+   link (`https://github.com/owner/repo/issues/123` or
+   `https://github.com/owner/repo/pull/123`).
 
 ---
 
@@ -173,20 +178,22 @@ ask_question({
 
 Use concise, imperative titles (≤70 characters):
 
-* **When Authoring an Issue**: Adopt the repository's issue prefix convention
+- **When Authoring an Issue**: Adopt the repository's issue prefix convention
   (e.g., `request: ...`, `[subsystem] ...`, `area/foo: ...`).
-* **When Authoring a PR**: Adopt Conventional Commits (`feat(scope): ...`,
+- **When Authoring a PR**: Adopt Conventional Commits (`feat(scope): ...`,
   `fix(scope): ...`, `refactor(scope): ...`) unless the repository explicitly
   mandates an alternative format.
 
 <!-- mdformat off(prevent table wrapping) -->
-| Post Type | Format Pattern | High-Signal Example | Slop Example to Avoid |
-| :--- | :--- | :--- | :--- |
-| **Bug** | `[subsystem] Failure on condition` | `[analyzer] Crash with NullPointer when config.json is empty` | `Bug in analyzer` or `[CRITICAL] System failure` |
-| **Bug** | `subsystem: Failure on condition` | `cli: Flag --output fails when target directory is missing` | `CLI tool is broken` |
-| **Feature** | `[subsystem] Imperative capability` | `[auth] Support PKCE flow in OAuth2 authentication client` | `Feature request: make authentication better` |
-| **Feature** | `request: Imperative capability` | `request: avoid cascading releases when constraints allow update` | `Feature idea for melos` |
-| **PR** | `type(scope): imperative summary` | `feat(orient): add remote repo support and bot filter` | `Updates and fixes` |
+
+| Post Type   | Format Pattern                      | High-Signal Example                                               | Slop Example to Avoid                            |
+| :---------- | :---------------------------------- | :---------------------------------------------------------------- | :----------------------------------------------- |
+| **Bug**     | `[subsystem] Failure on condition`  | `[analyzer] Crash with NullPointer when config.json is empty`     | `Bug in analyzer` or `[CRITICAL] System failure` |
+| **Bug**     | `subsystem: Failure on condition`   | `cli: Flag --output fails when target directory is missing`       | `CLI tool is broken`                             |
+| **Feature** | `[subsystem] Imperative capability` | `[auth] Support PKCE flow in OAuth2 authentication client`        | `Feature request: make authentication better`    |
+| **Feature** | `request: Imperative capability`    | `request: avoid cascading releases when constraints allow update` | `Feature idea for melos`                         |
+| **PR**      | `type(scope): imperative summary`   | `feat(orient): add remote repo support and bot filter`            | `Updates and fixes`                              |
+
 <!-- mdformat on -->
 
 ---
@@ -195,7 +202,7 @@ Use concise, imperative titles (≤70 characters):
 
 ### 1. Bug Report Template
 
-```markdown
+````markdown
 ### Summary
 1–2 sentence description of the failure and trigger condition.
 
@@ -206,15 +213,18 @@ Use concise, imperative titles (≤70 characters):
 ### Observed Behavior
 ```text
 <literal error output, exception message, or raw stack trace>
-```
+````
 
 ### Expected Behavior
+
 <1–2 sentences describing the expected outcome>
 
 ### Environment / Target
+
 - Target Commit / Version: `<commit_hash>`
 - Runtime / Platform: `<e.g. Linux x86_64, Dart 3.8.0, Node 22>`
-```
+
+````
 
 ### 2. Feature Proposal Template
 
@@ -231,7 +241,7 @@ Concrete description of the proposed interface, behavior, or flag.
 
 ### Non-Goals
 - What this feature explicitly does NOT cover
-```
+````
 
 ### 3. Pull Request Template
 
@@ -260,11 +270,13 @@ element's `label:` attribute. Map conceptual anti-slop sections to the form's
 specific fields:
 
 <!-- mdformat off(prevent table wrapping) -->
-| Conceptual Section | Common YAML Field IDs | Rendered Form Heading |
-| :--- | :--- | :--- |
-| **Trigger Command** | `command`, `repro_command` | `### Command` |
-| **Context & Problem** | `description`, `context`, `problem` | `### Description` or `### Context` |
-| **Reasoning / Impact** | `reasoning`, `motivation` | `### Reasoning` |
-| **Proposed Solution** | `solution`, `proposal`, `idea` | `### Proposed Solution` |
-| **Additional Context** | `additional_context`, `comments` | `### Additional Context` (put Acceptance Criteria here) |
+
+| Conceptual Section     | Common YAML Field IDs               | Rendered Form Heading                                   |
+| :--------------------- | :---------------------------------- | :------------------------------------------------------ |
+| **Trigger Command**    | `command`, `repro_command`          | `### Command`                                           |
+| **Context & Problem**  | `description`, `context`, `problem` | `### Description` or `### Context`                      |
+| **Reasoning / Impact** | `reasoning`, `motivation`           | `### Reasoning`                                         |
+| **Proposed Solution**  | `solution`, `proposal`, `idea`      | `### Proposed Solution`                                 |
+| **Additional Context** | `additional_context`, `comments`    | `### Additional Context` (put Acceptance Criteria here) |
+
 <!-- mdformat on -->
