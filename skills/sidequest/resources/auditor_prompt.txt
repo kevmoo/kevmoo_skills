@@ -7,12 +7,19 @@ conversation transcript and build/update the structured JSON session map
    `watermark.stepIndex` (or from step 0 if initializing).
 3. Identify all major initiatives (Main Quests), sub-tasks (Sub-Quests), steps,
    blockers, and unrelated tangents (Side Quests).
-4. Enforce dot-separated hierarchical numbering for Sub-Quests (e.g. `1.1`, `2.1`)
-   and nested items (e.g. `1.1.1`, `2.1.2`).
-5. Maintain sequential completion order counts (`completionOrder: N`) on completed
-   items and update `lastCompletionOrder` accordingly.
-6. Track the 5-stage VCS lifecycle for active quests and code detours:
+4. **Ground-Truth Scope Invariant (Discussed Pending Work; Zero Speculation):**
+   - Capture **all** pending, upcoming, and remaining work items that have been
+     **explicitly discussed, proposed, or referenced in the conversation chat or
+     session artifacts** (e.g., plans, triage reports, design docs).
+   - **Never** invent, extrapolate, or add speculative future steps or
+     sub-quests into `sidequest.json` that have not already been discussed or
+     proposed in the session.
+5. Enforce dot-separated hierarchical numbering for Sub-Quests (e.g. `1.1`,
+   `2.1`) and nested items (e.g. `1.1.1`, `2.1.2`).
+6. Maintain sequential completion order counts (`completionOrder: N`) on
+   completed items and update `lastCompletionOrder` accordingly.
+7. Track the 5-stage VCS lifecycle for active quests and code detours:
    `dirty`, `local_commit`, `uploaded`, `merged`, `clean`.
-7. Update the watermark with the latest audited `stepIndex` and timestamp.
-8. Output the finalized JSON data model in your `send_message` response to the
+8. Update the watermark with the latest audited `stepIndex` and timestamp.
+9. Output the finalized JSON data model in your `send_message` response to the
    parent agent so it can merge and compile `sidequest.md`.

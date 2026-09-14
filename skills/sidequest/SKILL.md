@@ -19,7 +19,7 @@ key_features:
 
 Synthesizes task hierarchies and context drift into a visual session map.
 
-## ⚠️ Mandatory Execution Contract (5 Core Rules)
+## ⚠️ Mandatory Execution Contract (6 Core Rules)
 
 1. **Tool-Driven State Updates:** Always update state via the CLI tool
    (`sidequest`). Never edit `sidequest.json` manually.
@@ -33,6 +33,42 @@ Synthesizes task hierarchies and context drift into a visual session map.
 5. **Subagent History Ingestion:** Never read `transcript.jsonl` directly in the
    main conversation; delegate deep history rebuilds exclusively via
    `/sidequest rebuild`.
+6. **Ground-Truth Scope Invariant (Discussed Work Only; Zero Speculation):**
+   `sidequest.md` must capture **all** active, completed, and pending/upcoming
+   work that has been **explicitly discussed, proposed, or referenced in the
+   chat or session artifacts**. Never invent, extrapolate, or add un-discussed
+   speculative tasks into `sidequest.json` / `sidequest.md`. Offer new,
+   un-discussed suggestions exclusively in the **chat window**, never in the
+   sidequest map.
+
+---
+
+## 🎯 Scope & Epistemic Boundaries (Ground-Truth Mandate)
+
+When `/sidequest` is invoked, maintain a strict boundary between **recorded
+session state** (`sidequest.md`) and **new agent suggestions** (chat reply):
+
+### ✅ What MUST Be Included in `sidequest.md`
+
+1. **Completed & In-Flight Work:** Every Main Quest, Sub-Quest, Step, Blocker,
+   and Side Quest executed or actively in progress during the session.
+2. **Discussed Pending & Remaining Work:** Every upcoming task, deferred
+   follow-up, open action item, or parked side quest that has **already been
+   discussed with the human operator, proposed by the agent in prior turns, or
+   documented in session artifacts** (e.g., plans, triage reports, design docs).
+   Before updating the map, check prior chat turns and session artifacts so
+   discussed pending items are never left out.
+
+### 🚫 What MUST Be Excluded from `sidequest.md` (Chat-Only Boundary)
+
+1. **Zero Artifact Speculation:** Invoking `/sidequest` must **never** inspire
+   the agent to brainstorm or invent new steps, sub-quests, or follow-ups inside
+   `sidequest.md` that have not yet been discussed or proposed in the session.
+2. **New Suggestions Belong in Chat:** If you identify additional work or
+   optional follow-ups worth proposing, state them clearly in the **chat
+   window** (e.g., _"Separate from our mapped tasks, we could also
+   consider..."_). Only add them to `sidequest.md` after they have been
+   discussed in chat.
 
 ---
 
@@ -102,9 +138,11 @@ sidequest remove 1.1.2
 ```
 
 **User Output:** Output a brief, punchy chat summary covering active
-`⚔️ Main Quest`, current `🛡️ Sub-Quest`, VCS status, and recommended next step.
-Always place the clickable link to the generated artifact at the very **BOTTOM**
-of the chat reply with an emoji anchor so it is easy to find and click:
+`⚔️ Main Quest`, current `🛡️ Sub-Quest`, VCS status, and next discussed step. If
+proposing any new, un-discussed ideas, present them strictly in chat (never
+inside `sidequest.md`). Always place the clickable link to the generated
+artifact at the very **BOTTOM** of the chat reply with an emoji anchor so it is
+easy to find and click:
 
 > `🗺️ Full Session Map: [sidequest.md](file:///path/to/sidequest.md)`
 
