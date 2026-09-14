@@ -66,8 +66,8 @@ session state** (`sidequest.md`) and **new agent suggestions** (chat reply):
    `sidequest.md` that have not yet been discussed or proposed in the session.
 2. **New Suggestions Belong in Chat:** If you identify additional work or
    optional follow-ups worth proposing, state them clearly in the **chat
-   window** (e.g., *"Separate from our mapped tasks, we could also
-   consider..."*). Only add them to `sidequest.md` after they have been
+   window** (e.g., _"Separate from our mapped tasks, we could also
+   consider..."_). Only add them to `sidequest.md` after they have been
    discussed in chat.
 
 ---
@@ -138,8 +138,8 @@ sidequest remove 1.1.2
 ```
 
 **User Output:** Output a brief, punchy chat summary covering active
-`⚔️ Main Quest`, current `🛡️ Sub-Quest`, VCS status, and next discussed step.
-If proposing any new, un-discussed ideas, present them strictly in chat (never
+`⚔️ Main Quest`, current `🛡️ Sub-Quest`, VCS status, and next discussed step. If
+proposing any new, un-discussed ideas, present them strictly in chat (never
 inside `sidequest.md`). Always place the clickable link to the generated
 artifact at the very **BOTTOM** of the chat reply with an emoji anchor so it is
 easy to find and click:
