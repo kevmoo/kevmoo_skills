@@ -80,7 +80,14 @@ When creating a worktree, observe strict placement and naming rules:
    ```bash
    git worktree add -b {branch_name} {sibling_worktree_path} ${TARGET_BASE}
    ```
-6. **Output Clickable Link**: Provide the user with a clickable link to the new
+6. **Configure Default GitHub Repository (`gh repo set-default`)**:
+   - Inside the newly created worktree directory (`{sibling_worktree_path}`),
+     configure `gh` to use the `origin` remote as the default repository so
+     subsequent `gh pr` and `gh run` commands work without requiring `-R`:
+     ```bash
+     cd {sibling_worktree_path} && gh repo set-default origin
+     ```
+7. **Output Clickable Link**: Provide the user with a clickable link to the new
    worktree using the precise scheme
    `[link text](file:///absolute/path/to/worktree)`. Never wrap link text or
    syntax in backticks.
