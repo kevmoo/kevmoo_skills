@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:github_pr_triage/github_cli.dart';
+import '../../github-pr-triage/lib/github_cli.dart';
 
 /// Main entry point for the PR status verification tool (`pr_status.dart`).
 ///
@@ -12,11 +12,11 @@ import 'package:github_pr_triage/github_cli.dart';
 void main(List<String> args) async {
   try {
     final context = await resolvePrContext(args, onFail: _fail);
-    final (inProgressChecks, failedChecks) = await _evaluateChecks(context);
-    final graphEval = await _evaluateGraphData(context);
+    final (inProgressChecks, failedChecks) = await evaluateChecks(context);
+    final graphEval = await evaluateGraphData(context);
     final syncStatus = await fetchPrSyncStatus(context);
 
-    final (canTerminate, reason) = _evaluateTermination(
+    final (canTerminate, reason) = evaluateTermination(
       syncStatus: syncStatus,
       graphqlError: graphEval.graphqlError,
       inProgressChecks: inProgressChecks,
@@ -55,10 +55,11 @@ void main(List<String> args) async {
   }
 }
 
-Future<(List<String> inProgress, List<String> failed)> _evaluateChecks(
-  PrContext context,
-) async {
-  final checks = await fetchPrChecks(context);
+Future<(List<String> inProgress, List<String> failed)> evaluateChecks(
+  PrContext context, {
+  CommandRunner runCommand = runCommand,
+}) async {
+  final checks = await fetchPrChecks(context, runCommand: runCommand);
   final inProgressChecks = <String>[];
   final failedChecks = <String>[];
 
@@ -72,21 +73,24 @@ Future<(List<String> inProgress, List<String> failed)> _evaluateChecks(
   return (inProgressChecks, failedChecks);
 }
 
-typedef _GraphEvaluation = ({
+typedef GraphEvaluation = ({
   int unresolvedThreadsCount,
   bool hasActiveEyesReaction,
   String? graphqlError,
 });
 
-Future<_GraphEvaluation> _evaluateGraphData(PrContext context) async {
+Future<GraphEvaluation> evaluateGraphData(
+  PrContext context, {
+  CommandRunner runCommand = runCommand,
+}) async {
   try {
-    final graphData = await fetchPrGraphQLData(context);
-    final lastReviewRequestTime = _latestMatchingTimestamp(
+    final graphData = await fetchPrGraphQLData(context, runCommand: runCommand);
+    final lastReviewRequestTime = latestMatchingTimestamp(
       graphData.comments,
       matches: (c) => c.body.contains('/gemini review'),
       timestampOf: (c) => c.createdAt,
     );
-    final lastBotReviewTime = _latestMatchingTimestamp(
+    final lastBotReviewTime = latestMatchingTimestamp(
       graphData.reviews,
       matches: (r) =>
           r.author.startsWith('gemini-code-assist') ||
@@ -116,7 +120,7 @@ Future<_GraphEvaluation> _evaluateGraphData(PrContext context) async {
   }
 }
 
-DateTime? _latestMatchingTimestamp<T>(
+DateTime? latestMatchingTimestamp<T>(
   Iterable<T> items, {
   required bool Function(T) matches,
   required String Function(T) timestampOf,
@@ -132,7 +136,7 @@ DateTime? _latestMatchingTimestamp<T>(
   return latest;
 }
 
-(bool canTerminate, String? reason) _evaluateTermination({
+(bool canTerminate, String? reason) evaluateTermination({
   required PrSyncStatus syncStatus,
   required String? graphqlError,
   required List<String> inProgressChecks,
