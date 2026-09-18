@@ -193,11 +193,7 @@ class MainQuest {
               ?.map((e) => SubQuest.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
-      sideQuests:
-          (json['sideQuests'] as List<dynamic>?)
-              ?.map((e) => SideQuest.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          [],
+      sideQuests: _parseSideQuests(json['sideQuests']),
     );
   }
 }
@@ -253,11 +249,7 @@ class SidequestData {
           ? Watermark.fromJson(json['watermark'] as Map<String, dynamic>)
           : null,
       lastCompletionOrder: json['lastCompletionOrder'] as int? ?? 0,
-      globalSideQuests:
-          (json['globalSideQuests'] as List<dynamic>?)
-              ?.map((e) => SideQuest.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          [],
+      globalSideQuests: _parseSideQuests(json['globalSideQuests']),
       quests:
           (json['quests'] as List<dynamic>?)
               ?.map((e) => MainQuest.fromJson(e as Map<String, dynamic>))
@@ -272,33 +264,29 @@ class SidequestData {
         : jsonEncode(toJson());
   }
 
-  String generateNextGlobalSideQuestId() {
-    final nextNumber =
-        globalSideQuests
-            .map(
-              (sq) =>
-                  int.tryParse(
-                    sq.id.startsWith('G') ? sq.id.substring(1) : sq.id,
-                  ) ??
-                  0,
-            )
-            .fold(0, max) +
-        1;
-    return 'G$nextNumber';
-  }
+  String generateNextGlobalSideQuestId() =>
+      'G${_nextPrefixedIdNumber(globalSideQuests, 'G')}';
 
-  String generateNextSideQuestId(MainQuest quest) {
-    final nextNumber =
-        quest.sideQuests
-            .map(
-              (sq) =>
-                  int.tryParse(
-                    sq.id.startsWith('S') ? sq.id.substring(1) : sq.id,
-                  ) ??
-                  0,
-            )
-            .fold(0, max) +
-        1;
-    return 'S$nextNumber';
-  }
+  String generateNextSideQuestId(MainQuest quest) =>
+      'S${_nextPrefixedIdNumber(quest.sideQuests, 'S')}';
 }
+
+List<SideQuest> _parseSideQuests(Object? raw) =>
+    (raw as List<dynamic>?)
+        ?.map((e) => SideQuest.fromJson(e as Map<String, dynamic>))
+        .toList() ??
+    [];
+
+int _nextPrefixedIdNumber(Iterable<SideQuest> sideQuests, String prefix) =>
+    sideQuests
+        .map(
+          (sq) =>
+              int.tryParse(
+                sq.id.startsWith(prefix)
+                    ? sq.id.substring(prefix.length)
+                    : sq.id,
+              ) ??
+              0,
+        )
+        .fold(0, max) +
+    1;

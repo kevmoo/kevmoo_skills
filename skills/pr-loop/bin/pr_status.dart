@@ -12,131 +12,192 @@ import 'package:github_pr_triage/github_cli.dart';
 void main(List<String> args) async {
   try {
     final context = await resolvePrContext(args, onFail: _fail);
-
-    final inProgressChecks = <String>[];
-    final failedChecks = <String>[];
-
-    try {
-      final checks = await fetchPrChecks(context);
-      for (final check in checks) {
-        if (check.bucket == 'pending') {
-          inProgressChecks.add(check.name);
-        } else if (check.bucket == 'fail') {
-          failedChecks.add(check.name);
-        }
-      }
-    } catch (e) {
-      rethrow;
-    }
-
-    var unresolvedThreadsCount = 0;
-    var hasActiveEyesReaction = false;
-    String? graphqlError;
-
-    try {
-      final graphData = await fetchPrGraphQLData(context);
-
-      DateTime? lastReviewRequestTime;
-      for (final comment in graphData.comments) {
-        if (comment.body.contains('/gemini review')) {
-          final dt = DateTime.tryParse(comment.createdAt);
-          if (dt != null &&
-              (lastReviewRequestTime == null ||
-                  dt.isAfter(lastReviewRequestTime))) {
-            lastReviewRequestTime = dt;
-          }
-        }
-      }
-
-      DateTime? lastBotReviewTime;
-      for (final review in graphData.reviews) {
-        if (review.author.startsWith('gemini-code-assist') ||
-            review.author.startsWith('gemini-code-review')) {
-          final dt = DateTime.tryParse(review.submittedAt);
-          if (dt != null &&
-              (lastBotReviewTime == null || dt.isAfter(lastBotReviewTime))) {
-            lastBotReviewTime = dt;
-          }
-        }
-      }
-
-      if (lastBotReviewTime == null) {
-        hasActiveEyesReaction = true;
-      } else if (lastReviewRequestTime != null &&
-          lastReviewRequestTime.isAfter(lastBotReviewTime)) {
-        hasActiveEyesReaction = true;
-      }
-
-      for (final thread in graphData.reviewThreads) {
-        if (!thread.isResolved) {
-          unresolvedThreadsCount++;
-        }
-      }
-    } catch (e) {
-      graphqlError = e.toString();
-    }
-
-    // Evaluate local vs remote sync status using shared helper.
+    final (inProgressChecks, failedChecks) = await _evaluateChecks(context);
+    final graphEval = await _evaluateGraphData(context);
     final syncStatus = await fetchPrSyncStatus(context);
 
-    // Evaluate termination decision.
-    bool canTerminate = true;
-    String? reason;
+    final (canTerminate, reason) = _evaluateTermination(
+      syncStatus: syncStatus,
+      graphqlError: graphEval.graphqlError,
+      inProgressChecks: inProgressChecks,
+      failedChecks: failedChecks,
+      unresolvedThreadsCount: graphEval.unresolvedThreadsCount,
+      hasActiveEyesReaction: graphEval.hasActiveEyesReaction,
+    );
 
-    if (!syncStatus.isSynced) {
-      canTerminate = false;
-      reason =
-          syncStatus.warning ?? 'Local branch is out of sync with remote PR';
-    } else if (graphqlError != null) {
-      canTerminate = false;
-      reason = 'Failed to verify PR threads/reactions: $graphqlError';
-    } else if (inProgressChecks.isNotEmpty) {
-      canTerminate = false;
-      reason =
-          'CI workflow(s) still in progress: ${inProgressChecks.join(", ")}';
-    } else if (failedChecks.isNotEmpty) {
-      canTerminate = false;
-      reason = 'CI workflow(s) failed: ${failedChecks.join(", ")}';
-    } else if (unresolvedThreadsCount > 0) {
-      canTerminate = false;
-      reason = 'There are $unresolvedThreadsCount unresolved review thread(s)';
-    } else if (hasActiveEyesReaction) {
-      canTerminate = false;
-      reason =
-          'Review bot has an active EYES (👀) reaction processing feedback';
-    }
-
-    final output = {
-      'can_terminate': canTerminate,
-      'reason': reason,
-      'unresolved_threads': unresolvedThreadsCount,
-      'in_progress_checks': inProgressChecks,
-      'failed_checks': failedChecks,
-      'has_active_eyes_reaction': hasActiveEyesReaction,
-      'local_head_sha': syncStatus.localHeadSha,
-      'remote_head_sha': syncStatus.remoteHeadSha,
-      'is_synced': syncStatus.isSynced,
-      'sync_state': syncStatus.syncState,
-    };
-
-    stdout.writeln(const JsonEncoder.withIndent('  ').convert(output));
+    _writeJsonOutput(
+      canTerminate: canTerminate,
+      reason: reason,
+      unresolvedThreads: graphEval.unresolvedThreadsCount,
+      inProgressChecks: inProgressChecks,
+      failedChecks: failedChecks,
+      hasActiveEyesReaction: graphEval.hasActiveEyesReaction,
+      localHeadSha: syncStatus.localHeadSha,
+      remoteHeadSha: syncStatus.remoteHeadSha,
+      isSynced: syncStatus.isSynced,
+      syncState: syncStatus.syncState,
+    );
   } catch (e, stack) {
     stderr.writeln('Error checking PR status: $e\n$stack');
-    final output = {
-      'can_terminate': false,
-      'reason': 'Error checking PR status: $e',
-      'unresolved_threads': 0,
-      'in_progress_checks': <String>[],
-      'failed_checks': <String>[],
-      'has_active_eyes_reaction': false,
-      'local_head_sha': '',
-      'remote_head_sha': '',
-      'is_synced': false,
-      'sync_state': 'error',
-    };
-    stdout.writeln(const JsonEncoder.withIndent('  ').convert(output));
+    _writeJsonOutput(
+      canTerminate: false,
+      reason: 'Error checking PR status: $e',
+      unresolvedThreads: 0,
+      inProgressChecks: const <String>[],
+      failedChecks: const <String>[],
+      hasActiveEyesReaction: false,
+      localHeadSha: '',
+      remoteHeadSha: '',
+      isSynced: false,
+      syncState: 'error',
+    );
     exit(1);
   }
+}
+
+Future<(List<String> inProgress, List<String> failed)> _evaluateChecks(
+  PrContext context,
+) async {
+  final checks = await fetchPrChecks(context);
+  final inProgressChecks = <String>[];
+  final failedChecks = <String>[];
+
+  for (final check in checks) {
+    if (check.bucket == 'pending') {
+      inProgressChecks.add(check.name);
+    } else if (check.bucket == 'fail') {
+      failedChecks.add(check.name);
+    }
+  }
+  return (inProgressChecks, failedChecks);
+}
+
+typedef _GraphEvaluation = ({
+  int unresolvedThreadsCount,
+  bool hasActiveEyesReaction,
+  String? graphqlError,
+});
+
+Future<_GraphEvaluation> _evaluateGraphData(PrContext context) async {
+  try {
+    final graphData = await fetchPrGraphQLData(context);
+    final lastReviewRequestTime = _latestMatchingTimestamp(
+      graphData.comments,
+      matches: (c) => c.body.contains('/gemini review'),
+      timestampOf: (c) => c.createdAt,
+    );
+    final lastBotReviewTime = _latestMatchingTimestamp(
+      graphData.reviews,
+      matches: (r) =>
+          r.author.startsWith('gemini-code-assist') ||
+          r.author.startsWith('gemini-code-review'),
+      timestampOf: (r) => r.submittedAt,
+    );
+
+    final hasActiveEyesReaction =
+        lastBotReviewTime == null ||
+        (lastReviewRequestTime != null &&
+            lastReviewRequestTime.isAfter(lastBotReviewTime));
+    final unresolvedThreadsCount = graphData.reviewThreads
+        .where((t) => !t.isResolved)
+        .length;
+
+    return (
+      unresolvedThreadsCount: unresolvedThreadsCount,
+      hasActiveEyesReaction: hasActiveEyesReaction,
+      graphqlError: null,
+    );
+  } catch (e) {
+    return (
+      unresolvedThreadsCount: 0,
+      hasActiveEyesReaction: false,
+      graphqlError: e.toString(),
+    );
+  }
+}
+
+DateTime? _latestMatchingTimestamp<T>(
+  Iterable<T> items, {
+  required bool Function(T) matches,
+  required String Function(T) timestampOf,
+}) {
+  DateTime? latest;
+  for (final item in items) {
+    if (!matches(item)) continue;
+    final dt = DateTime.tryParse(timestampOf(item));
+    if (dt != null && (latest == null || dt.isAfter(latest))) {
+      latest = dt;
+    }
+  }
+  return latest;
+}
+
+(bool canTerminate, String? reason) _evaluateTermination({
+  required PrSyncStatus syncStatus,
+  required String? graphqlError,
+  required List<String> inProgressChecks,
+  required List<String> failedChecks,
+  required int unresolvedThreadsCount,
+  required bool hasActiveEyesReaction,
+}) {
+  if (!syncStatus.isSynced) {
+    return (
+      false,
+      syncStatus.warning ?? 'Local branch is out of sync with remote PR',
+    );
+  }
+  if (graphqlError != null) {
+    return (false, 'Failed to verify PR threads/reactions: $graphqlError');
+  }
+  if (inProgressChecks.isNotEmpty) {
+    return (
+      false,
+      'CI workflow(s) still in progress: ${inProgressChecks.join(", ")}',
+    );
+  }
+  if (failedChecks.isNotEmpty) {
+    return (false, 'CI workflow(s) failed: ${failedChecks.join(", ")}');
+  }
+  if (unresolvedThreadsCount > 0) {
+    return (
+      false,
+      'There are $unresolvedThreadsCount unresolved review thread(s)',
+    );
+  }
+  if (hasActiveEyesReaction) {
+    return (
+      false,
+      'Review bot has an active EYES (👀) reaction processing feedback',
+    );
+  }
+  return (true, null);
+}
+
+void _writeJsonOutput({
+  required bool canTerminate,
+  required String? reason,
+  required int unresolvedThreads,
+  required List<String> inProgressChecks,
+  required List<String> failedChecks,
+  required bool hasActiveEyesReaction,
+  required String localHeadSha,
+  required String remoteHeadSha,
+  required bool isSynced,
+  required String syncState,
+}) {
+  final output = {
+    'can_terminate': canTerminate,
+    'reason': reason,
+    'unresolved_threads': unresolvedThreads,
+    'in_progress_checks': inProgressChecks,
+    'failed_checks': failedChecks,
+    'has_active_eyes_reaction': hasActiveEyesReaction,
+    'local_head_sha': localHeadSha,
+    'remote_head_sha': remoteHeadSha,
+    'is_synced': isSynced,
+    'sync_state': syncState,
+  };
+  stdout.writeln(const JsonEncoder.withIndent('  ').convert(output));
 }
 
 Never _fail(String message) {

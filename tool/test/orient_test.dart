@@ -103,64 +103,7 @@ body:
 
   group('OrientationGatherer with mock runner', () {
     test('gathers GitHub repository conventions and maintainers', () async {
-      final mockRunner =
-          (
-            String command,
-            List<String> args, {
-            String? workingDirectory,
-          }) async {
-            if (command == 'gh' && args.contains('view')) {
-              return jsonEncode({'nameWithOwner': 'octocat/Hello-World'});
-            }
-            if (command == 'gh' && args.contains('pr')) {
-              return jsonEncode([
-                {
-                  'title': 'feat(core): initial implementation',
-                  'author': {'login': 'alice'},
-                  'reviews': [
-                    {
-                      'author': {'login': 'bob'},
-                    },
-                    {
-                      'author': {'login': 'copilot-pull-request-reviewer'},
-                    },
-                  ],
-                  'labels': [
-                    {'name': 'enhancement'},
-                  ],
-                },
-                {
-                  'title': 'fix(core): resolve race condition',
-                  'author': {'login': 'bob'},
-                  'reviews': [],
-                  'labels': [
-                    {'name': 'bug'},
-                  ],
-                },
-              ]);
-            }
-            if (command == 'gh' && args.contains('issue')) {
-              return jsonEncode([
-                {
-                  'title': '[core] Race condition in event bus',
-                  'author': {'login': 'alice'},
-                  'labels': [
-                    {'name': 'bug'},
-                  ],
-                },
-                {
-                  'title': '[docs] Missing setup guide',
-                  'author': {'login': 'charlie'},
-                  'labels': [
-                    {'name': 'documentation'},
-                  ],
-                },
-              ]);
-            }
-            throw Exception('Unexpected command: $command ${args.join(' ')}');
-          };
-
-      final gatherer = OrientationGatherer(runCmd: mockRunner);
+      final gatherer = OrientationGatherer(runCmd: _mockLocalRepoRunner);
       final orientation = await gatherer.gather(workingDirectory: '/tmp/repo');
 
       expect(orientation.environment, equals('GitHub'));
@@ -187,57 +130,7 @@ body:
     });
 
     test('gathers remote repository conventions via repo parameter', () async {
-      final mockRunner =
-          (
-            String command,
-            List<String> args, {
-            String? workingDirectory,
-          }) async {
-            if (command == 'gh' &&
-                args.contains('pr') &&
-                args.contains('invertase/melos')) {
-              return jsonEncode([
-                {
-                  'title': 'feat(version): support smart dependent versioning',
-                  'author': {'login': 'dev_user'},
-                  'reviews': [],
-                  'labels': [],
-                },
-              ]);
-            }
-            if (command == 'gh' &&
-                args.contains('issue') &&
-                args.contains('invertase/melos')) {
-              return jsonEncode([
-                {
-                  'title': 'request: avoid cascading releases',
-                  'author': {'login': 'dev_user'},
-                  'labels': [],
-                },
-              ]);
-            }
-            if (command == 'gh' && args.contains('api')) {
-              if (args.contains(
-                'repos/invertase/melos/contents/.github/pull_request_template.md',
-              )) {
-                return jsonEncode({'path': '.github/pull_request_template.md'});
-              }
-              if (args.contains(
-                'repos/invertase/melos/contents/.github/PULL_REQUEST_TEMPLATE',
-              )) {
-                return jsonEncode([]);
-              }
-              return jsonEncode([
-                {
-                  'path': '.github/ISSUE_TEMPLATE/feature_request.yml',
-                  'download_url': 'https://example.com/template.yml',
-                },
-              ]);
-            }
-            throw Exception('Unexpected command: $command ${args.join(' ')}');
-          };
-
-      final gatherer = OrientationGatherer(runCmd: mockRunner);
+      final gatherer = OrientationGatherer(runCmd: _mockRemoteRepoRunner);
       final orientation = await gatherer.gather(repo: 'invertase/melos');
 
       expect(orientation.environment, equals('GitHub'));
@@ -255,4 +148,113 @@ body:
       );
     });
   });
+}
+
+Future<String> _mockLocalRepoRunner(
+  String command,
+  List<String> args, {
+  String? workingDirectory,
+}) async {
+  if (command == 'gh' && args.contains('view')) {
+    return jsonEncode({'nameWithOwner': 'octocat/Hello-World'});
+  }
+  if (command == 'gh' && args.contains('pr')) {
+    return jsonEncode([
+      {
+        'title': 'feat(core): initial implementation',
+        'author': {'login': 'alice'},
+        'reviews': [
+          {
+            'author': {'login': 'bob'},
+          },
+          {
+            'author': {'login': 'copilot-pull-request-reviewer'},
+          },
+        ],
+        'labels': [
+          {'name': 'enhancement'},
+        ],
+      },
+      {
+        'title': 'fix(core): resolve race condition',
+        'author': {'login': 'bob'},
+        'reviews': [],
+        'labels': [
+          {'name': 'bug'},
+        ],
+      },
+    ]);
+  }
+  if (command == 'gh' && args.contains('issue')) {
+    return jsonEncode([
+      {
+        'title': '[core] Race condition in event bus',
+        'author': {'login': 'alice'},
+        'labels': [
+          {'name': 'bug'},
+        ],
+      },
+      {
+        'title': '[docs] Missing setup guide',
+        'author': {'login': 'charlie'},
+        'labels': [
+          {'name': 'documentation'},
+        ],
+      },
+    ]);
+  }
+  throw Exception('Unexpected command: $command ${args.join(' ')}');
+}
+
+Future<String> _mockRemoteRepoRunner(
+  String command,
+  List<String> args, {
+  String? workingDirectory,
+}) async {
+  if (command == 'gh' &&
+      args.contains('pr') &&
+      args.contains('invertase/melos')) {
+    return jsonEncode([
+      {
+        'title': 'feat(version): support smart dependent versioning',
+        'author': {'login': 'dev_user'},
+        'reviews': [],
+        'labels': [],
+      },
+    ]);
+  }
+  if (command == 'gh' &&
+      args.contains('issue') &&
+      args.contains('invertase/melos')) {
+    return jsonEncode([
+      {
+        'title': 'request: avoid cascading releases',
+        'author': {'login': 'dev_user'},
+        'labels': [],
+      },
+    ]);
+  }
+  if (command == 'gh' && args.contains('api')) {
+    return _mockRemoteApiResponse(args);
+  }
+  throw Exception('Unexpected command: $command ${args.join(' ')}');
+}
+
+String _mockRemoteApiResponse(List<String> args) {
+  if (args.contains(
+    'repos/invertase/melos/contents/.github/pull_request_template.md',
+  )) {
+    return jsonEncode({'path': '.github/pull_request_template.md'});
+  }
+  if (args.contains(
+    'repos/invertase/melos/contents/.github/PULL_REQUEST_TEMPLATE',
+  )) {
+    return jsonEncode([]);
+  }
+  return jsonEncode([
+    {
+      'path': '.github/ISSUE_TEMPLATE/feature_request.yml',
+      'download_url': 'https://example.com/template.yml',
+    },
+  ]);
 }
