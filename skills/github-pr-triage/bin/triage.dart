@@ -77,7 +77,7 @@ Future<void> _runTriage(ArgResults results) async {
   );
 
   final data = await _fetchTriageData(context);
-  final report = _buildTriageReport(data);
+  final report = buildTriageReport(data);
 
   stdout.writeln('\n================== REPORT ==================\n');
   stdout.write(report);
@@ -138,7 +138,7 @@ Future<void> _handleResolveCommand(
   stdout.writeln('Successfully resolved thread ${parsed.threadId}.');
 }
 
-typedef _TriageData = ({
+typedef TriageData = ({
   Map<String, dynamic> prData,
   PrSyncStatus syncStatus,
   List<PrReviewThread> unresolvedThreads,
@@ -149,7 +149,7 @@ typedef _TriageData = ({
   Map<String, String> checkLogs,
 });
 
-Future<_TriageData> _fetchTriageData(PrContext context) async {
+Future<TriageData> _fetchTriageData(PrContext context) async {
   stdout.writeln(
     'Fetching details for PR #${context.prNumber} from ${context.owner}/${context.repo}...',
   );
@@ -216,7 +216,7 @@ Future<Map<String, String>> _fetchFailedCheckLogs(
     stdout.writeln('Fetching failed logs for check "$checkName"...');
     try {
       final logOutput = await fetchFailedCheckLog(context, check);
-      checkLogs[checkName] = _truncateLog(logOutput);
+      checkLogs[checkName] = truncateLog(logOutput);
     } catch (e) {
       checkLogs[checkName] = 'Failed to fetch logs: $e';
     }
@@ -224,7 +224,7 @@ Future<Map<String, String>> _fetchFailedCheckLogs(
   return checkLogs;
 }
 
-String _buildTriageReport(_TriageData data) {
+String buildTriageReport(TriageData data) {
   final prData = data.prData;
   final syncStatus = data.syncStatus;
   final syncWarningBlock = syncStatus.warning != null
@@ -388,7 +388,7 @@ void _writePendingChecks(StringBuffer report, List<PrCheckRun> pendingChecks) {
   report.write('\n');
 }
 
-String _truncateLog(String log) {
+String truncateLog(String log) {
   final lines = log.split('\n');
   if (lines.length <= 100) return log;
   final head = lines.take(15).join('\n');
