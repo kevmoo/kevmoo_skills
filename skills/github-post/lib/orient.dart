@@ -452,38 +452,76 @@ class OrientationGatherer {
     List<String> detectedTemplates,
     Map<String, List<String>> templateSchemas,
   ) async {
-    final remoteDirs = [
+    const remoteDirs = [
       '.github/ISSUE_TEMPLATE',
       '.github/PULL_REQUEST_TEMPLATE',
     ];
     for (final remoteDir in remoteDirs) {
-      try {
-        final apiOut = await runCmd('gh', [
-          'api',
-          'repos/$remoteRepo/contents/$remoteDir',
-        ], workingDirectory: targetDir);
-        final list = jsonDecode(apiOut) as List<dynamic>;
-        for (final item in list) {
-          if (item is Map<String, dynamic>) {
-            final path = item['path'] as String?;
-            final downloadUrl = item['download_url'] as String?;
-            if (path != null) {
-              detectedTemplates.add(path);
-              if (downloadUrl != null &&
-                  (path.endsWith('.yml') || path.endsWith('.yaml'))) {
-                await _fetchRemoteYamlSchema(
-                  targetDir,
-                  remoteRepo,
-                  path,
-                  templateSchemas,
-                );
-              }
-            }
-          }
-        }
-      } catch (_) {}
+      await _scanRemoteTemplateDir(
+        targetDir,
+        remoteRepo,
+        remoteDir,
+        detectedTemplates,
+        templateSchemas,
+      );
     }
 
+    await _checkRemoteRootPrTemplate(targetDir, remoteRepo, detectedTemplates);
+  }
+
+  Future<void> _scanRemoteTemplateDir(
+    String targetDir,
+    String remoteRepo,
+    String remoteDir,
+    List<String> detectedTemplates,
+    Map<String, List<String>> templateSchemas,
+  ) async {
+    try {
+      final apiOut = await runCmd('gh', [
+        'api',
+        'repos/$remoteRepo/contents/$remoteDir',
+      ], workingDirectory: targetDir);
+      final list = jsonDecode(apiOut) as List<dynamic>;
+      for (final item in list.whereType<Map<String, dynamic>>()) {
+        await _processRemoteTemplateItem(
+          item,
+          targetDir,
+          remoteRepo,
+          detectedTemplates,
+          templateSchemas,
+        );
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _processRemoteTemplateItem(
+    Map<String, dynamic> item,
+    String targetDir,
+    String remoteRepo,
+    List<String> detectedTemplates,
+    Map<String, List<String>> templateSchemas,
+  ) async {
+    final path = item['path'] as String?;
+    if (path == null) return;
+    detectedTemplates.add(path);
+
+    final downloadUrl = item['download_url'] as String?;
+    final isYaml = path.endsWith('.yml') || path.endsWith('.yaml');
+    if (downloadUrl != null && isYaml) {
+      await _fetchRemoteYamlSchema(
+        targetDir,
+        remoteRepo,
+        path,
+        templateSchemas,
+      );
+    }
+  }
+
+  Future<void> _checkRemoteRootPrTemplate(
+    String targetDir,
+    String remoteRepo,
+    List<String> detectedTemplates,
+  ) async {
     try {
       final prFileOut = await runCmd('gh', [
         'api',

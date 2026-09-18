@@ -20,6 +20,14 @@ List<File> _findEvalsFiles(Directory baseDir) {
   }).toList();
 }
 
+Map<String, dynamic> _decodeJsonMap(File file) {
+  final Object? decoded = jsonDecode(file.readAsStringSync());
+  return switch (decoded) {
+    final Map<String, dynamic> map => map,
+    _ => fail('${file.path} must be a JSON map.'),
+  };
+}
+
 void _verifyStructuralConsistency(List<File> files, String itemsKey) {
   Set<String>? expectedRootKeys;
   String? expectedRootKeysFilePath;
@@ -27,11 +35,7 @@ void _verifyStructuralConsistency(List<File> files, String itemsKey) {
   String? expectedItemFilePath;
 
   for (final file in files) {
-    final Object? decoded = jsonDecode(file.readAsStringSync());
-    final Map<String, dynamic> decodedMap = switch (decoded) {
-      final Map<String, dynamic> map => map,
-      _ => fail('${file.path} must be a JSON map.'),
-    };
+    final decodedMap = _decodeJsonMap(file);
     final Set<String> rootKeys = decodedMap.keys.toSet();
     if (expectedRootKeys == null) {
       expectedRootKeys = rootKeys;
@@ -52,11 +56,7 @@ void _verifyStructuralConsistency(List<File> files, String itemsKey) {
       _ => fail('$itemsKey key in ${file.path} must be a List.'),
     };
     for (final Object? item in itemsList) {
-      final Map<String, dynamic> itemMap = switch (item) {
-        final Map<String, dynamic> map => map,
-        _ => fail('Item in $itemsKey list in ${file.path} must be a JSON map.'),
-      };
-      final Set<String> itemKeys = itemMap.keys.toSet();
+      final itemKeys = _extractItemKeys(item, itemsKey, file.path);
       if (expectedItemKeys == null) {
         expectedItemKeys = itemKeys;
         expectedItemFilePath = file.path;
@@ -70,6 +70,98 @@ void _verifyStructuralConsistency(List<File> files, String itemsKey) {
         );
       }
     }
+  }
+}
+
+Set<String> _extractItemKeys(Object? item, String itemsKey, String filePath) {
+  final Map<String, dynamic> itemMap = switch (item) {
+    final Map<String, dynamic> map => map,
+    _ => fail('Item in $itemsKey list in $filePath must be a JSON map.'),
+  };
+  return itemMap.keys.toSet();
+}
+
+void _verifyFileReferencedRubrics(File file, Directory repoRoot) {
+  final decodedMap = _decodeJsonMap(file);
+  final Object? repoCriteriaRaw = decodedMap['repo_criteria'];
+  if (repoCriteriaRaw == null) {
+    return;
+  }
+
+  final List<dynamic> repoCriteriaList = switch (repoCriteriaRaw) {
+    final List<dynamic> list => list,
+    _ => fail('repo_criteria in ${file.path} must be a List.'),
+  };
+
+  for (final Object? rubricPath in repoCriteriaList) {
+    expect(rubricPath, isA<String>());
+    final rubricFile = File(p.join(repoRoot.path, rubricPath as String));
+    expect(
+      rubricFile.existsSync(),
+      isTrue,
+      reason:
+          'Referenced rubric "$rubricPath" in ${file.path} does not exist at ${rubricFile.path}',
+    );
+
+    final rubricMap = _decodeJsonMap(rubricFile);
+    expect(
+      rubricMap['evals'],
+      isA<List<dynamic>>(),
+      reason: '${rubricFile.path} must contain an "evals" array.',
+    );
+  }
+}
+
+void _verifyPublishedSkillsHaveEvalsJson(Directory repoRoot) {
+  final skillsDir = Directory(p.join(repoRoot.path, 'skills'));
+  if (!skillsDir.existsSync()) {
+    return;
+  }
+
+  final List<Directory> skillDirsWithEvals = skillsDir
+      .listSync()
+      .whereType<Directory>()
+      .where((dir) => Directory(p.join(dir.path, 'evals')).existsSync())
+      .toList();
+
+  expect(
+    skillDirsWithEvals,
+    isNotEmpty,
+    reason: 'Expected at least one published skill to define evals.',
+  );
+
+  for (final skillDir in skillDirsWithEvals) {
+    final evalsFile = File(p.join(skillDir.path, 'evals', 'evals.json'));
+    expect(
+      evalsFile.existsSync(),
+      isTrue,
+      reason:
+          'Published skill "${p.basename(skillDir.path)}" has an evals directory but is missing an evals.json file at ${evalsFile.path}',
+    );
+  }
+}
+
+void _verifyRubricFilesConsistency(Directory repoRoot) {
+  final rubricsDir = Directory(p.join(repoRoot.path, 'evals'));
+  if (!rubricsDir.existsSync()) {
+    return;
+  }
+
+  final List<File> rubricFiles =
+      rubricsDir
+          .listSync()
+          .whereType<File>()
+          .where(
+            (File f) =>
+                f.path.endsWith('.json') &&
+                !f.path.endsWith('_evals.json') &&
+                p.basename(f.path) != 'evals.json',
+          )
+          .toList()
+        ..sort((a, b) => a.path.compareTo(b.path));
+
+  if (rubricFiles.isNotEmpty) {
+    _verifyStructuralConsistency(rubricFiles, 'evals');
   }
 }
 
@@ -96,33 +188,7 @@ void main() {
     );
 
     test('all published skills with evals have an evals.json file', () {
-      final repoRoot = _getRepoRoot();
-      final skillsDir = Directory(p.join(repoRoot.path, 'skills'));
-      if (!skillsDir.existsSync()) {
-        return;
-      }
-
-      final List<Directory> skillDirsWithEvals = skillsDir
-          .listSync()
-          .whereType<Directory>()
-          .where((dir) => Directory(p.join(dir.path, 'evals')).existsSync())
-          .toList();
-
-      expect(
-        skillDirsWithEvals,
-        isNotEmpty,
-        reason: 'Expected at least one published skill to define evals.',
-      );
-
-      for (final skillDir in skillDirsWithEvals) {
-        final evalsFile = File(p.join(skillDir.path, 'evals', 'evals.json'));
-        expect(
-          evalsFile.existsSync(),
-          isTrue,
-          reason:
-              'Published skill "${p.basename(skillDir.path)}" has an evals directory but is missing an evals.json file at ${evalsFile.path}',
-        );
-      }
+      _verifyPublishedSkillsHaveEvalsJson(_getRepoRoot());
     });
 
     test(
@@ -137,47 +203,7 @@ void main() {
         expect(evalsFiles, isNotEmpty);
 
         for (final file in evalsFiles) {
-          final Object? decoded = jsonDecode(file.readAsStringSync());
-          final Map<String, dynamic> decodedMap = switch (decoded) {
-            final Map<String, dynamic> map => map,
-            _ => fail('${file.path} must be a JSON map.'),
-          };
-
-          final Object? repoCriteriaRaw = decodedMap['repo_criteria'];
-          if (repoCriteriaRaw == null) {
-            continue;
-          }
-
-          final List<dynamic> repoCriteriaList = switch (repoCriteriaRaw) {
-            final List<dynamic> list => list,
-            _ => fail('repo_criteria in ${file.path} must be a List.'),
-          };
-
-          for (final Object? rubricPath in repoCriteriaList) {
-            expect(rubricPath, isA<String>());
-            final rubricFile = File(
-              p.join(repoRoot.path, rubricPath as String),
-            );
-            expect(
-              rubricFile.existsSync(),
-              isTrue,
-              reason:
-                  'Referenced rubric "$rubricPath" in ${file.path} does not exist at ${rubricFile.path}',
-            );
-
-            final Object? rubricDecoded = jsonDecode(
-              rubricFile.readAsStringSync(),
-            );
-            final Map<String, dynamic> rubricMap = switch (rubricDecoded) {
-              final Map<String, dynamic> map => map,
-              _ => fail('${rubricFile.path} must be a JSON map.'),
-            };
-            expect(
-              rubricMap['evals'],
-              isA<List<dynamic>>(),
-              reason: '${rubricFile.path} must contain an "evals" array.',
-            );
-          }
+          _verifyFileReferencedRubrics(file, repoRoot);
         }
       },
     );
@@ -185,30 +211,7 @@ void main() {
     test(
       'all rubric JSON files in evals/ share consistent structure and keys',
       () {
-        final repoRoot = _getRepoRoot();
-        final rubricsDir = Directory(p.join(repoRoot.path, 'evals'));
-        if (!rubricsDir.existsSync()) {
-          return;
-        }
-
-        final List<File> rubricFiles =
-            rubricsDir
-                .listSync()
-                .whereType<File>()
-                .where(
-                  (File f) =>
-                      f.path.endsWith('.json') &&
-                      !f.path.endsWith('_evals.json') &&
-                      p.basename(f.path) != 'evals.json',
-                )
-                .toList()
-              ..sort((a, b) => a.path.compareTo(b.path));
-
-        if (rubricFiles.isEmpty) {
-          return;
-        }
-
-        _verifyStructuralConsistency(rubricFiles, 'evals');
+        _verifyRubricFilesConsistency(_getRepoRoot());
       },
     );
   });

@@ -38,47 +38,12 @@ void main() {
   });
 
   test('Run skill/scripts/test', () async {
-    final skillsDir = Directory(_skillsDirPath);
-    expect(
-      skillsDir.existsSync(),
-      isTrue,
-      reason: 'Skills directory not found at ${skillsDir.path}',
-    );
-
-    final skillDirs = skillsDir.listSync().whereType<Directory>();
-    for (final dir in skillDirs) {
-      final scriptsDir = Directory('${dir.path}/scripts');
-      if (scriptsDir.existsSync() &&
-          File('${scriptsDir.path}/pubspec.yaml').existsSync()) {
-        print('Running tests in ${scriptsDir.path}');
-
-        final packageConfig = File(
-          '${scriptsDir.path}/.dart_tool/package_config.json',
-        );
-        if (!packageConfig.existsSync()) {
-          final pubGetProcess = await TestProcess.start(
-            Platform.resolvedExecutable,
-            ['pub', 'get'],
-            workingDirectory: scriptsDir.path,
-          );
-          await pubGetProcess.shouldExit(0);
-        }
-
-        final process = await TestProcess.start(Platform.resolvedExecutable, [
-          'test',
-        ], workingDirectory: scriptsDir.path);
-        await process.shouldExit(0);
-      }
-    }
+    final skillsDir = _requireSkillsDir();
+    await _runSkillScriptTests(skillsDir);
   }, timeout: Timeout(Duration(minutes: 3)));
 
   test('Verify formatting and analysis of all skills Dart code', () async {
-    final skillsDir = Directory(_skillsDirPath);
-    expect(
-      skillsDir.existsSync(),
-      isTrue,
-      reason: 'Skills directory not found at ${skillsDir.path}',
-    );
+    final skillsDir = _requireSkillsDir();
 
     final formatProcess = await TestProcess.start(Platform.resolvedExecutable, [
       'format',
@@ -88,34 +53,7 @@ void main() {
     ]);
     await formatProcess.shouldExit(0);
 
-    // Ensure pub get has been run for all nested packages to prevent analysis failures
-    final pubspecs = <File>[];
-    final directories = skillsDir.listSync().whereType<Directory>();
-    final validDirs = directories.where(
-      (dir) => File('${dir.path}/SKILL.md').existsSync(),
-    );
-    for (final dir in validDirs) {
-      final pubspec = File('${dir.path}/pubspec.yaml');
-      if (pubspec.existsSync()) {
-        pubspecs.add(pubspec);
-      }
-      final scriptsPubspec = File('${dir.path}/scripts/pubspec.yaml');
-      if (scriptsPubspec.existsSync()) {
-        pubspecs.add(scriptsPubspec);
-      }
-    }
-    for (final pubspec in pubspecs) {
-      final packageConfig = File(
-        '${pubspec.parent.path}/.dart_tool/package_config.json',
-      );
-      if (!packageConfig.existsSync()) {
-        final process = await TestProcess.start(Platform.resolvedExecutable, [
-          'pub',
-          'get',
-        ], workingDirectory: pubspec.parent.path);
-        await process.shouldExit(0);
-      }
-    }
+    await _ensureNestedPackagesResolved(skillsDir);
 
     final analyzeProcess = await TestProcess.start(
       Platform.resolvedExecutable,
@@ -123,4 +61,58 @@ void main() {
     );
     await analyzeProcess.shouldExit(0);
   }, timeout: Timeout(Duration(minutes: 3)));
+}
+
+Directory _requireSkillsDir() {
+  final skillsDir = Directory(_skillsDirPath);
+  expect(
+    skillsDir.existsSync(),
+    isTrue,
+    reason: 'Skills directory not found at ${skillsDir.path}',
+  );
+  return skillsDir;
+}
+
+Future<void> _ensurePubGet(Directory packageDir) async {
+  final packageConfig = File(
+    '${packageDir.path}/.dart_tool/package_config.json',
+  );
+  if (!packageConfig.existsSync()) {
+    final process = await TestProcess.start(Platform.resolvedExecutable, [
+      'pub',
+      'get',
+    ], workingDirectory: packageDir.path);
+    await process.shouldExit(0);
+  }
+}
+
+Future<void> _runSkillScriptTests(Directory skillsDir) async {
+  for (final dir in skillsDir.listSync().whereType<Directory>()) {
+    final scriptsDir = Directory('${dir.path}/scripts');
+    if (scriptsDir.existsSync() &&
+        File('${scriptsDir.path}/pubspec.yaml').existsSync()) {
+      print('Running tests in ${scriptsDir.path}');
+      await _ensurePubGet(scriptsDir);
+      final process = await TestProcess.start(Platform.resolvedExecutable, [
+        'test',
+      ], workingDirectory: scriptsDir.path);
+      await process.shouldExit(0);
+    }
+  }
+}
+
+Future<void> _ensureNestedPackagesResolved(Directory skillsDir) async {
+  final validDirs = skillsDir.listSync().whereType<Directory>().where(
+    (dir) => File('${dir.path}/SKILL.md').existsSync(),
+  );
+  for (final dir in validDirs) {
+    final pubspec = File('${dir.path}/pubspec.yaml');
+    if (pubspec.existsSync()) {
+      await _ensurePubGet(pubspec.parent);
+    }
+    final scriptsPubspec = File('${dir.path}/scripts/pubspec.yaml');
+    if (scriptsPubspec.existsSync()) {
+      await _ensurePubGet(scriptsPubspec.parent);
+    }
+  }
 }

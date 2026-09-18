@@ -43,6 +43,16 @@ void main(List<String> arguments) async {
     exit(1);
   }
 
+  final generatedTable = _generateSkillsTable(skillsDir, repoSlug);
+  _applyOrValidateReadme(
+    readmeFile,
+    generatedTable,
+    writeMode: writeMode,
+    validateMode: validateMode,
+  );
+}
+
+String _generateSkillsTable(Directory skillsDir, String repoSlug) {
   final skillDirs =
       skillsDir
           .listSync()
@@ -51,57 +61,68 @@ void main(List<String> arguments) async {
           .toList()
         ..sort((a, b) => p.basename(a.path).compareTo(p.basename(b.path)));
 
-  final listBuffer = StringBuffer();
-  listBuffer.writeln('<!-- SKILLS_LIST_START -->\n');
-  listBuffer.writeln('To install any skill individually:\n');
-  listBuffer.writeln('```bash');
-  listBuffer.writeln('npx skills add $repoSlug --skill <skill-name>');
-  listBuffer.writeln('```\n');
-  listBuffer.writeln('<!-- prettier-ignore -->');
-  listBuffer.writeln('| Skill | Description | Key Features |');
-  listBuffer.writeln('|-------|-------------|--------------|');
+  final listBuffer = StringBuffer()
+    ..writeln('<!-- SKILLS_LIST_START -->\n')
+    ..writeln('To install any skill individually:\n')
+    ..writeln('```bash')
+    ..writeln('npx skills add $repoSlug --skill <skill-name>')
+    ..writeln('```\n')
+    ..writeln('<!-- prettier-ignore -->')
+    ..writeln('| Skill | Description | Key Features |')
+    ..writeln('|-------|-------------|--------------|');
   for (final dir in skillDirs) {
-    final skillName = p.basename(dir.path);
-    final skillFile = File(p.join(dir.path, 'SKILL.md'));
-    final content = skillFile.readAsStringSync();
-
-    final frontMatter = _parseFrontMatter(content);
-    final title =
-        frontMatter['name']?.toString() ?? _getSkillTitle(content, skillName);
-    final description = frontMatter['description']?.toString() ?? '';
-    final keyFeaturesRaw = frontMatter['key_features'];
-    final List<String> keyFeatures = [];
-    if (keyFeaturesRaw is List) {
-      keyFeatures.addAll(keyFeaturesRaw.map((e) => e.toString()));
-    } else if (keyFeaturesRaw is String) {
-      keyFeatures.add(keyFeaturesRaw);
+    final row = _formatSkillRow(dir);
+    if (row != null) {
+      listBuffer.writeln(row);
     }
-
-    if (title.toLowerCase().contains('deprecated') ||
-        description.toLowerCase().startsWith('deprecated')) {
-      continue;
-    }
-
-    final cleanDescription = LineSplitter.split(
-      description.trim(),
-    ).map((line) => line.trim()).join(' ').replaceAll('|', '\\|');
-
-    final cleanFeatures = keyFeatures
-        .map((f) => LineSplitter.split(f.trim()).map((l) => l.trim()).join(' '))
-        .join(', ')
-        .replaceAll('|', '\\|');
-
-    listBuffer.writeln(
-      '| **[$title](skills/$skillName/SKILL.md)** | $cleanDescription | $cleanFeatures |',
-    );
   }
   listBuffer.write('\n<!-- SKILLS_LIST_END -->');
+  return listBuffer.toString();
+}
 
-  final generatedTable = listBuffer.toString();
+String? _formatSkillRow(Directory dir) {
+  final skillName = p.basename(dir.path);
+  final skillFile = File(p.join(dir.path, 'SKILL.md'));
+  final content = skillFile.readAsStringSync();
 
+  final frontMatter = _parseFrontMatter(content);
+  final title =
+      frontMatter['name']?.toString() ?? _getSkillTitle(content, skillName);
+  final description = frontMatter['description']?.toString() ?? '';
+  if (title.toLowerCase().contains('deprecated') ||
+      description.toLowerCase().startsWith('deprecated')) {
+    return null;
+  }
+
+  final keyFeaturesRaw = frontMatter['key_features'];
+  final keyFeatures = <String>[
+    if (keyFeaturesRaw is List)
+      ...keyFeaturesRaw.map((e) => e.toString())
+    else if (keyFeaturesRaw is String)
+      keyFeaturesRaw,
+  ];
+
+  final cleanDescription = LineSplitter.split(
+    description.trim(),
+  ).map((line) => line.trim()).join(' ').replaceAll('|', '\\|');
+
+  final cleanFeatures = keyFeatures
+      .map((f) => LineSplitter.split(f.trim()).map((l) => l.trim()).join(' '))
+      .join(', ')
+      .replaceAll('|', '\\|');
+
+  return '| **[$title](skills/$skillName/SKILL.md)** | $cleanDescription | $cleanFeatures |';
+}
+
+void _applyOrValidateReadme(
+  File readmeFile,
+  String generatedTable, {
+  required bool writeMode,
+  required bool validateMode,
+}) {
   final readmeContent = readmeFile.readAsStringSync();
-  final startTag = '<!-- SKILLS_LIST_START -->';
-  final endTag = '<!-- SKILLS_LIST_END -->';
+  const startTag = '<!-- SKILLS_LIST_START -->';
+  const endTag = '<!-- SKILLS_LIST_END -->';
 
   final startIndex = readmeContent.indexOf(startTag);
   final endIndex = startIndex == -1
@@ -127,11 +148,10 @@ void main(List<String> arguments) async {
     if (normalizedReadme == normalizedUpdated) {
       print('README.md is up-to-date!');
       exit(0);
-    } else {
-      print('Error: README.md is out-of-date.');
-      print('Run `dart tool/bin/readme.dart --write` to update it.');
-      exit(1);
     }
+    print('Error: README.md is out-of-date.');
+    print('Run `dart tool/bin/readme.dart --write` to update it.');
+    exit(1);
   }
 
   if (writeMode) {

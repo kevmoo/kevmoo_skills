@@ -1,3 +1,16 @@
+import 'pr_context.dart';
+export 'pr_context.dart'
+    show
+        PrContext,
+        CommandRunner,
+        runCommand,
+        PrCheckRun,
+        PrComment,
+        PrReviewThread,
+        PrReview,
+        PrGraphData,
+        fetchPrChecks,
+        fetchPrGraphQLData;
 import 'dart:convert';
 import 'dart:io';
 
@@ -5,55 +18,6 @@ import 'package:args/args.dart';
 
 final _digitsOnly = RegExp(r'^\d+$');
 final _prUrlRegExp = RegExp(r'github\.com/([^/]+)/([^/]+)/pull/(\d+)');
-
-/// Encapsulates context for a target Pull Request and workspace directory.
-class PrContext {
-  final String workingDir;
-  final String prNumber;
-  final String owner;
-  final String repo;
-
-  PrContext({
-    required this.workingDir,
-    required this.prNumber,
-    required this.owner,
-    required this.repo,
-  });
-}
-
-/// Function signature for running external process commands.
-typedef CommandRunner =
-    Future<String> Function(
-      String command,
-      List<String> args, {
-      String? workingDirectory,
-    });
-
-/// Runs an external process command and returns its standard output.
-///
-/// Throws a [ProcessException] if the command exits with a non-zero exit code.
-Future<String> runCommand(
-  String command,
-  List<String> args, {
-  String? workingDirectory,
-}) async {
-  final result = await Process.run(
-    command,
-    args,
-    workingDirectory: workingDirectory,
-    stdoutEncoding: utf8,
-    stderrEncoding: utf8,
-  );
-  if (result.exitCode != 0) {
-    throw ProcessException(
-      command,
-      args,
-      'Command failed with exit code ${result.exitCode}:\n${result.stderr}',
-      result.exitCode,
-    );
-  }
-  return result.stdout.toString();
-}
 
 ArgParser buildPrContextArgParser() {
   return ArgParser()
@@ -107,91 +71,15 @@ Future<PrContext> resolvePrContextFromArgs({
     onFail('Target directory "$workingDir" does not exist.');
   }
 
-  String? prNumber;
-  String? owner;
-  String? repo;
+  final (owner, repo, parsedPrNumber) = _parsePrInput(prInput, onFail);
+  final prNumber =
+      parsedPrNumber ??
+      await _detectPrNumberFromBranch(workingDir, onFail, runCommand);
 
-  if (prInput != null) {
-    final prUrlMatch = _prUrlRegExp.firstMatch(prInput);
-    if (prUrlMatch != null) {
-      owner = prUrlMatch.group(1);
-      repo = prUrlMatch.group(2);
-      prNumber = prUrlMatch.group(3);
-    } else if (_digitsOnly.hasMatch(prInput)) {
-      prNumber = prInput;
-    } else {
-      onFail(
-        'Invalid PR argument. Please provide a PR number or a GitHub PR URL.',
-      );
-    }
-  }
-
-  // Auto-detect PR from current branch if not provided.
-  if (prNumber == null) {
-    String branch;
-    try {
-      branch = (await runCommand('git', [
-        'symbolic-ref',
-        '--short',
-        'HEAD',
-      ], workingDirectory: workingDir)).trim();
-    } catch (_) {
-      branch = '';
-    }
-    if (branch.isEmpty || branch == 'main' || branch == 'master') {
-      onFail(
-        'Active branch is ${branch.isEmpty ? 'detached HEAD' : '"$branch"'}. '
-        'Please specify a target PR number or URL.',
-      );
-    }
-
-    final listOutput = await runCommand('gh', [
-      'pr',
-      'list',
-      '--head',
-      branch,
-      '--json',
-      'number,url',
-    ], workingDirectory: workingDir);
-    final decodedList = jsonDecode(listOutput);
-    final listJson = decodedList is List<dynamic> ? decodedList : const [];
-    if (listJson.isEmpty) {
-      onFail(
-        'Error: Ambiguous context. No open PR found for branch "$branch". '
-        'Do not guess. Please explicitly ask the user for a PR number or URL.',
-      );
-    }
-    if (listJson.length > 1) {
-      onFail(
-        'Error: Ambiguous context. Multiple open PRs found for branch "$branch". '
-        'Do not guess. Please explicitly ask the user which PR number or URL to target.',
-      );
-    }
-    final firstPr = listJson[0];
-    if (firstPr is! Map || firstPr['number'] == null) {
-      onFail('Error: Unexpected PR data format from "gh pr list".');
-    }
-    prNumber = firstPr['number'].toString();
-  }
-
-  String? localOwner;
-  String? localRepo;
-  try {
-    final repoOutput = await runCommand('gh', [
-      'repo',
-      'view',
-      '--json',
-      'owner,name',
-    ], workingDirectory: workingDir);
-    final repoJson = jsonDecode(repoOutput) as Map<String, dynamic>;
-    localOwner = (repoJson['owner'] as Map<String, dynamic>)['login'] as String;
-    localRepo = repoJson['name'] as String;
-  } catch (e) {
-    if (owner == null || repo == null) {
-      onFail('Failed to resolve repository owner and name: $e');
-    }
-  }
-
+  final (localOwner, localRepo) = await _resolveLocalRepoOwner(
+    workingDir,
+    runCommand,
+  );
   final resolvedOwner = owner ?? localOwner;
   final resolvedRepo = repo ?? localRepo;
 
@@ -199,29 +87,15 @@ Future<PrContext> resolvePrContextFromArgs({
     onFail('Failed to resolve repository owner and name.');
   }
 
-  if (localOwner != null &&
-      localRepo != null &&
-      owner != null &&
-      repo != null) {
-    final sameRepoName = localRepo.toLowerCase() == repo.toLowerCase();
-    final sameOwner = localOwner.toLowerCase() == owner.toLowerCase();
-    if (!sameOwner || !sameRepoName) {
-      if (!sameRepoName) {
-        final matchesRemote = await _hasGitRemote(
-          workingDir,
-          owner,
-          repo,
-          runCommand: runCommand,
-        );
-        if (!matchesRemote) {
-          onFail(
-            'The target directory "$workingDir" is for repository "$localOwner/$localRepo", '
-            'but the specified PR is for repository "$owner/$repo".',
-          );
-        }
-      }
-    }
-  }
+  await _verifyRepoCompatibility(
+    workingDir: workingDir,
+    localOwner: localOwner,
+    localRepo: localRepo,
+    targetOwner: owner,
+    targetRepo: repo,
+    onFail: onFail,
+    runCommand: runCommand,
+  );
 
   return PrContext(
     workingDir: workingDir,
@@ -229,6 +103,53 @@ Future<PrContext> resolvePrContextFromArgs({
     owner: resolvedOwner,
     repo: resolvedRepo,
   );
+}
+
+(String? owner, String? repo, String? prNumber) _parsePrInput(
+  String? prInput,
+  Never Function(String message) onFail,
+) {
+  if (prInput == null) return (null, null, null);
+  final prUrlMatch = _prUrlRegExp.firstMatch(prInput);
+  if (prUrlMatch != null) {
+    return (prUrlMatch.group(1), prUrlMatch.group(2), prUrlMatch.group(3));
+  }
+  if (_digitsOnly.hasMatch(prInput)) {
+    return (null, null, prInput);
+  }
+  onFail('Invalid PR argument. Please provide a PR number or a GitHub PR URL.');
+}
+
+Future<void> _verifyRepoCompatibility({
+  required String workingDir,
+  required String? localOwner,
+  required String? localRepo,
+  required String? targetOwner,
+  required String? targetRepo,
+  required Never Function(String message) onFail,
+  required CommandRunner runCommand,
+}) async {
+  if (localOwner == null ||
+      localRepo == null ||
+      targetOwner == null ||
+      targetRepo == null) {
+    return;
+  }
+  if (localRepo.toLowerCase() == targetRepo.toLowerCase()) {
+    return;
+  }
+  final matchesRemote = await _hasGitRemote(
+    workingDir,
+    targetOwner,
+    targetRepo,
+    runCommand: runCommand,
+  );
+  if (!matchesRemote) {
+    onFail(
+      'The target directory "$workingDir" is for repository "$localOwner/$localRepo", '
+      'but the specified PR is for repository "$targetOwner/$targetRepo".',
+    );
+  }
 }
 
 Future<bool> _hasGitRemote(
@@ -246,65 +167,17 @@ Future<bool> _hasGitRemote(
       '(?:[/:])${RegExp.escape(owner)}/${RegExp.escape(repo)}(?:\\.git|/|[\\s]|\$)',
       caseSensitive: false,
     );
-    for (final line in output.split('\n')) {
-      if (pattern.hasMatch(line)) {
-        return true;
-      }
-    }
-  } catch (_) {}
-  return false;
+    return output.split('\n').any(pattern.hasMatch);
+  } catch (_) {
+    return false;
+  }
 }
-
-/// Represents a status check run on a PR.
-typedef PrCheckRun = ({
-  String name,
-  String state,
-  String bucket,
-  String link,
-  String workflow,
-});
 
 /// Extension getters for [PrCheckRun].
 extension PrCheckRunExt on PrCheckRun {
   bool get isFail => bucket == 'fail';
   bool get isPending => bucket == 'pending';
 }
-
-/// Represents a review comment on a PR.
-typedef PrComment = ({
-  String databaseId,
-  String author,
-  String body,
-  String path,
-  dynamic line,
-  String createdAt,
-  String url,
-});
-
-/// Represents a review thread on a PR.
-typedef PrReviewThread = ({
-  String id,
-  bool isResolved,
-  List<PrComment> comments,
-});
-
-/// Represents a submitted review on a PR.
-typedef PrReview = ({
-  String id,
-  String databaseId,
-  String author,
-  String body,
-  String state,
-  String submittedAt,
-  String url,
-});
-
-/// Container for GraphQL PR data.
-typedef PrGraphData = ({
-  List<PrComment> comments,
-  List<PrReview> reviews,
-  List<PrReviewThread> reviewThreads,
-});
 
 /// Sync status information comparing local repository state to remote PR state.
 typedef PrSyncStatus = ({
@@ -324,60 +197,34 @@ Future<PrSyncStatus> fetchPrSyncStatus(
   String? remoteHeadSha,
   CommandRunner runCommand = runCommand,
 }) async {
-  var rBranch = remoteBranch;
-  var rHeadSha = remoteHeadSha;
+  final (rBranch, rHeadSha) = await _resolveRemoteBranchAndSha(
+    context,
+    remoteBranch: remoteBranch,
+    remoteHeadSha: remoteHeadSha,
+    runCommand: runCommand,
+  );
+  final localBranch = await _resolveLocalBranch(context.workingDir, runCommand);
+  final localHeadSha = await _resolveLocalHeadSha(
+    context.workingDir,
+    runCommand,
+  );
 
-  if (rBranch == null || rHeadSha == null) {
-    try {
-      final repoArgs = ['-R', '${context.owner}/${context.repo}'];
-      final viewOutput = await runCommand('gh', [
-        ...repoArgs,
-        'pr',
-        'view',
-        context.prNumber,
-        '--json',
-        'headRefName,headRefOid',
-      ], workingDirectory: context.workingDir);
-      final prData = jsonDecode(viewOutput) as Map<String, dynamic>;
-      rBranch ??= prData['headRefName']?.toString() ?? '';
-      rHeadSha ??= prData['headRefOid']?.toString() ?? '';
-    } catch (_) {
-      rBranch ??= '';
-      rHeadSha ??= '';
-    }
-  }
-
-  String localBranch = '';
-  try {
-    localBranch = (await runCommand('git', [
-      'symbolic-ref',
-      '--short',
-      'HEAD',
-    ], workingDirectory: context.workingDir)).trim();
-  } catch (_) {
-    try {
-      localBranch = (await runCommand('git', [
-        'rev-parse',
-        '--abbrev-ref',
-        'HEAD',
-      ], workingDirectory: context.workingDir)).trim();
-    } catch (_) {}
-  }
-
-  String localHeadSha = '';
-  try {
-    localHeadSha = (await runCommand('git', [
-      'rev-parse',
-      'HEAD',
-    ], workingDirectory: context.workingDir)).trim();
-  } catch (_) {}
+  PrSyncStatus buildStatus({
+    required bool isSynced,
+    required String syncState,
+    required String? warning,
+  }) => (
+    localBranch: localBranch,
+    remoteBranch: rBranch,
+    localHeadSha: localHeadSha,
+    remoteHeadSha: rHeadSha,
+    isSynced: isSynced,
+    syncState: syncState,
+    warning: warning,
+  );
 
   if (localBranch.isNotEmpty && rBranch.isNotEmpty && localBranch != rBranch) {
-    return (
-      localBranch: localBranch,
-      remoteBranch: rBranch,
-      localHeadSha: localHeadSha,
-      remoteHeadSha: rHeadSha,
+    return buildStatus(
       isSynced: false,
       syncState: 'branch_mismatch',
       warning:
@@ -387,11 +234,7 @@ Future<PrSyncStatus> fetchPrSyncStatus(
   }
 
   if (localHeadSha.isEmpty || rHeadSha.isEmpty) {
-    return (
-      localBranch: localBranch,
-      remoteBranch: rBranch,
-      localHeadSha: localHeadSha,
-      remoteHeadSha: rHeadSha,
+    return buildStatus(
       isSynced: false,
       syncState: 'unknown',
       warning: localHeadSha.isEmpty
@@ -401,127 +244,149 @@ Future<PrSyncStatus> fetchPrSyncStatus(
   }
 
   if (localHeadSha == rHeadSha) {
-    return (
-      localBranch: localBranch,
-      remoteBranch: rBranch,
-      localHeadSha: localHeadSha,
-      remoteHeadSha: rHeadSha,
-      isSynced: true,
-      syncState: 'in_sync',
-      warning: null,
-    );
+    return buildStatus(isSynced: true, syncState: 'in_sync', warning: null);
   }
 
-  bool remoteCommitExists = false;
-  try {
-    await runCommand('git', [
-      'cat-file',
-      '-e',
-      '$rHeadSha^{commit}',
-    ], workingDirectory: context.workingDir);
-    remoteCommitExists = true;
-  } catch (_) {}
+  final (syncState, warning) = await _compareDiffCommits(
+    context.workingDir,
+    localHeadSha: localHeadSha,
+    remoteHeadSha: rHeadSha,
+    runCommand: runCommand,
+  );
+  return buildStatus(isSynced: false, syncState: syncState, warning: warning);
+}
 
+Future<(String, String)> _resolveRemoteBranchAndSha(
+  PrContext context, {
+  required String? remoteBranch,
+  required String? remoteHeadSha,
+  required CommandRunner runCommand,
+}) async {
+  if (remoteBranch != null && remoteHeadSha != null) {
+    return (remoteBranch, remoteHeadSha);
+  }
+  try {
+    final viewOutput = await runCommand('gh', [
+      '-R',
+      '${context.owner}/${context.repo}',
+      'pr',
+      'view',
+      context.prNumber,
+      '--json',
+      'headRefName,headRefOid',
+    ], workingDirectory: context.workingDir);
+    final prData = jsonDecode(viewOutput) as Map<String, dynamic>;
+    return (
+      remoteBranch ?? prData['headRefName']?.toString() ?? '',
+      remoteHeadSha ?? prData['headRefOid']?.toString() ?? '',
+    );
+  } catch (_) {
+    return (remoteBranch ?? '', remoteHeadSha ?? '');
+  }
+}
+
+Future<String> _resolveLocalBranch(
+  String workingDir,
+  CommandRunner runCommand,
+) async {
+  try {
+    return (await runCommand('git', [
+      'symbolic-ref',
+      '--short',
+      'HEAD',
+    ], workingDirectory: workingDir)).trim();
+  } catch (_) {
+    try {
+      return (await runCommand('git', [
+        'rev-parse',
+        '--abbrev-ref',
+        'HEAD',
+      ], workingDirectory: workingDir)).trim();
+    } catch (_) {
+      return '';
+    }
+  }
+}
+
+Future<String> _resolveLocalHeadSha(
+  String workingDir,
+  CommandRunner runCommand,
+) async {
+  try {
+    return (await runCommand('git', [
+      'rev-parse',
+      'HEAD',
+    ], workingDirectory: workingDir)).trim();
+  } catch (_) {
+    return '';
+  }
+}
+
+Future<bool> _gitCheck(
+  String workingDir,
+  List<String> args,
+  CommandRunner runCommand,
+) async {
+  try {
+    await runCommand('git', args, workingDirectory: workingDir);
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+Future<(String syncState, String warning)> _compareDiffCommits(
+  String workingDir, {
+  required String localHeadSha,
+  required String remoteHeadSha,
+  required CommandRunner runCommand,
+}) async {
+  final remoteCommitExists = await _gitCheck(workingDir, [
+    'cat-file',
+    '-e',
+    '$remoteHeadSha^{commit}',
+  ], runCommand);
   if (!remoteCommitExists) {
     return (
-      localBranch: localBranch,
-      remoteBranch: rBranch,
-      localHeadSha: localHeadSha,
-      remoteHeadSha: rHeadSha,
-      isSynced: false,
-      syncState: 'not_fetched',
-      warning:
-          'Remote PR commit ($rHeadSha) is not present in your local repository. '
+      'not_fetched',
+      'Remote PR commit ($remoteHeadSha) is not present in your local repository. '
           'Please run "git fetch" to update your local repository.',
     );
   }
 
-  bool isLocalAncestor = false;
-  try {
-    await runCommand('git', [
-      'merge-base',
-      '--is-ancestor',
-      localHeadSha,
-      rHeadSha,
-    ], workingDirectory: context.workingDir);
-    isLocalAncestor = true;
-  } catch (_) {}
-
+  final isLocalAncestor = await _gitCheck(workingDir, [
+    'merge-base',
+    '--is-ancestor',
+    localHeadSha,
+    remoteHeadSha,
+  ], runCommand);
   if (isLocalAncestor) {
     return (
-      localBranch: localBranch,
-      remoteBranch: rBranch,
-      localHeadSha: localHeadSha,
-      remoteHeadSha: rHeadSha,
-      isSynced: false,
-      syncState: 'behind_remote',
-      warning:
-          'Local commit ($localHeadSha) is behind remote PR commit ($rHeadSha). '
+      'behind_remote',
+      'Local commit ($localHeadSha) is behind remote PR commit ($remoteHeadSha). '
           'Please pull remote changes before making edits.',
     );
   }
 
-  bool isRemoteAncestor = false;
-  try {
-    await runCommand('git', [
-      'merge-base',
-      '--is-ancestor',
-      rHeadSha,
-      localHeadSha,
-    ], workingDirectory: context.workingDir);
-    isRemoteAncestor = true;
-  } catch (_) {}
-
+  final isRemoteAncestor = await _gitCheck(workingDir, [
+    'merge-base',
+    '--is-ancestor',
+    remoteHeadSha,
+    localHeadSha,
+  ], runCommand);
   if (isRemoteAncestor) {
     return (
-      localBranch: localBranch,
-      remoteBranch: rBranch,
-      localHeadSha: localHeadSha,
-      remoteHeadSha: rHeadSha,
-      isSynced: false,
-      syncState: 'ahead_of_remote',
-      warning:
-          'Local commit ($localHeadSha) is ahead of remote PR commit ($rHeadSha). '
+      'ahead_of_remote',
+      'Local commit ($localHeadSha) is ahead of remote PR commit ($remoteHeadSha). '
           'Please push local commits to sync remote PR.',
     );
   }
 
   return (
-    localBranch: localBranch,
-    remoteBranch: rBranch,
-    localHeadSha: localHeadSha,
-    remoteHeadSha: rHeadSha,
-    isSynced: false,
-    syncState: 'diverged',
-    warning:
-        'Local commit ($localHeadSha) and remote PR commit ($rHeadSha) have diverged. '
+    'diverged',
+    'Local commit ($localHeadSha) and remote PR commit ($remoteHeadSha) have diverged. '
         'Please sync local and remote branches.',
   );
-}
-
-/// Fetches status check runs for the specified [PrContext].
-Future<List<PrCheckRun>> fetchPrChecks(
-  PrContext context, {
-  CommandRunner runCommand = runCommand,
-}) async {
-  final repoArgs = ['-R', '${context.owner}/${context.repo}'];
-  try {
-    final checksOutput = await runCommand('gh', [
-      ...repoArgs,
-      'pr',
-      'checks',
-      context.prNumber,
-      '--json',
-      'name,state,bucket,link,workflow',
-    ], workingDirectory: context.workingDir);
-    final checks = jsonDecode(checksOutput) as List<dynamic>;
-    return checks.whereType<Map>().map(_parsePrCheckRun).toList();
-  } catch (e) {
-    if (e is ProcessException && e.message.contains('no checks reported')) {
-      return const [];
-    }
-    rethrow;
-  }
 }
 
 /// Extracts the workflow run ID from a GitHub Actions URL (e.g. `.../actions/runs/12345`).
@@ -580,9 +445,6 @@ Future<String> fetchFailedCheckLog(
   final link = check.link;
   final runId = parseRunIdFromLink(link);
   final checkRunId = parseCheckRunIdFromLink(link);
-  final repoArgs = ['-R', '${context.owner}/${context.repo}'];
-
-  final annotations = <String>[];
 
   Future<String> ghRepoApi(String subpath) => runCommand('gh', [
     'api',
@@ -590,194 +452,45 @@ Future<String> fetchFailedCheckLog(
     'repos/${context.owner}/${context.repo}/$subpath',
   ], workingDirectory: context.workingDir);
 
-  if (checkRunId != null) {
-    try {
-      final annOutput = await ghRepoApi('check-runs/$checkRunId/annotations');
-      final annList = jsonDecode(annOutput) as List<dynamic>;
-      for (final ann in annList.whereType<Map>()) {
-        final path = ann['path']?.toString() ?? '';
-        final startLine = ann['start_line'];
-        final message = ann['message']?.toString() ?? '';
-        final level = ann['annotation_level']?.toString() ?? '';
-        final title = ann['title']?.toString() ?? '';
-        if (message.isNotEmpty) {
-          annotations.add(
-            'Annotation [$level] ${path.isNotEmpty ? "$path:$startLine " : ""}'
-            '${title.isNotEmpty ? "($title): " : ""}$message',
-          );
-        }
-      }
-    } catch (_) {
-      // Annotations fetch is best-effort.
-    }
-  }
+  final annotations = await _fetchCheckRunAnnotations(checkRunId, ghRepoApi);
+  final logBody = runId != null
+      ? await _fetchActionsRunLog(
+          context,
+          runId,
+          ghRepoApi: ghRepoApi,
+          runCommand: runCommand,
+        )
+      : 'Non-GitHub Actions run. Inspect details at: $link';
 
-  if (runId != null) {
-    try {
-      final jobsOutput = await ghRepoApi('actions/runs/$runId/jobs');
-      final jobsJson = jsonDecode(jobsOutput) as Map<String, dynamic>;
-      final jobsList = (jobsJson['jobs'] as List<dynamic>? ?? [])
-          .whereType<Map>()
-          .toList();
-      final failedJobs = jobsList.where((j) {
-        final conc = j['conclusion']?.toString();
-        return conc == 'failure' ||
-            conc == 'timed_out' ||
-            conc == 'action_required';
-      }).toList();
-
-      if (failedJobs.isNotEmpty) {
-        final logBuffers = <String>[];
-        for (final job in failedJobs) {
-          final jobId = job['id']?.toString();
-          final jobName = job['name']?.toString() ?? 'Job';
-          if (jobId != null && jobId.isNotEmpty) {
-            try {
-              final jobLog = await ghRepoApi('actions/jobs/$jobId/logs');
-              if (jobLog.trim().isNotEmpty) {
-                logBuffers.add('--- Job: $jobName (ID: $jobId) ---\n$jobLog');
-              }
-            } catch (_) {}
-          }
-        }
-
-        if (logBuffers.isNotEmpty) {
-          final combinedLog = logBuffers.join('\n\n');
-          if (annotations.isNotEmpty) {
-            return 'Check Annotations:\n${annotations.join("\n")}\n\n$combinedLog';
-          }
-          return combinedLog;
-        }
-      }
-    } catch (_) {}
-
-    try {
-      final fallbackLog = await runCommand('gh', [
-        ...repoArgs,
-        'run',
-        'view',
-        runId,
-        '--log-failed',
-      ], workingDirectory: context.workingDir);
-      if (annotations.isNotEmpty) {
-        return 'Check Annotations:\n${annotations.join("\n")}\n\n$fallbackLog';
-      }
-      return fallbackLog;
-    } catch (e) {
-      if (annotations.isNotEmpty) {
-        return 'Check Annotations:\n${annotations.join("\n")}\n\nFailed to fetch logs: $e';
-      }
-      return 'Failed to fetch logs: $e';
-    }
-  }
-
-  if (annotations.isNotEmpty) {
-    return 'Check Annotations:\n${annotations.join("\n")}\n\nNon-GitHub Actions run. Inspect details at: $link';
-  }
-
-  return 'Non-GitHub Actions run. Inspect details at: $link';
+  return _prependAnnotations(annotations, logBody);
 }
 
-/// Fetches comments, reviews, and review threads for the specified [PrContext] using GraphQL.
-Future<PrGraphData> fetchPrGraphQLData(
-  PrContext context, {
-  CommandRunner runCommand = runCommand,
+String _prependAnnotations(List<String> annotations, String logBody) {
+  if (annotations.isEmpty) return logBody;
+  return 'Check Annotations:\n${annotations.join("\n")}\n\n$logBody';
+}
+
+Future<String> _fetchActionsRunLog(
+  PrContext context,
+  String runId, {
+  required Future<String> Function(String) ghRepoApi,
+  required CommandRunner runCommand,
 }) async {
-  const query = r'''
-  query($owner: String!, $repo: String!, $pr: Int!) {
-    repository(owner: $owner, name: $repo) {
-      pullRequest(number: $pr) {
-        comments(last: 100) {
-          nodes {
-            databaseId
-            author { login }
-            body
-            createdAt
-            url
-          }
-        }
-        reviews(last: 100) {
-          nodes {
-            id
-            databaseId
-            author { login }
-            body
-            state
-            submittedAt
-            url
-          }
-        }
-        reviewThreads(first: 100) {
-          nodes {
-            id
-            isResolved
-            comments(first: 100) {
-              nodes {
-                databaseId
-                author { login }
-                body
-                path
-                line
-                originalLine
-                createdAt
-                url
-              }
-            }
-          }
-        }
-      }
-    }
+  final combinedLog = await _fetchCheckRunJobLogs(runId, ghRepoApi);
+  if (combinedLog != null) return combinedLog;
+
+  try {
+    return await runCommand('gh', [
+      '-R',
+      '${context.owner}/${context.repo}',
+      'run',
+      'view',
+      runId,
+      '--log-failed',
+    ], workingDirectory: context.workingDir);
+  } catch (e) {
+    return 'Failed to fetch logs: $e';
   }
-  ''';
-
-  final graphqlResponse = await runCommand('gh', [
-    'api',
-    'graphql',
-    '-f',
-    'owner=${context.owner}',
-    '-f',
-    'repo=${context.repo}',
-    '-F',
-    'pr=${context.prNumber}',
-    '-f',
-    'query=$query',
-  ], workingDirectory: context.workingDir);
-
-  final parsed = jsonDecode(graphqlResponse) as Map<String, dynamic>;
-  if (parsed['errors'] != null) {
-    throw Exception('GraphQL errors returned: ${parsed['errors']}');
-  }
-
-  final repository = parsed['data']?['repository'] as Map?;
-  final prData = repository?['pullRequest'] as Map?;
-  if (prData == null) {
-    throw Exception('Pull request data not found in GraphQL response');
-  }
-
-  List<T> extractNodes<T>(Map? parent, String field, T Function(Map) mapper) {
-    return (parent?[field]?['nodes'] as List<dynamic>? ?? [])
-        .whereType<Map>()
-        .map(mapper)
-        .toList();
-  }
-
-  final comments = extractNodes(prData, 'comments', _parsePrComment);
-  final reviews = extractNodes(prData, 'reviews', _parsePrReview);
-
-  final threads = <PrReviewThread>[];
-  final rawThreads = prData['reviewThreads']?['nodes'] as List<dynamic>? ?? [];
-  for (final t in rawThreads) {
-    if (t is Map) {
-      final threadComments = extractNodes(t, 'comments', _parsePrComment);
-      threads.add((
-        id: t['id']?.toString() ?? '',
-        isResolved: t['isResolved'] == true,
-        comments: threadComments,
-      ));
-    }
-  }
-
-  return (comments: comments, reviews: reviews, reviewThreads: threads);
 }
 
 /// Posts a reply to a PR review comment using its numeric [commentId].
@@ -868,44 +581,150 @@ Future<void> replyAndResolveThread(
   );
 }
 
-PrCheckRun _parsePrCheckRun(Map json) {
-  return (
-    name: json['name']?.toString() ?? 'Unknown Check',
-    state: json['state']?.toString() ?? '',
-    bucket: json['bucket']?.toString() ?? '',
-    link: json['link']?.toString() ?? '',
-    workflow: json['workflow']?.toString() ?? '',
-  );
+Future<String> _detectPrNumberFromBranch(
+  String workingDir,
+  Never Function(String) onFail,
+  CommandRunner runCommand,
+) async {
+  String branch;
+  try {
+    branch = (await runCommand('git', [
+      'symbolic-ref',
+      '--short',
+      'HEAD',
+    ], workingDirectory: workingDir)).trim();
+  } catch (_) {
+    branch = '';
+  }
+  if (branch.isEmpty || branch == 'main' || branch == 'master') {
+    onFail(
+      'Active branch is ${branch.isEmpty ? 'detached HEAD' : '"$branch"'}. '
+      'Please specify a target PR number or URL.',
+    );
+  }
+
+  final listOutput = await runCommand('gh', [
+    'pr',
+    'list',
+    '--head',
+    branch,
+    '--json',
+    'number,url',
+  ], workingDirectory: workingDir);
+  final decodedList = jsonDecode(listOutput);
+  final listJson = decodedList is List<dynamic> ? decodedList : const [];
+  if (listJson.isEmpty) {
+    onFail(
+      'Error: Ambiguous context. No open PR found for branch "$branch". '
+      'Do not guess. Please explicitly ask the user for a PR number or URL.',
+    );
+  }
+  if (listJson.length > 1) {
+    onFail(
+      'Error: Ambiguous context. Multiple open PRs found for branch "$branch". '
+      'Do not guess. Please explicitly ask the user which PR number or URL to target.',
+    );
+  }
+  final firstPr = listJson[0];
+  if (firstPr is! Map || firstPr['number'] == null) {
+    onFail('Error: Unexpected PR data format from "gh pr list".');
+  }
+  return firstPr['number'].toString();
 }
 
-PrComment _parsePrComment(Map json) {
-  final authorLogin = switch (json['author']) {
-    {'login': final String login} => login,
-    _ => 'ghost',
-  };
-  return (
-    databaseId: json['databaseId']?.toString() ?? '',
-    author: authorLogin,
-    body: json['body']?.toString() ?? '',
-    path: json['path']?.toString() ?? '',
-    line: json['line'] ?? json['originalLine'] ?? 'N/A',
-    createdAt: json['createdAt']?.toString() ?? '',
-    url: json['url']?.toString() ?? '',
-  );
+Future<(String?, String?)> _resolveLocalRepoOwner(
+  String workingDir,
+  CommandRunner runCommand,
+) async {
+  try {
+    final repoOutput = await runCommand('gh', [
+      'repo',
+      'view',
+      '--json',
+      'owner,name',
+    ], workingDirectory: workingDir);
+    final repoJson = jsonDecode(repoOutput) as Map<String, dynamic>;
+    final localOwner =
+        (repoJson['owner'] as Map<String, dynamic>)['login'] as String;
+    final localRepo = repoJson['name'] as String;
+    return (localOwner, localRepo);
+  } catch (_) {
+    return (null, null);
+  }
 }
 
-PrReview _parsePrReview(Map json) {
-  final authorLogin = switch (json['author']) {
-    {'login': final String login} => login,
-    _ => 'ghost',
-  };
-  return (
-    id: json['id']?.toString() ?? '',
-    databaseId: json['databaseId']?.toString() ?? '',
-    author: authorLogin,
-    body: json['body']?.toString() ?? '',
-    state: json['state']?.toString() ?? '',
-    submittedAt: json['submittedAt']?.toString() ?? '',
-    url: json['url']?.toString() ?? '',
-  );
+Future<List<String>> _fetchCheckRunAnnotations(
+  String? checkRunId,
+  Future<String> Function(String) ghRepoApi,
+) async {
+  if (checkRunId == null) return const [];
+  try {
+    final annOutput = await ghRepoApi('check-runs/$checkRunId/annotations');
+    final annList = jsonDecode(annOutput) as List<dynamic>;
+    return annList
+        .whereType<Map>()
+        .map(_formatCheckAnnotation)
+        .nonNulls
+        .toList();
+  } catch (_) {
+    return const [];
+  }
+}
+
+String? _formatCheckAnnotation(Map<dynamic, dynamic> ann) {
+  final message = ann['message']?.toString() ?? '';
+  if (message.isEmpty) return null;
+
+  final path = ann['path']?.toString() ?? '';
+  final startLine = ann['start_line'];
+  final level = ann['annotation_level']?.toString() ?? '';
+  final title = ann['title']?.toString() ?? '';
+  final pathPart = path.isNotEmpty ? '$path:$startLine ' : '';
+  final titlePart = title.isNotEmpty ? '($title): ' : '';
+  return 'Annotation [$level] $pathPart$titlePart$message';
+}
+
+Future<String?> _fetchCheckRunJobLogs(
+  String runId,
+  Future<String> Function(String) ghRepoApi,
+) async {
+  try {
+    final jobsOutput = await ghRepoApi('actions/runs/$runId/jobs');
+    final jobsJson = jsonDecode(jobsOutput) as Map<String, dynamic>;
+    final jobsList = (jobsJson['jobs'] as List<dynamic>? ?? [])
+        .whereType<Map>();
+    final failedJobs = jobsList.where(_isFailedJob).toList();
+    if (failedJobs.isEmpty) return null;
+
+    final logBuffers = <String>[];
+    for (final job in failedJobs) {
+      final formatted = await _fetchSingleJobLog(job, ghRepoApi);
+      if (formatted != null) logBuffers.add(formatted);
+    }
+    return logBuffers.isNotEmpty ? logBuffers.join('\n\n') : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+bool _isFailedJob(Map<dynamic, dynamic> job) {
+  final conc = job['conclusion']?.toString();
+  return conc == 'failure' || conc == 'timed_out' || conc == 'action_required';
+}
+
+Future<String?> _fetchSingleJobLog(
+  Map<dynamic, dynamic> job,
+  Future<String> Function(String) ghRepoApi,
+) async {
+  final jobId = job['id']?.toString();
+  if (jobId == null || jobId.isEmpty) return null;
+
+  try {
+    final jobLog = await ghRepoApi('actions/jobs/$jobId/logs');
+    if (jobLog.trim().isEmpty) return null;
+    final jobName = job['name']?.toString() ?? 'Job';
+    return '--- Job: $jobName (ID: $jobId) ---\n$jobLog';
+  } catch (_) {
+    return null;
+  }
 }

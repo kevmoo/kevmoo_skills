@@ -11,30 +11,32 @@ void main(List<String> arguments) {
   exitCode = _run(arguments);
 }
 
+ArgParser _buildArgParser() => ArgParser()
+  ..addFlag(
+    'help',
+    abbr: 'h',
+    negatable: false,
+    help: 'Print usage information.',
+  )
+  ..addFlag(
+    'write',
+    abbr: 'w',
+    negatable: false,
+    help: 'Writes the updated catalog to skills/dart-cleanup/SKILL.md.',
+  )
+  ..addFlag(
+    'validate',
+    negatable: false,
+    help: 'Validates that dart-cleanup/SKILL.md is up-to-date and sorted.',
+  )
+  ..addFlag(
+    'check-env',
+    negatable: false,
+    help: 'Checks local repositories for missing or uncataloged skills.',
+  );
+
 int _run(List<String> arguments) {
-  final parser = ArgParser()
-    ..addFlag(
-      'help',
-      abbr: 'h',
-      negatable: false,
-      help: 'Print usage information.',
-    )
-    ..addFlag(
-      'write',
-      abbr: 'w',
-      negatable: false,
-      help: 'Writes the updated catalog to skills/dart-cleanup/SKILL.md.',
-    )
-    ..addFlag(
-      'validate',
-      negatable: false,
-      help: 'Validates that dart-cleanup/SKILL.md is up-to-date and sorted.',
-    )
-    ..addFlag(
-      'check-env',
-      negatable: false,
-      help: 'Checks local repositories for missing or uncataloged skills.',
-    );
+  final parser = _buildArgParser();
 
   final ArgResults results;
   try {
@@ -57,73 +59,38 @@ int _run(List<String> arguments) {
     return ExitCode.success.code;
   }
 
-  final writeMode = results.flag('write');
-  final validateMode = results.flag('validate');
-  final checkEnvMode = results.flag('check-env');
-
   final repoRoot = _findRepoRoot(Directory.current);
   if (repoRoot == null) {
     stderr.writeln('Error: Could not find repository root containing skills.');
     return ExitCode.config.code;
   }
 
-  final catalogJsonFile = File(
-    p.join(repoRoot.path, 'tool', 'data', 'dart_cleanup_catalog.json'),
-  );
-  if (!catalogJsonFile.existsSync()) {
-    stderr.writeln(
-      'Error: Catalog JSON file not found at ${catalogJsonFile.path}',
-    );
-    return ExitCode.config.code;
+  final loaded = _loadCatalogJson(repoRoot);
+  if (loaded.exitCode != null) {
+    return loaded.exitCode!;
   }
-
-  final dynamic catalogData;
-  try {
-    catalogData = jsonDecode(catalogJsonFile.readAsStringSync());
-  } catch (e) {
-    stderr.writeln('Error parsing catalog JSON: $e');
-    return ExitCode.data.code;
-  }
-
-  if (catalogData is! Map<String, dynamic>) {
-    stderr.writeln('Error: Catalog JSON root must be a JSON object.');
-    return ExitCode.data.code;
-  }
-
+  final catalogJsonFile = loaded.file!;
+  final catalogData = loaded.data!;
   final repositories =
       catalogData['repositories'] as Map<String, dynamic>? ?? {};
   final categories = catalogData['categories'] as List<dynamic>? ?? [];
 
-  // Check environment & local system setup
   final envIssues = checkLocalEnvironment(repositories, categories);
-  if (envIssues.isNotEmpty) {
-    stderr.writeln(
-      '------------------------------------------------------------',
-    );
-    stderr.writeln('🔍 Local System Environment Audit:');
-    for (final issue in envIssues) {
-      stderr.writeln(issue);
-    }
-    stderr.writeln(
-      '------------------------------------------------------------',
-    );
+  _printEnvIssues(envIssues);
+
+  if (results.flag('check-env')) {
+    return envIssues.any((i) => i.isFatal)
+        ? ExitCode.config.code
+        : ExitCode.success.code;
   }
 
-  if (checkEnvMode) {
-    if (envIssues.any((i) => i.isFatal)) {
-      return ExitCode.config.code;
-    }
-    return ExitCode.success.code;
-  }
-
-  // If in write mode, capture latest commit SHA and dates if available
+  final writeMode = results.flag('write');
   if (writeMode) {
     _syncRepositoryCommits(repositories);
     const encoder = JsonEncoder.withIndent('  ');
     catalogJsonFile.writeAsStringSync('${encoder.convert(catalogData)}\n');
   }
 
-  // Validate catalog data structure and sorting
   final validationErrors = validateCatalogStructure(categories, repositories);
   if (validationErrors.isNotEmpty) {
     stderr.writeln('Catalog validation errors:');
@@ -133,9 +100,64 @@ int _run(List<String> arguments) {
     return ExitCode.data.code;
   }
 
-  // Generate markdown
   final generatedMarkdown = generateCatalogMarkdown(categories, repositories);
+  return _applySkillCatalogUpdate(
+    repoRoot,
+    generatedMarkdown,
+    writeMode: writeMode,
+    validateMode: results.flag('validate'),
+  );
+}
 
+({File? file, Map<String, dynamic>? data, int? exitCode}) _loadCatalogJson(
+  Directory repoRoot,
+) {
+  final catalogJsonFile = File(
+    p.join(repoRoot.path, 'tool', 'data', 'dart_cleanup_catalog.json'),
+  );
+  if (!catalogJsonFile.existsSync()) {
+    stderr.writeln(
+      'Error: Catalog JSON file not found at ${catalogJsonFile.path}',
+    );
+    return (file: null, data: null, exitCode: ExitCode.config.code);
+  }
+
+  final dynamic catalogData;
+  try {
+    catalogData = jsonDecode(catalogJsonFile.readAsStringSync());
+  } catch (e) {
+    stderr.writeln('Error parsing catalog JSON: $e');
+    return (file: null, data: null, exitCode: ExitCode.data.code);
+  }
+
+  if (catalogData is! Map<String, dynamic>) {
+    stderr.writeln('Error: Catalog JSON root must be a JSON object.');
+    return (file: null, data: null, exitCode: ExitCode.data.code);
+  }
+
+  return (file: catalogJsonFile, data: catalogData, exitCode: null);
+}
+
+void _printEnvIssues(List<EnvIssue> envIssues) {
+  if (envIssues.isEmpty) return;
+  stderr.writeln(
+    '------------------------------------------------------------',
+  );
+  stderr.writeln('🔍 Local System Environment Audit:');
+  for (final issue in envIssues) {
+    stderr.writeln(issue);
+  }
+  stderr.writeln(
+    '------------------------------------------------------------',
+  );
+}
+
+int _applySkillCatalogUpdate(
+  Directory repoRoot,
+  String generatedMarkdown, {
+  required bool writeMode,
+  required bool validateMode,
+}) {
   final targetSkillFile = File(
     p.join(repoRoot.path, 'skills', 'dart-cleanup', 'SKILL.md'),
   );
@@ -173,14 +195,13 @@ int _run(List<String> arguments) {
     if (normalizedOriginal == normalizedUpdated) {
       stdout.writeln('skills/dart-cleanup/SKILL.md catalog is up-to-date!');
       return ExitCode.success.code;
-    } else {
-      stderr
-        ..writeln('Error: skills/dart-cleanup/SKILL.md catalog is out-of-date.')
-        ..writeln(
-          'Run `dart tool/bin/generate_cleanup_catalog.dart --write` to update it.',
-        );
-      return ExitCode.data.code;
     }
+    stderr
+      ..writeln('Error: skills/dart-cleanup/SKILL.md catalog is out-of-date.')
+      ..writeln(
+        'Run `dart tool/bin/generate_cleanup_catalog.dart --write` to update it.',
+      );
+    return ExitCode.data.code;
   }
 
   if (writeMode) {
@@ -200,13 +221,17 @@ int _run(List<String> arguments) {
   return ExitCode.success.code;
 }
 
+Directory _resolveRepoDir(Map<String, dynamic> repoConfig, String home) {
+  final rawPath = repoConfig['path'] as String? ?? '';
+  return Directory(rawPath.replaceFirst('~', home));
+}
+
 void _syncRepositoryCommits(Map<String, dynamic> repositories) {
   final home = Platform.environment['HOME'] ?? '';
   for (final entry in repositories.entries) {
     final repoConfig = entry.value as Map<String, dynamic>;
-    final rawPath = repoConfig['path'] as String? ?? '';
-    final resolvedPath = rawPath.replaceFirst('~', home);
-    final repoDir = Directory(resolvedPath);
+    final repoDir = _resolveRepoDir(repoConfig, home);
+    final resolvedPath = repoDir.path;
 
     if (!repoDir.existsSync()) continue;
 
@@ -273,128 +298,144 @@ List<EnvIssue> checkLocalEnvironment(
 ) {
   final issues = <EnvIssue>[];
   final home = Platform.environment['HOME'] ?? '';
-  final allConfiguredSkills = <String, String>{}; // skill -> repoKey
-
-  for (final cat in categories) {
-    if (cat is Map<String, dynamic>) {
-      final skills = cat['skills'] as List<dynamic>? ?? [];
-      for (final s in skills) {
-        if (s is Map<String, dynamic>) {
-          final name = s['name'] as String? ?? '';
-          final repo = s['repo'] as String? ?? '';
-          if (name.isNotEmpty) {
-            allConfiguredSkills[name] = repo;
-          }
-        }
-      }
-    }
-  }
+  final allConfiguredSkills = _collectConfiguredSkills(categories);
 
   for (final entry in repositories.entries) {
-    final repoKey = entry.key;
     final repoConfig = entry.value as Map<String, dynamic>;
-    final rawPath = repoConfig['path'] as String? ?? '';
-    final cloneUrl = repoConfig['cloneUrl'] as String? ?? '';
-    final resolvedPath = rawPath.replaceFirst('~', home);
-    final repoDir = Directory(resolvedPath);
+    issues.addAll(
+      _checkSingleRepository(entry.key, repoConfig, home, allConfiguredSkills),
+    );
+  }
 
-    if (!repoDir.existsSync()) {
-      issues.add(
-        EnvIssue(
-          EnvIssueType.missingRepo,
-          'Repository "$repoKey" not found at $resolvedPath',
-          fix: 'Clone it via:\n   git clone $cloneUrl $resolvedPath',
-        ),
-      );
-      continue;
-    }
+  return issues;
+}
 
-    // Verify directory is a git repository
-    final gitCheck = Process.runSync('git', [
-      'rev-parse',
-      '--is-inside-work-tree',
-    ], workingDirectory: resolvedPath);
-    if (gitCheck.exitCode != 0) {
-      issues.add(
-        EnvIssue(
-          EnvIssueType.notGitRepo,
-          'Directory at $resolvedPath is not a git repository.',
-          fix:
-              'Ensure a valid git clone of $cloneUrl is placed at $resolvedPath',
-        ),
-      );
-      continue;
-    }
-
-    // Verify git remote origin aligns with cloneUrl
-    final remoteCheck = Process.runSync('git', [
-      'config',
-      '--get',
-      'remote.origin.url',
-    ], workingDirectory: resolvedPath);
-    if (remoteCheck.exitCode == 0) {
-      final actualUrl = remoteCheck.stdout.toString().trim();
-      final actualSlug = parseRepoSlugFromUrl(actualUrl);
-      final expectedSlug = parseRepoSlugFromUrl(cloneUrl);
-      if (actualSlug != null &&
-          expectedSlug != null &&
-          actualSlug != expectedSlug) {
-        issues.add(
-          EnvIssue(
-            EnvIssueType.mismatchedRemote,
-            'Directory "$resolvedPath" points to remote "$actualUrl" ($actualSlug),\n'
-            '   expected "$cloneUrl" ($expectedSlug).',
-            fix:
-                'Ensure the correct repository is checked out at $resolvedPath',
-          ),
-        );
-      }
-    }
-
-    final skillsDir = Directory(p.join(repoDir.path, 'skills'));
-    if (!skillsDir.existsSync()) {
-      continue;
-    }
-
-    // Find all skills on disk in this repo
-    final onDiskSkills = <String>{};
-    for (final child in skillsDir.listSync().whereType<Directory>()) {
-      final skillFile = File(p.join(child.path, 'SKILL.md'));
-      if (skillFile.existsSync()) {
-        final skillName = p.basename(child.path);
-        onDiskSkills.add(skillName);
-
-        if (!allConfiguredSkills.containsKey(skillName)) {
-          issues.add(
-            EnvIssue(
-              EnvIssueType.uncatalogedSkill,
-              'Found skill "$skillName" in "$repoKey" not listed in tool/data/dart_cleanup_catalog.json.',
-              fix:
-                  'Add "$skillName" to a category in tool/data/dart_cleanup_catalog.json with a summary.',
-            ),
-          );
-        }
-      }
-    }
-
-    // Check skills configured for this repo in JSON exist on disk
-    for (final skillEntry in allConfiguredSkills.entries) {
-      if (skillEntry.value == repoKey) {
-        final skillName = skillEntry.key;
-        if (!onDiskSkills.contains(skillName)) {
-          issues.add(
-            EnvIssue(
-              EnvIssueType.missingSkill,
-              'Skill "$skillName" configured for "$repoKey" was not found on disk at ${p.join(skillsDir.path, skillName, 'SKILL.md')}',
-              fix:
-                  'Verify the skill exists in the repo or remove it from tool/data/dart_cleanup_catalog.json.',
-            ),
-          );
-        }
+Map<String, String> _collectConfiguredSkills(List<dynamic> categories) {
+  final allConfiguredSkills = <String, String>{};
+  for (final cat in categories.whereType<Map<String, dynamic>>()) {
+    final skills = cat['skills'] as List<dynamic>? ?? [];
+    for (final s in skills.whereType<Map<String, dynamic>>()) {
+      final name = s['name'] as String? ?? '';
+      final repo = s['repo'] as String? ?? '';
+      if (name.isNotEmpty) {
+        allConfiguredSkills[name] = repo;
       }
     }
   }
+  return allConfiguredSkills;
+}
 
+List<EnvIssue> _checkSingleRepository(
+  String repoKey,
+  Map<String, dynamic> repoConfig,
+  String home,
+  Map<String, String> allConfiguredSkills,
+) {
+  final cloneUrl = repoConfig['cloneUrl'] as String? ?? '';
+  final repoDir = _resolveRepoDir(repoConfig, home);
+  final resolvedPath = repoDir.path;
+
+  if (!repoDir.existsSync()) {
+    return [
+      EnvIssue(
+        EnvIssueType.missingRepo,
+        'Repository "$repoKey" not found at $resolvedPath',
+        fix: 'Clone it via:\n   git clone $cloneUrl $resolvedPath',
+      ),
+    ];
+  }
+
+  final gitCheck = Process.runSync('git', [
+    'rev-parse',
+    '--is-inside-work-tree',
+  ], workingDirectory: resolvedPath);
+  if (gitCheck.exitCode != 0) {
+    return [
+      EnvIssue(
+        EnvIssueType.notGitRepo,
+        'Directory at $resolvedPath is not a git repository.',
+        fix: 'Ensure a valid git clone of $cloneUrl is placed at $resolvedPath',
+      ),
+    ];
+  }
+
+  final issues = <EnvIssue>[];
+  final remoteIssue = _checkRemoteOrigin(resolvedPath, cloneUrl);
+  if (remoteIssue != null) {
+    issues.add(remoteIssue);
+  }
+
+  final skillsDir = Directory(p.join(repoDir.path, 'skills'));
+  if (skillsDir.existsSync()) {
+    issues.addAll(
+      _auditRepositorySkills(repoKey, skillsDir, allConfiguredSkills),
+    );
+  }
+  return issues;
+}
+
+EnvIssue? _checkRemoteOrigin(String resolvedPath, String cloneUrl) {
+  final remoteCheck = Process.runSync('git', [
+    'config',
+    '--get',
+    'remote.origin.url',
+  ], workingDirectory: resolvedPath);
+  if (remoteCheck.exitCode != 0) return null;
+
+  final actualUrl = remoteCheck.stdout.toString().trim();
+  final actualSlug = parseRepoSlugFromUrl(actualUrl);
+  final expectedSlug = parseRepoSlugFromUrl(cloneUrl);
+  if (actualSlug != null &&
+      expectedSlug != null &&
+      actualSlug != expectedSlug) {
+    return EnvIssue(
+      EnvIssueType.mismatchedRemote,
+      'Directory "$resolvedPath" points to remote "$actualUrl" ($actualSlug),\n'
+      '   expected "$cloneUrl" ($expectedSlug).',
+      fix: 'Ensure the correct repository is checked out at $resolvedPath',
+    );
+  }
+  return null;
+}
+
+List<EnvIssue> _auditRepositorySkills(
+  String repoKey,
+  Directory skillsDir,
+  Map<String, String> allConfiguredSkills,
+) {
+  final issues = <EnvIssue>[];
+  final onDiskSkills = <String>{};
+  for (final child in skillsDir.listSync().whereType<Directory>()) {
+    final skillFile = File(p.join(child.path, 'SKILL.md'));
+    if (!skillFile.existsSync()) continue;
+    final skillName = p.basename(child.path);
+    onDiskSkills.add(skillName);
+
+    if (!allConfiguredSkills.containsKey(skillName)) {
+      issues.add(
+        EnvIssue(
+          EnvIssueType.uncatalogedSkill,
+          'Found skill "$skillName" in "$repoKey" not listed in tool/data/dart_cleanup_catalog.json.',
+          fix:
+              'Add "$skillName" to a category in tool/data/dart_cleanup_catalog.json with a summary.',
+        ),
+      );
+    }
+  }
+
+  for (final skillEntry in allConfiguredSkills.entries) {
+    if (skillEntry.value == repoKey && !onDiskSkills.contains(skillEntry.key)) {
+      final skillName = skillEntry.key;
+      issues.add(
+        EnvIssue(
+          EnvIssueType.missingSkill,
+          'Skill "$skillName" configured for "$repoKey" was not found on disk at ${p.join(skillsDir.path, skillName, 'SKILL.md')}',
+          fix:
+              'Verify the skill exists in the repo or remove it from tool/data/dart_cleanup_catalog.json.',
+        ),
+      );
+    }
+  }
   return issues;
 }
 
@@ -402,9 +443,18 @@ List<String> validateCatalogStructure(
   List<dynamic> categories,
   Map<String, dynamic> repositories,
 ) {
-  final errors = <String>[];
+  final errors = <String>[..._validateRepositories(repositories)];
   final seenSkills = <String>{};
 
+  for (final cat in categories) {
+    errors.addAll(_validateCategory(cat, repositories, seenSkills));
+  }
+
+  return errors;
+}
+
+List<String> _validateRepositories(Map<String, dynamic> repositories) {
+  final errors = <String>[];
   for (final entry in repositories.entries) {
     final key = entry.key;
     final config = entry.value;
@@ -425,51 +475,53 @@ List<String> validateCatalogStructure(
       );
     }
   }
+  return errors;
+}
 
-  for (final cat in categories) {
-    if (cat is! Map<String, dynamic>) {
-      errors.add('Category entry must be a JSON object: $cat');
-      continue;
-    }
-    final catName = cat['name'] as String? ?? '';
-    if (catName.isEmpty) {
-      errors.add('Category missing name: $cat');
-    }
-
-    final skills = cat['skills'] as List<dynamic>? ?? [];
-    String? prevSkillName;
-    for (final s in skills) {
-      if (s is! Map<String, dynamic>) {
-        errors.add(
-          'Skill entry must be a JSON object: $s in category "$catName"',
-        );
-        continue;
-      }
-      final name = s['name'] as String? ?? '';
-      final repo = s['repo'] as String? ?? '';
-      if (name.isEmpty) {
-        errors.add('Skill missing name in category "$catName"');
-        continue;
-      }
-      if (!repositories.containsKey(repo)) {
-        errors.add(
-          'Skill "$name" references unknown repository key "$repo" in category "$catName".',
-        );
-      }
-      if (seenSkills.contains(name)) {
-        errors.add('Duplicate skill "$name" found across categories.');
-      }
-      seenSkills.add(name);
-
-      if (prevSkillName != null && name.compareTo(prevSkillName) < 0) {
-        errors.add(
-          'Skills in category "$catName" must be sorted alphabetically: "$name" should appear before "$prevSkillName".',
-        );
-      }
-      prevSkillName = name;
-    }
+List<String> _validateCategory(
+  dynamic cat,
+  Map<String, dynamic> repositories,
+  Set<String> seenSkills,
+) {
+  if (cat is! Map<String, dynamic>) {
+    return ['Category entry must be a JSON object: $cat'];
+  }
+  final errors = <String>[];
+  final catName = cat['name'] as String? ?? '';
+  if (catName.isEmpty) {
+    errors.add('Category missing name: $cat');
   }
 
+  final skills = cat['skills'] as List<dynamic>? ?? [];
+  String? prevSkillName;
+  for (final s in skills) {
+    if (s is! Map<String, dynamic>) {
+      errors.add(
+        'Skill entry must be a JSON object: $s in category "$catName"',
+      );
+      continue;
+    }
+    final name = s['name'] as String? ?? '';
+    final repo = s['repo'] as String? ?? '';
+    if (name.isEmpty) {
+      errors.add('Skill missing name in category "$catName"');
+      continue;
+    }
+    if (!repositories.containsKey(repo)) {
+      errors.add(
+        'Skill "$name" references unknown repository key "$repo" in category "$catName".',
+      );
+    }
+    if (!seenSkills.add(name)) {
+      errors.add('Duplicate skill "$name" found across categories.');
+    }
+    if (prevSkillName != null && name.compareTo(prevSkillName) < 0) {
+      errors.add(
+        'Skills in category "$catName" must be sorted alphabetically: "$name" should appear before "$prevSkillName".',
+      );
+    }
+    prevSkillName = name;
+  }
   return errors;
 }
 

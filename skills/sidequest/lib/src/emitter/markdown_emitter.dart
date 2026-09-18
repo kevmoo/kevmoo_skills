@@ -30,52 +30,45 @@ class MarkdownEmitter {
   }
 
   static void _renderCautionHeader(StringBuffer buffer, SidequestData data) {
-    final dirtyLines = <String>[];
+    final dirtyLines = <String>[
+      for (final sq in data.globalSideQuests)
+        ?_dirtySideQuestLine(sq, isGlobal: true),
+      for (final quest in data.quests) ..._dirtyQuestLines(quest),
+    ];
 
-    for (final sq in data.globalSideQuests) {
-      if (sq.status == SideQuestStatus.completed) continue;
-      final vcs = sq.vcs;
-      if (vcs != null && _isVcsDirty(vcs)) {
-        final statusLabel = switch (sq.status) {
-          SideQuestStatus.active => 'Global Side-Quest',
-          SideQuestStatus.parked => 'Parked Global Side-Quest',
-          SideQuestStatus.completed => 'Completed Global Side-Quest',
-        };
-        dirtyLines.add(_formatDirtyLine('$statusLabel ${sq.id}', vcs));
-      }
+    if (dirtyLines.isEmpty) return;
+    buffer.writeln('> [!CAUTION]');
+    buffer.writeln('> **Uncommitted & Unpushed Changes:**');
+    for (final line in dirtyLines) {
+      buffer.writeln('> * $line');
     }
+    buffer.writeln();
+  }
 
-    for (final quest in data.quests) {
-      if (quest.status == QuestStatus.completed) continue;
-      final vcs = quest.vcs;
-      if (vcs != null && _isVcsDirty(vcs)) {
-        dirtyLines.add(_formatDirtyLine('Main Quest ${quest.id}', vcs));
-      }
-
-      for (final sq in quest.sideQuests) {
-        if (sq.status == SideQuestStatus.completed) continue;
-        final sqVcs = sq.vcs;
-        if (sqVcs != null && _isVcsDirty(sqVcs)) {
-          final statusLabel = switch (sq.status) {
-            SideQuestStatus.active => 'Active',
-            SideQuestStatus.parked => 'Parked',
-            SideQuestStatus.completed => 'Completed',
-          };
-          dirtyLines.add(
-            _formatDirtyLine('$statusLabel Side-Quest ${sq.id}', sqVcs),
-          );
-        }
-      }
+  static Iterable<String> _dirtyQuestLines(MainQuest quest) sync* {
+    if (quest.status == QuestStatus.completed) return;
+    final vcs = quest.vcs;
+    if (vcs != null && _isVcsDirty(vcs)) {
+      yield _formatDirtyLine('Main Quest ${quest.id}', vcs);
     }
-
-    if (dirtyLines.isNotEmpty) {
-      buffer.writeln('> [!CAUTION]');
-      buffer.writeln('> **Uncommitted & Unpushed Changes:**');
-      for (final line in dirtyLines) {
-        buffer.writeln('> * $line');
-      }
-      buffer.writeln();
+    for (final sq in quest.sideQuests) {
+      final line = _dirtySideQuestLine(sq, isGlobal: false);
+      if (line != null) yield line;
     }
+  }
+
+  static String? _dirtySideQuestLine(SideQuest sq, {required bool isGlobal}) {
+    if (sq.status == SideQuestStatus.completed) return null;
+    final vcs = sq.vcs;
+    if (vcs == null || !_isVcsDirty(vcs)) return null;
+    final scope = isGlobal ? 'Global Side-Quest' : 'Side-Quest';
+    final statusLabel = switch ((sq.status, isGlobal)) {
+      (SideQuestStatus.active, true) => scope,
+      (SideQuestStatus.active, false) => 'Active $scope',
+      (SideQuestStatus.parked, _) => 'Parked $scope',
+      (SideQuestStatus.completed, _) => 'Completed $scope',
+    };
+    return _formatDirtyLine('$statusLabel ${sq.id}', vcs);
   }
 
   static bool _isVcsDirty(VcsState vcs) => vcs.stage.isCaution;
@@ -169,24 +162,21 @@ class MarkdownEmitter {
     final isDone = item.status == TaskStatus.completed;
     final checkbox = isDone ? '[x]' : '[ ]';
     final tag = _orderTag(item.completionOrder, lastCompletionOrder);
+    final isBlocker = item.type == TaskType.blocker;
+    final label = isBlocker ? 'Blocker' : 'Step';
+    final icon = switch ((isBlocker, isDone)) {
+      (true, true) => '💀',
+      (true, false) => '👾',
+      (false, _) => '👣',
+    };
 
-    if (item.type == TaskType.blocker) {
-      if (isDone) {
-        buffer.writeln(
-          '  * $checkbox $tag💀 ~~*Blocker ${item.id}:* ${item.title}~~ -> *Resolved*',
-        );
-      } else {
-        buffer.writeln('  * $checkbox 👾 *Blocker ${item.id}:* ${item.title}');
-      }
+    if (isDone) {
+      final doneLabel = isBlocker ? 'Resolved' : 'Done';
+      buffer.writeln(
+        '  * $checkbox $tag$icon ~~*$label ${item.id}:* ${item.title}~~ -> *$doneLabel*',
+      );
     } else {
-      // Step
-      if (isDone) {
-        buffer.writeln(
-          '  * $checkbox $tag👣 ~~*Step ${item.id}:* ${item.title}~~ -> *Done*',
-        );
-      } else {
-        buffer.writeln('  * $checkbox 👣 *Step ${item.id}:* ${item.title}');
-      }
+      buffer.writeln('  * $checkbox $icon *$label ${item.id}:* ${item.title}');
     }
   }
 
