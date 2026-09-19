@@ -3,63 +3,69 @@ name: duckdb
 description: >-
   Queries, inspects, transforms, and converts local structured and
   semi-structured data files (JSON, JSONL, NDJSON, CSV, TSV, Parquet, SQLite) on
-  Cloudtop and macOS using DuckDB SQL. Use when querying local JSON/CSV dumps,
+  Linux and macOS using DuckDB SQL. Use when querying local JSON/CSV dumps,
   benchmark JSON artifacts (e.g. bench_press), inspecting schemas and row
   counts, mining agent conversation transcripts (transcript.jsonl), joining
   local files across formats, converting large JSON/CSV datasets to Parquet,
   querying local SQLite (.db) files, or streaming shell pipelines via stdin.
   Prefer over ad-hoc Python scripts (json/csv) or jq for filtering, grouping,
-  aggregating, and joining local datasets. Don't use for distributed databases
-  (BigQuery, Spanner, F1) or PLx dashboards.
+  aggregating, and joining local datasets. Don't use for remote cloud data
+  warehouses (e.g. BigQuery, Snowflake, Spanner).
+key_features:
+  - Non-interactive subshell flag safety (-batch -dark-mode)
+  - Fast JSONL, CSV, Parquet, and SQLite querying
+  - Explicit schema projection & multi-file globbing
+  - Cross-format SQL joins & Parquet materialization
 ---
 
-# DuckDB on Cloudtop & macOS
+# DuckDB CLI Analytics
 
 Fast analytical SQL engine for querying, analyzing, and converting local data
 files (JSON, JSONL, CSV, TSV, Parquet, SQLite) directly from the shell without
 database servers or external imports.
-
-[TOC]
 
 ## Quick Start & Execution Setup
 
 DuckDB runs as a standalone CLI binary. Always invoke `~/.local/bin/duckdb` (or
 `duckdb` when `~/.local/bin` is in `$PATH`) with **`-batch -dark-mode`**.
 
-### Installation & Subshell PATH Setup on Cloudtop / gLinux / macOS
+### Installation & Subshell PATH Setup (Linux & macOS)
 
 To prevent `exit code 127: duckdb: command not found` in non-interactive agent
 subshells (where `mise` or `asdf` shims are not sourced):
 
--   **Direct Binary / Symlink in `~/.local/bin/duckdb` (Recommended)**: Ensure
-    the binary is directly accessible at `~/.local/bin/duckdb`:
+- **Direct Binary / Symlink in `~/.local/bin/duckdb` (Recommended)**: Ensure the
+  binary is directly accessible at `~/.local/bin/duckdb` (or
+  `/opt/homebrew/bin/duckdb` on Apple Silicon macOS):
 
-    ```bash
-    # Option A: If installed via mise, symlink into ~/.local/bin/
-    ln -sf ~/.local/share/mise/installs/duckdb/latest/duckdb ~/.local/bin/duckdb
+  ```bash
+  # Option A: If installed via mise, symlink into ~/.local/bin/
+  ln -sf ~/.local/share/mise/installs/duckdb/latest/duckdb ~/.local/bin/duckdb
 
-    # Option B: Direct download from GitHub Releases (Linux amd64)
-    curl -LO https://github.com/duckdb/duckdb/releases/latest/download/duckdb_cli-linux-amd64.zip
-    unzip -o duckdb_cli-linux-amd64.zip -d ~/.local/bin/
-    ```
+  # Option B: macOS Homebrew
+  brew install duckdb
+
+  # Option C: Direct download from GitHub Releases (Linux amd64)
+  curl -LO https://github.com/duckdb/duckdb/releases/latest/download/duckdb_cli-linux-amd64.zip
+  unzip -o duckdb_cli-linux-amd64.zip -d ~/.local/bin/
+  ```
 
 ### Critical Flags
 
--   `-batch -dark-mode` *(MANDATORY together in subshells)*:
-    -   `-dark-mode`: DuckDB attempts to detect terminal background color via
-        OSC query sequences on startup. In non-interactive agent subshells, this
-        probe times out after **5 seconds** (`Timeout trying to read terminal
-        background color (> 5s elapsed)`). **`-batch` alone does NOT disable
-        this probe** — `-dark-mode` (or `-light-mode`) is strictly required.
-    -   `-batch`: Disables interactive progress bars and prompt formatting.
--   Output formatting:
-    -   `-box` *(Default)*: Clean Unicode boxed tables, ideal for terminal
-        viewing.
-    -   `-json`: Output rows as JSON array of objects (ideal for piping to
-        scripts).
-    -   `-csv`: Output standard comma-separated values with headers.
-    -   `-markdown`: Output standard markdown pipe tables.
-    -   `-bail`: Stop execution immediately on first error.
+- `-batch -dark-mode` _(MANDATORY together in subshells)_:
+  - `-dark-mode`: DuckDB attempts to detect terminal background color via OSC
+    query sequences on startup. In non-interactive agent subshells, this probe
+    times out after **5 seconds**
+    (`Timeout trying to read terminal background color (> 5s elapsed)`).
+    **`-batch` alone does NOT disable this probe** — `-dark-mode` (or
+    `-light-mode`) is strictly required.
+  - `-batch`: Disables interactive progress bars and prompt formatting.
+- Output formatting:
+  - `-box` _(Default)_: Clean Unicode boxed tables, ideal for terminal viewing.
+  - `-json`: Output rows as JSON array of objects (ideal for piping to scripts).
+  - `-csv`: Output standard comma-separated values with headers.
+  - `-markdown`: Output standard markdown pipe tables.
+  - `-bail`: Stop execution immediately on first error.
 
 ```bash
 # Human-readable boxed table (non-interactive safe, zero 5s hang)
@@ -69,7 +75,7 @@ subshells (where `mise` or `asdf` shims are not sourced):
 ~/.local/bin/duckdb -batch -dark-mode -json -c "SELECT 42 AS answer;"
 ```
 
---------------------------------------------------------------------------------
+---
 
 ## Core Gotchas & Invariants
 
@@ -82,8 +88,8 @@ subshells (where `mise` or `asdf` shims are not sourced):
     rows, DuckDB defaults to a common schema and may drop disparate keys. Pass
     `union_by_name = true` inside `read_json` or `read_json_auto`.
 4.  **Interrupted / Malformed JSON Lines**: In log files or interrupted
-    processes, malformed lines will abort the query. Pass `ignore_errors =
-    true`.
+    processes, malformed lines will abort the query. Pass
+    `ignore_errors = true`.
 5.  **Transparent Compression**: Files ending in `.gz` or `.zst` are read
     automatically without manual decompression.
 6.  **Explicit `columns={...}` Projection & `STRUCT` vs. `JSON` Scalar Gotcha**:
@@ -93,19 +99,17 @@ subshells (where `mise` or `asdf` shims are not sourced):
     object/array column as `'JSON'` or `'JSON[]'`, DuckDB returns raw
     JSON-encoded scalars (with quotes inside the string, e.g.,
     `"\"run_command\""`), and comparing `tc.name = 'run_command'` fails with
-    `Malformed JSON at byte 0 of input: unexpected character. Input:
-    "run_command"`.
-    *   **Fix**: Always type nested objects explicitly as `STRUCT(...)[]` (e.g.
-        `columns={'tool_calls': 'STRUCT(name VARCHAR, args JSON)[]'}`) OR
-        extract strings using the `->>` operator (`tc->>'name' =
-        'run_command'`).
+    `Malformed JSON at byte 0 of input: unexpected character. Input: "run_command"`.
+    - **Fix**: Always type nested objects explicitly as `STRUCT(...)[]` (e.g.
+      `columns={'tool_calls': 'STRUCT(name VARCHAR, args JSON)[]'}`) OR extract
+      strings using the `->>` operator (`tc->>'name' = 'run_command'`).
 7.  **`.db` File Extension Disambiguation (DuckDB vs. SQLite)**: Both native
     DuckDB databases and SQLite databases frequently use `.db` extensions.
     Attempting `ATTACH 'path/to/file.db' AS db (TYPE SQLITE)` on a native DuckDB
     database fails with `file is not a database`. Run `file path/to/file.db`
     first when the format is unknown.
 
---------------------------------------------------------------------------------
+---
 
 ## Format Recipes
 
@@ -133,10 +137,10 @@ DESCRIBE SELECT * FROM 'data.jsonl';
 
 #### Nested Fields and Arrays
 
--   **Struct / Object**: Dot notation `col.nested_field` or bracket
-    `col['nested_field']`.
--   **List Index**: 1-based indexing `tags[1]`.
--   **Array Unnest**: `unnest(tags)` explodes array elements into multiple rows.
+- **Struct / Object**: Dot notation `col.nested_field` or bracket
+  `col['nested_field']`.
+- **List Index**: 1-based indexing `tags[1]`.
+- **Array Unnest**: `unnest(tags)` explodes array elements into multiple rows.
 
 ```bash
 duckdb -dark-mode -box -c "
@@ -266,11 +270,11 @@ SELECT * FROM read_json('/dev/stdin');
 "
 ```
 
---------------------------------------------------------------------------------
+---
 
 ## Memory & Resource Management
 
-For large datasets (>10GB) on Cloudtop:
+For large datasets (>10GB):
 
 ```bash
 duckdb -dark-mode -c "
@@ -281,13 +285,12 @@ SELECT count(*) FROM 'massive_dataset/*.parquet';
 "
 ```
 
---------------------------------------------------------------------------------
+---
 
 ## Advanced Recipes
 
 For specialized workflows, see:
 
--   [references/recipes.md](references/recipes.md): Analyzing agent conversation
-    history (`~/.gemini/jetski/brain/...` and
-    `~/.gemini/antigravity*/brain/...`), cross-format joins (JSON + CSV +
-    Parquet), and partitioned exports.
+- [references/recipes.md](references/recipes.md): Analyzing agent conversation
+  history (`~/.gemini/*/brain/...`), cross-format joins (JSON + CSV + Parquet),
+  and partitioned exports.

@@ -1,64 +1,59 @@
 # DuckDB Advanced Recipes
 
-Advanced recipes and patterns for data analysis and file transformations on
-Cloudtop and macOS.
+Advanced recipes and patterns for local data analysis and file transformations
+on Linux and macOS.
 
-[TOC]
-
---------------------------------------------------------------------------------
+---
 
 ## 1. Querying Agent Conversation History
 
-Agent transcripts are stored in JSON Lines format under:
-- Jetski: `~/.gemini/jetski/brain/<convo_id>/.system_generated/logs/transcript.jsonl`
-- Antigravity (`agy`): `~/.gemini/antigravity*/brain/<convo_id>/.system_generated/logs/transcript.jsonl`
-- Both (`~/.gemini/*/brain/*/.system_generated/logs/transcript.jsonl`)
+Local Gemini CLI / agent session transcripts are stored in JSON Lines format
+under: `~/.gemini/*/brain/<convo_id>/.system_generated/logs/transcript.jsonl`
 
 DuckDB can scan millions of historical execution steps in 0.1–0.4 seconds when
 explicit schema projection is used.
 
 ### Tool Selection Boundary: `transcript-view` vs. `duckdb`
 
-*   **Single Conversation Inspection (`transcript-view`)**: When reading or
-    inspecting steps within a **single known conversation UUID**, use the
-    dedicated CLI helper (if installed): `~/.local/bin/transcript-view <cid>
-    [--tools] [--step N] [--tail N]`
-*   **Cross-Conversation Search & Analytics (`duckdb`)**: Use DuckDB SQL when
-    searching across multiple conversations, aggregating tool usage, auditing
-    error rates, or filtering prompts by keyword/time window.
+- **Single Conversation Inspection (`transcript-view`)**: When reading or
+  inspecting steps within a **single known conversation UUID**, use the
+  dedicated CLI helper (if installed):
+  `~/.local/bin/transcript-view <cid> [--tools] [--step N] [--tail N]`
+- **Cross-Conversation Search & Analytics (`duckdb`)**: Use DuckDB SQL when
+  searching across multiple conversations, aggregating tool usage, auditing
+  error rates, or filtering prompts by keyword/time window.
 
 ### Invariants & Fast-Path Projection (`0.39s` vs. `1.10s`)
 
-*   **Explicit `columns={...}` Map (3x Speedup)**: Without `columns={...}`,
-    DuckDB samples schemas across ~4,900 files (~1.1s latency). Passing an
-    explicit `columns` map skips schema inference and drops scan latency to
-    **~0.39s** across >1M rows.
-*   **Always Type `tool_calls` as `STRUCT(name VARCHAR, args JSON)[]`**: If
-    `tool_calls` is typed as `'JSON[]'`, `tc.name` returns a JSON-encoded string
-    (`"\"run_command\""`) and `WHERE tc.name = 'run_command'` fails with
-    `Malformed JSON at byte 0 of input`. Typing it as `STRUCT(name VARCHAR, args
-    JSON)[]` exposes native `VARCHAR` fields.
-*   **`ignore_errors = true`**: Essential because killed or interrupted sessions
-    may leave malformed trailing lines in `transcript.jsonl`.
-*   **`filename = true`**: Exposes the file path column to extract conversation
-    UUIDs (`regexp_extract(filename, 'brain/([^/]+)/', 1)`).
-*   **Sub-100ms Scans with `fd` / `fdfind` Pre-Filtering**: Scoping DuckDB to
-    files modified in the last 7 days drops scan latency to **~0.10s** (use
-    `SET VARIABLE` + `getvariable()` because DuckDB table functions reject
-    inline subqueries with `Binder Error: Table function cannot contain
-    subqueries`):
+- **Explicit `columns={...}` Map (3x Speedup)**: Without `columns={...}`, DuckDB
+  samples schemas across ~4,900 files (~1.1s latency). Passing an explicit
+  `columns` map skips schema inference and drops scan latency to **~0.39s**
+  across >1M rows.
+- **Always Type `tool_calls` as `STRUCT(name VARCHAR, args JSON)[]`**: If
+  `tool_calls` is typed as `'JSON[]'`, `tc.name` returns a JSON-encoded string
+  (`"\"run_command\""`) and `WHERE tc.name = 'run_command'` fails with
+  `Malformed JSON at byte 0 of input`. Typing it as
+  `STRUCT(name VARCHAR, args JSON)[]` exposes native `VARCHAR` fields.
+- **`ignore_errors = true`**: Essential because killed or interrupted sessions
+  may leave malformed trailing lines in `transcript.jsonl`.
+- **`filename = true`**: Exposes the file path column to extract conversation
+  UUIDs (`regexp_extract(filename, 'brain/([^/]+)/', 1)`).
+- **Sub-100ms Scans with `fd` / `fdfind` Pre-Filtering**: Scoping DuckDB to
+  files modified in the last 7 days drops scan latency to **~0.10s** (use
+  `SET VARIABLE` + `getvariable()` because DuckDB table functions reject inline
+  subqueries with `Binder Error: Table function cannot contain subqueries`):
 
-    ```bash
-    fd -H -I -t f --changed-within 7d 'transcript\.jsonl$' ~/.gemini/jetski/brain/ > recent_transcripts.txt
-    ~/.local/bin/duckdb -batch -dark-mode -box -c "
-    SET VARIABLE recent_files = (SELECT list(column0) FROM read_csv('recent_transcripts.txt', header=false));
-    SELECT count(*) FROM read_json(
-      getvariable('recent_files'),
-      columns={'step_index': 'BIGINT', 'type': 'VARCHAR'},
-      ignore_errors=true
-    );
-    "
-    ```
+  ```bash
+  fd -H -I -t f --changed-within 7d 'transcript\.jsonl$' ~/.gemini/ > recent_transcripts.txt
+  ~/.local/bin/duckdb -batch -dark-mode -box -c "
+  SET VARIABLE recent_files = (SELECT list(column0) FROM read_csv('recent_transcripts.txt', header=false));
+  SELECT count(*) FROM read_json(
+    getvariable('recent_files'),
+    columns={'step_index': 'BIGINT', 'type': 'VARCHAR'},
+    ignore_errors=true
+  );
+  "
+  ```
 
 ### Recipe 1.1: Aggregating Across All Conversations
 
@@ -161,29 +156,28 @@ LIMIT 10;
 
 ### Recipe 1.5: `tool_calls` File Edits, `EPHEMERAL_MESSAGE` Memory Filtering & CLI Exit-Code Errors
 
-*   **`tool_calls` vs. `content` Invariant**: Tool invocations (`write_to_file`,
-    `replace_file_content`, `run_command`) are stored in `tool_calls:
-    STRUCT(name VARCHAR, args JSON)[]`, never in `PLANNER_RESPONSE.content`.
-    Always cast `CAST(tool_calls AS VARCHAR)` when checking which files a
-    session modified or whether it wrote to `~/memory/default/topics/*.md`.
-*   **Stripping Ambient `<memory>` Echoes (`EPHEMERAL_MESSAGE` + `GENERIC`)**:
-    In `transcript.jsonl`, ambient `<memory>...</memory>` system blocks live in
-    `type = 'EPHEMERAL_MESSAGE'` (`~197k` rows across the archive) and as
-    trailing attachments on `type = 'GENERIC'` tool outputs (`~2.2k` rows),
-    while `USER_INPUT` is wrapped in `<USER_REQUEST>...</USER_REQUEST>` and
-    `<ADDITIONAL_METADATA>...</ADDITIONAL_METADATA>`. Always filter `WHERE
-    coalesce(type, '') != 'EPHEMERAL_MESSAGE'` and strip wrapper tags via
-    `regexp_replace(coalesce(content, ''),
-    '(?s)(<memory>.*?</memory>|<ADDITIONAL_METADATA>.*?</ADDITIONAL_METADATA>|</?USER_REQUEST>)',
-    '', 'g')`.
-*   **CLI Command Failures Live in `GENERIC` (`status = 'DONE'`), Not `status =
-    'ERROR'`**: `status = 'ERROR'` only records internal tool-harness errors
-    (`~680` rows). When a shell command (`run_command`) exits non-zero, Jetski
-    records `type = 'GENERIC'` with `status = 'DONE'` and `The command exited
-    with code [1-9]` (`~11,600` rows).
-*   **Code-Host URL Extraction**: Always match both GitHub
-    (`github\.com/.+/(?:issues|pull)/[0-9]+`) and Gerrit
-    (`dart-review\.googlesource\.com/c/sdk/\+/[0-9]+`) URLs.
+- **`tool_calls` vs. `content` Invariant**: Tool invocations (`write_to_file`,
+  `replace_file_content`, `run_command`) are stored in
+  `tool_calls: STRUCT(name VARCHAR, args JSON)[]`, never in
+  `PLANNER_RESPONSE.content`. Always cast `CAST(tool_calls AS VARCHAR)` when
+  checking which files a session modified or whether it wrote to
+  `~/memory/default/topics/*.md`.
+- **Stripping Ambient `<memory>` Echoes (`EPHEMERAL_MESSAGE` + `GENERIC`)**: In
+  `transcript.jsonl`, ambient `<memory>...</memory>` system blocks live in
+  `type = 'EPHEMERAL_MESSAGE'` (`~197k` rows across the archive) and as trailing
+  attachments on `type = 'GENERIC'` tool outputs (`~2.2k` rows), while
+  `USER_INPUT` is wrapped in `<USER_REQUEST>...</USER_REQUEST>` and
+  `<ADDITIONAL_METADATA>...</ADDITIONAL_METADATA>`. Always filter
+  `WHERE coalesce(type, '') != 'EPHEMERAL_MESSAGE'` and strip wrapper tags via
+  `regexp_replace(coalesce(content, ''), '(?s)(<memory>.*?</memory>|<ADDITIONAL_METADATA>.*?</ADDITIONAL_METADATA>|</?USER_REQUEST>)', '', 'g')`.
+- **CLI Command Failures Live in `GENERIC` (`status = 'DONE'`), Not
+  `status = 'ERROR'`**: `status = 'ERROR'` only records internal tool-harness
+  errors (`~680` rows). When a shell command (`run_command`) exits non-zero, the
+  harness records `type = 'GENERIC'` with `status = 'DONE'` and
+  `The command exited with code [1-9]` (`~11,600` rows).
+- **Code-Host URL Extraction**: Always match both GitHub
+  (`github\.com/.+/(?:issues|pull)/[0-9]+`) and Gerrit
+  (`dart-review\.googlesource\.com/c/sdk/\+/[0-9]+`) URLs.
 
 ```bash
 ~/.local/bin/duckdb -batch -dark-mode -box -c "
@@ -229,7 +223,7 @@ LIMIT 15;
 "
 ```
 
---------------------------------------------------------------------------------
+---
 
 ## 2. Cross-Format Joins
 
@@ -252,7 +246,7 @@ LIMIT 20;
 "
 ```
 
---------------------------------------------------------------------------------
+---
 
 ## 3. Hive Partitioning & Globbing
 
@@ -268,7 +262,7 @@ ORDER BY year DESC, month DESC;
 "
 ```
 
---------------------------------------------------------------------------------
+---
 
 ## 4. Partitioned Materialization
 
@@ -291,7 +285,7 @@ COPY (
 "
 ```
 
---------------------------------------------------------------------------------
+---
 
 ## 5. In-Memory vs. Persistent Database
 
@@ -312,7 +306,7 @@ SELECT count(*) FROM users;
 "
 ```
 
---------------------------------------------------------------------------------
+---
 
 ## 6. Benchmark JSON Artifacts & Multi-Target Pivots
 
