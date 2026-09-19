@@ -1,0 +1,30 @@
+{
+  "repo_criteria": [
+    "evals/code_quality_rubric.json"
+  ],
+  "evals": [
+    {
+      "id": "duckdb_task_1_subshell_flags",
+      "prompt": "Using the duckdb skill, what flags must always be passed when invoking duckdb in a non-interactive agent subshell, and why?",
+      "expected_chat_output": [
+        "Specifies passing '-batch -dark-mode' (or '-light-mode') together.",
+        "Explains that '-batch' alone does not disable DuckDB's 5-second OSC terminal background color detection timeout."
+      ],
+      "expected_repo_state": [
+        "No files are modified."
+      ],
+      "agent_config": "bare-agent"
+    },
+    {
+      "id": "duckdb_task_2_transcript_tool_calls_struct",
+      "prompt": "Using the duckdb skill, how should I type the 'tool_calls' column in explicit 'columns={...}' projection when querying 'transcript.jsonl' files so that filtering on 'tc.name' does not fail with a Malformed JSON error?",
+      "expected_chat_output": [
+        "Recommends typing 'tool_calls' explicitly as 'STRUCT(name VARCHAR, args JSON)[]' inside 'columns={...}' rather than 'JSON[]', or using the '->>' operator."
+      ],
+      "expected_repo_state": [
+        "No files are modified."
+      ],
+      "agent_config": "bare-agent"
+    }
+  ]
+}
