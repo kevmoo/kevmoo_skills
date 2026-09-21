@@ -176,9 +176,17 @@ key_features:
        - **Rationale**: Your technical explanation of why you agree, disagree,
          or recommend a specific direction.
      - **Planned Action**:
-       - The target file name(s) and specific line ranges.
-       - The proposed changes (e.g. explanation, code snippet/diff, or "No
-         action needed").
+       - **Code / Doc Changes**: The target file name(s), specific line ranges,
+         and proposed changes (explanation, code snippet/diff, or "No action
+         needed").
+       - **Test Plan (2-Bucket TDD Filter)**:
+         - **Propose Companion Test (`test/..._test.dart` + test case summary or
+           snippet)** when the accepted change fixes a bug, adds a branch/edge
+           case, or alters runtime behavior.
+         - **Explicitly Skip (`None — <concise reason>`)** for copy/string
+           literal tweaks, symbol renames, comments/docs, or behavior-preserving
+           refactors already covered by existing tests (never propose brittle
+           change-detector tests).
    - Present this triage report to the user.
 
 6. **Wait for Approval**:
@@ -187,14 +195,22 @@ key_features:
      confirmation). (Note: This step is bypassed ONLY IF operating within an
      outer orchestrator skill like `pr-loop` with upfront user consent).
 
-7. **Surgical Implementation & Verification**:
+7. **Surgical Implementation & Verification (Red-Green TDD)**:
    - Once approved, address the comments and failures one by one.
-   - **Add tests for new behavior**: When a reviewer requests new behavior, bug
-     fixes, or edge-case handling, proactively write automated tests (typically
-     placed in the `test/` directory with a `_test.dart` suffix) to verify the
-     changes and prevent future regressions.
-   - Follow standard development workflows: run formatting, analysis, and tests
-     locally to verify fixes before finishing.
+   - **Red-Green TDD Execution**:
+     - **Test First (Red)**: For action items with an approved companion test in
+       **Test Plan**, write or update the test in `test/` (`*_test.dart`) first
+       and run `dart test <test_file>` to confirm the new assertion fails (or
+       reproduces the edge case) against the unpatched code.
+     - **Implementation (Green)**: Apply the production code fix and re-run
+       `dart test` to verify all new and existing tests pass.
+   - **Sync PR Title & Description**: If addressing review feedback alters
+     public APIs, symbol names, or architectural design, update the PR title and
+     description (`cat << 'EOF' | gh pr edit <pr> --title "..." --body-file -`)
+     so squash-merges do not land outdated commit messages.
+   - Follow standard development workflows: run formatting (`dart format`),
+     analysis (`dart analyze`), and tests (`dart test`) locally to verify fixes
+     before finishing.
 
 8. **Verify Git State and Offer Unified Resolution Menu**:
    - **Outer Skill Exception**: Step 8 is bypassed entirely ONLY IF operating
