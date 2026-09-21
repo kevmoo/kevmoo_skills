@@ -76,8 +76,8 @@ Future<void> _runTriage(ArgResults results) async {
     onFail: _exitWithError,
   );
 
-  final data = await _fetchTriageData(context);
-  final report = buildTriageReport(data);
+  final (data, conflictAnalysis) = await _fetchTriageData(context);
+  final report = buildTriageReport(data, conflictAnalysis: conflictAnalysis);
 
   stdout.writeln('\n================== REPORT ==================\n');
   stdout.write(report);
@@ -149,7 +149,9 @@ typedef TriageData = ({
   Map<String, String> checkLogs,
 });
 
-Future<TriageData> _fetchTriageData(PrContext context) async {
+Future<(TriageData, PrConflictAnalysis)> _fetchTriageData(
+  PrContext context,
+) async {
   stdout.writeln(
     'Fetching details for PR #${context.prNumber} from ${context.owner}/${context.repo}...',
   );
@@ -161,7 +163,7 @@ Future<TriageData> _fetchTriageData(PrContext context) async {
     'view',
     context.prNumber,
     '--json',
-    'number,title,state,reviewDecision,mergeable,headRefName,headRefOid,url',
+    'number,title,state,reviewDecision,mergeable,mergeStateStatus,baseRefName,headRefName,headRefOid,url',
   ], workingDirectory: context.workingDir);
   final prData = jsonDecode(viewOutput) as Map<String, dynamic>;
 
@@ -173,6 +175,14 @@ Future<TriageData> _fetchTriageData(PrContext context) async {
 
   if (syncStatus.warning != null) {
     stdout.writeln('\nWARNING: ${syncStatus.warning}\n');
+  }
+
+  final conflictAnalysis = await analyzePrConflicts(context, prData);
+  if (conflictAnalysis.isConflicting) {
+    stdout.writeln(
+      '\nWARNING: PR #${context.prNumber} has MERGE CONFLICTS with '
+      'origin/${conflictAnalysis.baseRefName}!\n',
+    );
   }
 
   stdout.writeln('Fetching review comments and threads...');
@@ -195,14 +205,17 @@ Future<TriageData> _fetchTriageData(PrContext context) async {
   final checkLogs = await _fetchFailedCheckLogs(context, failedChecks);
 
   return (
-    prData: prData,
-    syncStatus: syncStatus,
-    unresolvedThreads: unresolvedThreads,
-    reviewComments: reviewComments,
-    generalComments: generalComments,
-    failedChecks: failedChecks,
-    pendingChecks: pendingChecks,
-    checkLogs: checkLogs,
+    (
+      prData: prData,
+      syncStatus: syncStatus,
+      unresolvedThreads: unresolvedThreads,
+      reviewComments: reviewComments,
+      generalComments: generalComments,
+      failedChecks: failedChecks,
+      pendingChecks: pendingChecks,
+      checkLogs: checkLogs,
+    ),
+    conflictAnalysis,
   );
 }
 
@@ -224,36 +237,120 @@ Future<Map<String, String>> _fetchFailedCheckLogs(
   return checkLogs;
 }
 
-String buildTriageReport(TriageData data) {
+String buildTriageReport(
+  TriageData data, {
+  PrConflictAnalysis? conflictAnalysis,
+}) {
   final prData = data.prData;
   final syncStatus = data.syncStatus;
+  final mergeable = prData['mergeable']?.toString() ?? 'UNKNOWN';
+  final mergeStateStatus = prData['mergeStateStatus']?.toString() ?? 'UNKNOWN';
+  final baseRefName = prData['baseRefName']?.toString() ?? 'main';
+  final headRefName = prData['headRefName']?.toString() ?? '';
+  final conflict =
+      conflictAnalysis ??
+      (
+        isConflicting:
+            mergeable == 'CONFLICTING' || mergeStateStatus == 'DIRTY',
+        mergeable: mergeable,
+        mergeStateStatus: mergeStateStatus,
+        baseRefName: baseRefName,
+        headRefName: headRefName,
+        conflictingFiles: const <String>[],
+        conflictMessages: const <String>[],
+        upstreamCommits: const <String>[],
+      );
   final syncWarningBlock = syncStatus.warning != null
       ? '> [!WARNING]\n> ${syncStatus.warning}\n\n'
+      : '';
+  final conflictWarningBlock = conflict.isConflicting
+      ? '> [!WARNING]\n'
+            '> **MERGE CONFLICT BLOCKER**: This PR has merge conflicts with '
+            '`origin/${conflict.baseRefName}` (`mergeable: ${conflict.mergeable}`, '
+            '`mergeStateStatus: ${conflict.mergeStateStatus}`) and cannot be merged '
+            'until resolved.\n\n'
       : '';
   final localCommit = syncStatus.localHeadSha.isEmpty
       ? 'N/A'
       : syncStatus.localHeadSha;
+  final mergeableBadge = switch (conflict.mergeable) {
+    'MERGEABLE' => '`MERGEABLE` ✅',
+    'CONFLICTING' => '`CONFLICTING` ⚠️ (BLOCKER)',
+    _ =>
+      conflict.isConflicting
+          ? '`${conflict.mergeable}` ⚠️ (`${conflict.mergeStateStatus}`)'
+          : '`${prData['mergeable']}`',
+  };
 
   final report = StringBuffer('''
 # PR Triage Report: #${prData['number']} - ${prData['title']}
 
 **URL**: [PR #${prData['number']}](${prData['url']})
-**Branch**: `${prData['headRefName']}`
+**Branch**: `${prData['headRefName']}` ➔ `${conflict.baseRefName}`
 **Remote Commit**: `${prData['headRefOid']}`
 **Local Commit**: `$localCommit`
 **Sync Status**: `${syncStatus.syncState}`${syncStatus.isSynced ? ' ✅' : ' ⚠️'}
 **Review Decision**: `${prData['reviewDecision']}`
-**Mergeable**: `${prData['mergeable']}`
+**Mergeable**: $mergeableBadge
 
-$syncWarningBlock''');
+$syncWarningBlock$conflictWarningBlock''');
 
+  if (conflict.isConflicting) {
+    _writeMergeConflictsSection(report, conflict);
+  }
   _writeUnresolvedThreads(report, data.unresolvedThreads);
   _writeReviewComments(report, data.reviewComments);
   _writeConversationComments(report, data.generalComments);
-  _writeFailedChecks(report, data.failedChecks, data.checkLogs);
+  _writeFailedChecks(
+    report,
+    data.failedChecks,
+    data.checkLogs,
+    conflict: conflict,
+  );
   _writePendingChecks(report, data.pendingChecks);
 
   return report.toString();
+}
+
+void _writeMergeConflictsSection(
+  StringBuffer report,
+  PrConflictAnalysis conflict,
+) {
+  final fileCount = conflict.conflictingFiles.length;
+  final countLabel = fileCount > 0 ? '$fileCount conflicting files' : 'Blocker';
+  report.write('## ⚠️ Merge Conflicts ($countLabel)\n\n');
+
+  if (conflict.conflictingFiles.isNotEmpty) {
+    report.write('### Conflicting Files\n');
+    for (final file in conflict.conflictingFiles) {
+      report.write('- `$file`\n');
+    }
+    report.write('\n');
+  } else {
+    report.write(
+      'GitHub reports `mergeable: ${conflict.mergeable}` (`mergeStateStatus: ${conflict.mergeStateStatus}`) '
+      'against `origin/${conflict.baseRefName}`.\n\n',
+    );
+  }
+
+  if (conflict.upstreamCommits.isNotEmpty) {
+    report.write(
+      '### Conflicting Upstream Commits on `origin/${conflict.baseRefName}`\n',
+    );
+    for (final commit in conflict.upstreamCommits) {
+      report.write('- `$commit`\n');
+    }
+    report.write('\n');
+  }
+
+  report.write('''
+### Recommended Conflict Resolution (No Force-Push)
+```bash
+git fetch origin ${conflict.baseRefName}
+git merge origin/${conflict.baseRefName}
+```
+
+''');
 }
 
 String _formatBlockquoteComment(String author, String timestamp, String body) =>
@@ -355,11 +452,19 @@ void _writeConversationComments(
 void _writeFailedChecks(
   StringBuffer report,
   List<PrCheckRun> failedChecks,
-  Map<String, String> checkLogs,
-) {
+  Map<String, String> checkLogs, {
+  PrConflictAnalysis? conflict,
+}) {
   report.write('## Failed Status Checks (${failedChecks.length})\n\n');
   if (failedChecks.isEmpty) {
-    report.write('All checks passing! ✅\n\n');
+    if (conflict != null && conflict.isConflicting) {
+      report.write(
+        'All CI checks passing (✅), but PR is **BLOCKED BY MERGE CONFLICTS** (⚠️) '
+        'with `origin/${conflict.baseRefName}`!\n\n',
+      );
+    } else {
+      report.write('All checks passing! ✅\n\n');
+    }
     return;
   }
 

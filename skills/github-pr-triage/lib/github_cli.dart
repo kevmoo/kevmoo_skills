@@ -9,8 +9,11 @@ export 'pr_context.dart'
         PrReviewThread,
         PrReview,
         PrGraphData,
+        PrConflictAnalysis,
         fetchPrChecks,
-        fetchPrGraphQLData;
+        fetchPrGraphQLData,
+        analyzePrConflicts,
+        parseMergeTreeConflictOutput;
 import 'dart:convert';
 import 'dart:io';
 
