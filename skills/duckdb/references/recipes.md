@@ -55,6 +55,62 @@ explicit schema projection is used.
   "
   ```
 
+### Claude Code Transcripts: Use `**`, and Verify the File Count
+
+Claude Code stores transcripts under `~/.claude/projects/<project-slug>/`, but
+**subagent transcripts nest one level deeper**
+(`<project-slug>/<session-uuid>/subagents/agent-*.jsonl`). A natural-looking
+`*/*.jsonl` therefore matches only the top-level session files and silently
+skips the rest — on one machine, 31 of 102 files. Because those 31 top-level
+files satisfy the glob, DuckDB does not error; it just returns a smaller,
+confident-looking answer.
+
+Always use `**/*.jsonl`, and sanity-check `count(DISTINCT filename)` against
+`find`:
+
+```bash
+find ~/.claude/projects -name '*.jsonl' | wc -l   # ground truth
+
+duckdb -batch -dark-mode -c "
+SELECT count(DISTINCT filename) AS files, count(*) AS rows
+FROM read_json_auto('$HOME/.claude/projects/**/*.jsonl',
+                    format='newline_delimited', ignore_errors=true,
+                    union_by_name=true, filename=true,
+                    maximum_object_size=100000000);
+"
+```
+
+- **`ignore_errors=true` is what tolerates truncated lines**: a session still
+  being appended to leaves a partial trailing line, and without this flag a
+  single bad line aborts the whole scan
+  (`Invalid Input Error: Malformed JSON ... unexpected control character`). It
+  does **not** require `format` to be set (verified on DuckDB `v1.5.5`).
+- **`format='newline_delimited'` is an optional speed/robustness pin**: it skips
+  format auto-detection, which is safe for `.jsonl`. Do not apply it blindly to
+  other inputs — forcing it on a file that is really a JSON array silently
+  returns 1 row instead of the array's elements.
+- **`union_by_name=true` is required**: row shapes differ across record types
+  (`user`, `assistant`, `attachment`, `system`, …).
+- **Raise `maximum_object_size`**: large tool-result rows exceed the default and
+  abort the scan.
+- **Project slug**: `regexp_extract(filename, 'projects/([^/]+)/', 1)` (the
+  analogue of the Gemini `brain/([^/]+)/` extraction above).
+
+Example — busiest projects by user turn:
+
+```bash
+duckdb -batch -dark-mode -c "
+SELECT regexp_extract(filename, 'projects/([^/]+)/', 1) AS project,
+       count(*) AS user_msgs
+FROM read_json_auto('$HOME/.claude/projects/**/*.jsonl',
+                    format='newline_delimited', ignore_errors=true,
+                    union_by_name=true, filename=true,
+                    maximum_object_size=100000000)
+WHERE type = 'user'
+GROUP BY 1 ORDER BY user_msgs DESC LIMIT 10;
+"
+```
+
 ### Recipe 1.1: Aggregating Across All Conversations
 
 ```bash

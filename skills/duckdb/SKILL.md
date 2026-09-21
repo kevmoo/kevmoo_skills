@@ -34,9 +34,18 @@ DuckDB runs as a standalone CLI binary. Always invoke `~/.local/bin/duckdb` (or
 To prevent `exit code 127: duckdb: command not found` in non-interactive agent
 subshells (where `mise` or `asdf` shims are not sourced):
 
-- **Direct Binary / Symlink in `~/.local/bin/duckdb` (Recommended)**: Ensure the
-  binary is directly accessible at `~/.local/bin/duckdb` (or
-  `/opt/homebrew/bin/duckdb` on Apple Silicon macOS):
+- **`mise` shims on `PATH` (Recommended)**: If `mise` manages `duckdb`, put
+  `~/.local/share/mise/shims` on `PATH` in the files non-interactive shells
+  actually read (`~/.zshenv` / `BASH_ENV`, and `~/.config/environment.d/*.conf`
+  for `systemd` user units) rather than symlinking each tool. The shims are
+  symlinks to the `mise` binary itself, so they resolve even when `mise` is not
+  on `PATH`, and one entry covers every managed tool. Keep `~/.local/bin`
+  _before_ the shims dir so custom wrappers still win.
+
+- **Direct Binary / Symlink (fallback)**: Where shims are unavailable, make the
+  binary directly accessible at `~/.local/bin/duckdb` (or
+  `/opt/homebrew/bin/duckdb` on Apple Silicon macOS). Note that a per-tool
+  symlink collides with any dotfiles repo that tracks the same path:
 
   ```bash
   # Option A: If installed via mise, symlink into ~/.local/bin/
