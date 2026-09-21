@@ -80,9 +80,15 @@ FROM read_json_auto('$HOME/.claude/projects/**/*.jsonl',
 "
 ```
 
-- **`format='newline_delimited', ignore_errors=true`**: skips truncated trailing
-  lines in active or interrupted sessions (`read_json_auto` requires
-  `format='newline_delimited'` whenever `ignore_errors=true` is set).
+- **`ignore_errors=true` is what tolerates truncated lines**: a session still
+  being appended to leaves a partial trailing line, and without this flag a
+  single bad line aborts the whole scan
+  (`Invalid Input Error: Malformed JSON ... unexpected control character`).
+  It does **not** require `format` to be set (verified on DuckDB `v1.5.5`).
+- **`format='newline_delimited'` is an optional speed/robustness pin**: it skips
+  format auto-detection, which is safe for `.jsonl`. Do not apply it blindly to
+  other inputs — forcing it on a file that is really a JSON array silently
+  returns 1 row instead of the array's elements.
 - **`union_by_name=true` is required**: row shapes differ across record types
   (`user`, `assistant`, `attachment`, `system`, …).
 - **Raise `maximum_object_size`**: large tool-result rows exceed the default and
