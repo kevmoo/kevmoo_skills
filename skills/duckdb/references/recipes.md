@@ -61,8 +61,8 @@ Claude Code stores transcripts under `~/.claude/projects/<project-slug>/`, but
 **subagent transcripts nest one level deeper**
 (`<project-slug>/<session-uuid>/subagents/agent-*.jsonl`). A natural-looking
 `*/*.jsonl` therefore matches only the top-level session files and silently
-skips the rest — on one machine, 31 of 102 files. Because `ignore_errors=true`
-is recommended above, a wrong glob does not error; it just returns a smaller,
+skips the rest — on one machine, 31 of 102 files. Because those 31 top-level
+files satisfy the glob, DuckDB does not error; it just returns a smaller,
 confident-looking answer.
 
 Always use `**/*.jsonl`, and sanity-check `count(DISTINCT filename)` against
@@ -74,11 +74,15 @@ find ~/.claude/projects -name '*.jsonl' | wc -l   # ground truth
 duckdb -batch -dark-mode -c "
 SELECT count(DISTINCT filename) AS files, count(*) AS rows
 FROM read_json_auto('$HOME/.claude/projects/**/*.jsonl',
+                    format='newline_delimited', ignore_errors=true,
                     union_by_name=true, filename=true,
                     maximum_object_size=100000000);
 "
 ```
 
+- **`format='newline_delimited', ignore_errors=true`**: skips truncated trailing
+  lines in active or interrupted sessions (`read_json_auto` requires
+  `format='newline_delimited'` whenever `ignore_errors=true` is set).
 - **`union_by_name=true` is required**: row shapes differ across record types
   (`user`, `assistant`, `attachment`, `system`, …).
 - **Raise `maximum_object_size`**: large tool-result rows exceed the default and
@@ -93,6 +97,7 @@ duckdb -batch -dark-mode -c "
 SELECT regexp_extract(filename, 'projects/([^/]+)/', 1) AS project,
        count(*) AS user_msgs
 FROM read_json_auto('$HOME/.claude/projects/**/*.jsonl',
+                    format='newline_delimited', ignore_errors=true,
                     union_by_name=true, filename=true,
                     maximum_object_size=100000000)
 WHERE type = 'user'

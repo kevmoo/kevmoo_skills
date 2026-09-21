@@ -36,12 +36,11 @@ subshells (where `mise` or `asdf` shims are not sourced):
 
 - **`mise` shims on `PATH` (Recommended)**: If `mise` manages `duckdb`, put
   `~/.local/share/mise/shims` on `PATH` in the files non-interactive shells
-  actually read (`~/.zshenv` / `BASH_ENV`, and
-  `~/.config/environment.d/*.conf` for `systemd` user units) rather than
-  symlinking each tool. The shims are symlinks to the `mise` binary itself, so
-  they resolve even when `mise` is not on `PATH`, and one entry covers every
-  managed tool. Keep `~/.local/bin` *before* the shims dir so custom wrappers
-  still win.
+  actually read (`~/.zshenv` / `BASH_ENV`, and `~/.config/environment.d/*.conf`
+  for `systemd` user units) rather than symlinking each tool. The shims are
+  symlinks to the `mise` binary itself, so they resolve even when `mise` is not
+  on `PATH`, and one entry covers every managed tool. Keep `~/.local/bin`
+  _before_ the shims dir so custom wrappers still win.
 
 - **Direct Binary / Symlink (fallback)**: Where shims are unavailable, make the
   binary directly accessible at `~/.local/bin/duckdb` (or
