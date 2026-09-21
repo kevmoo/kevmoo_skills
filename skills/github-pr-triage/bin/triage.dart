@@ -76,8 +76,8 @@ Future<void> _runTriage(ArgResults results) async {
     onFail: _exitWithError,
   );
 
-  final data = await _fetchTriageData(context);
-  final report = buildTriageReport(data);
+  final (data, conflictAnalysis) = await _fetchTriageData(context);
+  final report = buildTriageReport(data, conflictAnalysis: conflictAnalysis);
 
   stdout.writeln('\n================== REPORT ==================\n');
   stdout.write(report);
@@ -141,7 +141,6 @@ Future<void> _handleResolveCommand(
 typedef TriageData = ({
   Map<String, dynamic> prData,
   PrSyncStatus syncStatus,
-  PrConflictAnalysis conflictAnalysis,
   List<PrReviewThread> unresolvedThreads,
   List<PrReview> reviewComments,
   List<PrComment> generalComments,
@@ -150,7 +149,9 @@ typedef TriageData = ({
   Map<String, String> checkLogs,
 });
 
-Future<TriageData> _fetchTriageData(PrContext context) async {
+Future<(TriageData, PrConflictAnalysis)> _fetchTriageData(
+  PrContext context,
+) async {
   stdout.writeln(
     'Fetching details for PR #${context.prNumber} from ${context.owner}/${context.repo}...',
   );
@@ -204,15 +205,17 @@ Future<TriageData> _fetchTriageData(PrContext context) async {
   final checkLogs = await _fetchFailedCheckLogs(context, failedChecks);
 
   return (
-    prData: prData,
-    syncStatus: syncStatus,
-    conflictAnalysis: conflictAnalysis,
-    unresolvedThreads: unresolvedThreads,
-    reviewComments: reviewComments,
-    generalComments: generalComments,
-    failedChecks: failedChecks,
-    pendingChecks: pendingChecks,
-    checkLogs: checkLogs,
+    (
+      prData: prData,
+      syncStatus: syncStatus,
+      unresolvedThreads: unresolvedThreads,
+      reviewComments: reviewComments,
+      generalComments: generalComments,
+      failedChecks: failedChecks,
+      pendingChecks: pendingChecks,
+      checkLogs: checkLogs,
+    ),
+    conflictAnalysis,
   );
 }
 
@@ -234,10 +237,29 @@ Future<Map<String, String>> _fetchFailedCheckLogs(
   return checkLogs;
 }
 
-String buildTriageReport(TriageData data) {
+String buildTriageReport(
+  TriageData data, {
+  PrConflictAnalysis? conflictAnalysis,
+}) {
   final prData = data.prData;
   final syncStatus = data.syncStatus;
-  final conflict = data.conflictAnalysis;
+  final mergeable = prData['mergeable']?.toString() ?? 'UNKNOWN';
+  final mergeStateStatus = prData['mergeStateStatus']?.toString() ?? 'UNKNOWN';
+  final baseRefName = prData['baseRefName']?.toString() ?? 'main';
+  final headRefName = prData['headRefName']?.toString() ?? '';
+  final conflict =
+      conflictAnalysis ??
+      (
+        isConflicting:
+            mergeable == 'CONFLICTING' || mergeStateStatus == 'DIRTY',
+        mergeable: mergeable,
+        mergeStateStatus: mergeStateStatus,
+        baseRefName: baseRefName,
+        headRefName: headRefName,
+        conflictingFiles: const <String>[],
+        conflictMessages: const <String>[],
+        upstreamCommits: const <String>[],
+      );
   final syncWarningBlock = syncStatus.warning != null
       ? '> [!WARNING]\n> ${syncStatus.warning}\n\n'
       : '';

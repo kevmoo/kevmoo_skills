@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:test/test.dart';
+
 import '../../skills/github-pr-triage/bin/triage.dart';
 import '../../skills/github-pr-triage/lib/github_cli.dart';
 import '../../skills/pr-loop/bin/pr_status.dart';
@@ -299,6 +300,86 @@ void _registerTriageReportTests() {
       expect(truncated, contains('line 0'));
       expect(truncated, contains('line 124'));
     });
+
+    test(
+      'buildTriageReport and parseMergeTreeConflictOutput surface merge conflicts prominently',
+      () {
+        const mergeTreeSample = '''
+c5c7aa93942fd3d8dd7b4300136f7589f5a66b98
+lib/src/gh_view/report_renderer.dart
+lib/src/git_extensions.dart
+
+Auto-merging lib/src/gh_view/report_renderer.dart
+CONFLICT (content): Merge conflict in lib/src/gh_view/report_renderer.dart
+Auto-merging lib/src/git_extensions.dart
+CONFLICT (content): Merge conflict in lib/src/git_extensions.dart
+''';
+        final parsed = parseMergeTreeConflictOutput(mergeTreeSample);
+        expect(
+          parsed.files,
+          equals([
+            'lib/src/gh_view/report_renderer.dart',
+            'lib/src/git_extensions.dart',
+          ]),
+        );
+        expect(parsed.messages, hasLength(2));
+
+        final data = (
+          prData: <String, dynamic>{
+            'number': 326,
+            'title': 'chore(release): prepare firestore v0.5.5',
+            'url': 'https://github.com/firebase/firebase-admin-dart/pull/326',
+            'headRefName': 'widen-deps',
+            'baseRefName': 'main',
+            'headRefOid': '358eee6',
+            'reviewDecision': 'APPROVED',
+            'mergeable': 'CONFLICTING',
+            'mergeStateStatus': 'DIRTY',
+          },
+          syncStatus: (
+            localBranch: 'widen-deps',
+            remoteBranch: 'widen-deps',
+            localHeadSha: '358eee6',
+            remoteHeadSha: '358eee6',
+            isSynced: true,
+            syncState: 'in_sync',
+            warning: null,
+          ),
+          unresolvedThreads: <PrReviewThread>[],
+          reviewComments: <PrReview>[],
+          generalComments: <PrComment>[],
+          failedChecks: <PrCheckRun>[],
+          pendingChecks: <PrCheckRun>[],
+          checkLogs: <String, String>{},
+        );
+
+        final report = buildTriageReport(
+          data,
+          conflictAnalysis: (
+            isConflicting: true,
+            mergeable: 'CONFLICTING',
+            mergeStateStatus: 'DIRTY',
+            baseRefName: 'main',
+            headRefName: 'widen-deps',
+            conflictingFiles: parsed.files,
+            conflictMessages: parsed.messages,
+            upstreamCommits: [
+              '2bcf7bd refactor: reduce cognitive complexity (#106)',
+            ],
+          ),
+        );
+
+        expect(report, contains('**Mergeable**: `CONFLICTING` ⚠️ (BLOCKER)'));
+        expect(report, contains('**MERGE CONFLICT BLOCKER**'));
+        expect(report, contains('## ⚠️ Merge Conflicts (2 conflicting files)'));
+        expect(report, contains('- `lib/src/git_extensions.dart`'));
+        expect(
+          report,
+          contains('- `2bcf7bd refactor: reduce cognitive complexity (#106)`'),
+        );
+        expect(report, contains('BLOCKED BY MERGE CONFLICTS'));
+      },
+    );
   });
 }
 
