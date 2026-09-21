@@ -92,6 +92,19 @@ key_features:
      - Do not start making code edits while the local workspace is out of sync
        with the remote PR.
 
+   - Check the **Mergeable Status**:
+     - If `Mergeable` is `CONFLICTING` (or `mergeStateStatus` is `DIRTY`),
+       `triage.dart` automatically runs `git fetch` + `git merge-tree` +
+       `git log` and emits a top-level `## ⚠️ Merge Conflicts` section listing
+       the conflicting files and the upstream commits on `origin/<baseRefName>`
+       that introduced the clash.
+     - Treat merge conflicts as a `🔥 Urgent` blocker in `pr_triage_report.md`,
+       even when `Review Decision` is `APPROVED` and all CI status checks are
+       passing.
+     - Always resolve PR merge conflicts using a forward merge commit
+       (`git fetch origin <baseRefName> && git merge origin/<baseRefName>`)
+       rather than `git rebase` (since force-pushing is prohibited).
+
 3. **Analyze Open Comments**:
    - The script lists all unresolved review threads, top-level review comments
      (overall review summaries), and general PR conversation comments.

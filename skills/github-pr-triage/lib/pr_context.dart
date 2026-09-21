@@ -40,10 +40,14 @@ Future<String> runCommand(
     stderrEncoding: utf8,
   );
   if (result.exitCode != 0) {
+    final details = [
+      result.stderr.toString().trim(),
+      result.stdout.toString().trim(),
+    ].where((s) => s.isNotEmpty).join('\n');
     throw ProcessException(
       command,
       args,
-      'Command failed with exit code ${result.exitCode}:\n${result.stderr}',
+      'Command failed with exit code ${result.exitCode}:\n$details',
       result.exitCode,
     );
   }
@@ -261,5 +265,162 @@ PrReview _parsePrReview(Map json) {
     state: json['state']?.toString() ?? '',
     submittedAt: json['submittedAt']?.toString() ?? '',
     url: json['url']?.toString() ?? '',
+  );
+}
+
+/// Structured analysis of merge conflicts between a PR's head and base branches.
+typedef PrConflictAnalysis = ({
+  bool isConflicting,
+  String mergeable,
+  String mergeStateStatus,
+  String baseRefName,
+  String headRefName,
+  List<String> conflictingFiles,
+  List<String> conflictMessages,
+  List<String> upstreamCommits,
+});
+
+final _hexOidRegExp = RegExp(r'^[0-9a-f]{40,64}$');
+final _conflictInFileRegExp = RegExp(r'^CONFLICT \([^)]+\): .* in (.+)$');
+
+/// Parses `git merge-tree --write-tree --name-only` output into conflicting
+/// file paths and conflict summary messages.
+({List<String> files, List<String> messages}) parseMergeTreeConflictOutput(
+  String rawOutput,
+) {
+  final files = <String>{};
+  final messages = <String>[];
+  final lines = rawOutput
+      .split('\n')
+      .map(
+        (l) => l
+            .replaceFirst(RegExp(r'^Command failed with exit code \d+:'), '')
+            .trim(),
+      )
+      .toList();
+
+  var inNameList = false;
+  for (final line in lines) {
+    if (line.isEmpty) {
+      if (inNameList) inNameList = false;
+      continue;
+    }
+    if (_hexOidRegExp.hasMatch(line)) {
+      inNameList = true;
+      continue;
+    }
+    if (line.startsWith('CONFLICT (')) {
+      messages.add(line);
+      final match = _conflictInFileRegExp.firstMatch(line);
+      if (match != null) {
+        files.add(match.group(1)!.trim());
+      }
+      inNameList = false;
+      continue;
+    }
+    if (line.startsWith('Auto-merging ')) {
+      inNameList = false;
+      continue;
+    }
+    if (inNameList && !line.contains(' ')) {
+      files.add(line);
+    }
+  }
+
+  return (files: files.toList(), messages: messages);
+}
+
+/// Inspects a PR's mergeability state and, if `CONFLICTING` or `DIRTY`, uses
+/// local `git fetch`, `git merge-tree`, and `git log` to identify the exact
+/// conflicting files and upstream commits on `origin/<baseRefName>`.
+Future<PrConflictAnalysis> analyzePrConflicts(
+  PrContext context,
+  Map<String, dynamic> prData, {
+  CommandRunner runCommand = runCommand,
+}) async {
+  final mergeable = prData['mergeable']?.toString() ?? 'UNKNOWN';
+  final mergeStateStatus = prData['mergeStateStatus']?.toString() ?? 'UNKNOWN';
+  final baseRefName = prData['baseRefName']?.toString() ?? 'main';
+  final headRefName = prData['headRefName']?.toString() ?? '';
+  final isConflicting =
+      mergeable == 'CONFLICTING' || mergeStateStatus == 'DIRTY';
+
+  if (!isConflicting || headRefName.isEmpty) {
+    return (
+      isConflicting: isConflicting,
+      mergeable: mergeable,
+      mergeStateStatus: mergeStateStatus,
+      baseRefName: baseRefName,
+      headRefName: headRefName,
+      conflictingFiles: const <String>[],
+      conflictMessages: const <String>[],
+      upstreamCommits: const <String>[],
+    );
+  }
+
+  var conflictingFiles = <String>[];
+  var conflictMessages = <String>[];
+  var upstreamCommits = <String>[];
+
+  try {
+    await runCommand('git', [
+      'fetch',
+      'origin',
+      baseRefName,
+      headRefName,
+    ], workingDirectory: context.workingDir);
+  } catch (_) {
+    // Best-effort fetch; proceed with locally available refs if offline.
+  }
+
+  String mergeTreeOut = '';
+  try {
+    mergeTreeOut = await runCommand('git', [
+      'merge-tree',
+      '--write-tree',
+      '--name-only',
+      'origin/$baseRefName',
+      'origin/$headRefName',
+    ], workingDirectory: context.workingDir);
+  } on ProcessException catch (e) {
+    mergeTreeOut = e.message;
+  } catch (_) {}
+
+  if (mergeTreeOut.isNotEmpty) {
+    final parsed = parseMergeTreeConflictOutput(mergeTreeOut);
+    conflictingFiles = parsed.files;
+    conflictMessages = parsed.messages;
+  }
+
+  try {
+    final logArgs = <String>[
+      'log',
+      '--oneline',
+      '-n',
+      '10',
+      'origin/$headRefName..origin/$baseRefName',
+      if (conflictingFiles.isNotEmpty) ...['--', ...conflictingFiles],
+    ];
+    final logOut = await runCommand(
+      'git',
+      logArgs,
+      workingDirectory: context.workingDir,
+    );
+    upstreamCommits = logOut
+        .split('\n')
+        .map((l) => l.trim())
+        .where((l) => l.isNotEmpty)
+        .toList();
+  } catch (_) {}
+
+  return (
+    isConflicting: true,
+    mergeable: mergeable,
+    mergeStateStatus: mergeStateStatus,
+    baseRefName: baseRefName,
+    headRefName: headRefName,
+    conflictingFiles: conflictingFiles,
+    conflictMessages: conflictMessages,
+    upstreamCommits: upstreamCommits,
   );
 }
