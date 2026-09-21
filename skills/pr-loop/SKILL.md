@@ -212,7 +212,11 @@ are bypassed in favor of autonomous execution):
   - Apply the **Agreement Matrix** (`🔥 Urgent`, `👍 Solid`, `🤷 Meh`,
     `👎 Disagree`).
   - Exercise **Empirical Skepticism** using `dart analyze` and `dart test`.
-  - **Proactively write automated tests** for reviewer-requested behavior.
+  - Apply the **2-Bucket TDD Filter & Red-Green Execution**: Write failing tests
+    first (`dart test <test_file>`) for bug fixes, edge cases, and behavioral
+    changes before applying production fixes; skip new tests for copy/string
+    literal tweaks, symbol renames, comments/docs, or pure refactors already
+    covered by existing tests.
 - **Pragmatic Complexity & Anti-Overengineering Guardrail**: Before implementing
   structural refactorings suggested by automated bots (e.g. creating new
   classes/structs, adding caching maps, or rearranging working data flows),
