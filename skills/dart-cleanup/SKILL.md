@@ -64,6 +64,22 @@ output:
 > `~/github/...`. Please ensure `https://github.com/<org>/<repo>` is cloned into
 > `~/github/`.
 
+### 3. Optional `kscripts` Config & Constraint Hygiene (`lint-cleanup` & `tighten`)
+
+When `kscripts` (`kevmoo_scripts` installed via `dart install`) is available on
+`PATH` (`command -v kscripts >/dev/null 2>&1`) and the cleanup request includes
+`analysis_options.yaml` or `pubspec.yaml` dependency constraints:
+
+- **`analysis_options.yaml` Cleanup (`kscripts lint-cleanup`)**: Run
+  `kscripts lint-cleanup --rewrite` (or
+  `kscripts lint-cleanup -d <dir> --rewrite`) to strip duplicate, redundant, or
+  deprecated lint rules already included by `package:dart_flutter_team_lints` /
+  `package:lints`.
+- **`pubspec.yaml` Constraint Tightening (`kscripts tighten`)**: When preparing
+  a package or workspace for release (or when asked to tighten dependency lower
+  bounds), run `kscripts tighten` (or `kscripts tighten --workspace`) to align
+  `pubspec.yaml` minimum constraints with resolved `pubspec.lock` versions.
+
 ---
 
 ## 📋 Skill Catalog & Path Priority
