@@ -9,14 +9,14 @@
     "dash_skills": {
       "path": "~/github/kevmoo/dash_skills",
       "cloneUrl": "https://github.com/kevmoo/dash_skills.git",
-      "commitSha": "6c3900555225a113d4dbd89b4cda4b41c72130ae",
-      "commitDate": "2026-09-12T17:38:23-07:00"
+      "commitSha": "d9cbb494b80896d2c8eec9f7efce4da1efc3bd3a",
+      "commitDate": "2026-09-18T16:58:31-07:00"
     },
     "analytica.dart": {
       "path": "~/github/kevmoo/analytica.dart",
       "cloneUrl": "https://github.com/kevmoo/analytica.dart.git",
-      "commitSha": "0114d16b76df87f7bea27f9b11888518fb787357",
-      "commitDate": "2026-09-12T15:57:20-07:00"
+      "commitSha": "103ba839d3d8e4e53853fad600cbde341b153192",
+      "commitDate": "2026-09-18T23:03:21Z"
     }
   },
   "categories": [
@@ -89,9 +89,14 @@
           "summary": "Converts consecutive print statements and string concatenations into clean triple-quoted multiline strings."
         },
         {
+          "name": "dart-seal-type-hierarchies",
+          "repo": "dash_skills",
+          "summary": "Converts closed class hierarchies into `sealed` types to enable compiler-verified exhaustive pattern matching."
+        },
+        {
           "name": "dart-use-pattern-matching",
           "repo": "skills",
-          "summary": "Applies Dart 3 pattern matching, switch expressions, and destructuring to validate schemas and simplify control flow."
+          "summary": "Applies Dart 3 pattern matching, switch expressions, and list/map/split destructuring to validate schemas and simplify control flow."
         },
         {
           "name": "dart-use-primary-constructors",
