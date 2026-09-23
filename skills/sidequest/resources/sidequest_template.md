@@ -24,7 +24,7 @@
 - [x] [#5] 🛡️ **Sub-Quest 2.1:** Check config and run the reproduction test case
       -> _Done_
 - [-] 🛡️ **Sub-Quest 2.2:** Profile thread spawning across workers _(IN
-      PROGRESS)_
+  PROGRESS)_
   - [x] [#6 ⭐] 💀 ~~_Blocker 2.2.1:_ Resolve local Docker network timeout~~ ->
         _Resolved_
   - [-] ⚡ 👣 _Step 2.2.2:_ Run worker profiling script _(IN PROGRESS)_

@@ -258,6 +258,19 @@ void main() {
                     ),
                   ],
                 ),
+                SubQuest(
+                  id: '1.3',
+                  title: 'Deferred Milestone',
+                  status: TaskStatus.parked,
+                  items: [
+                    TaskItem(
+                      id: '1.3.1',
+                      type: TaskType.step,
+                      title: 'Deferred Step',
+                      status: TaskStatus.parked,
+                    ),
+                  ],
+                ),
               ],
             ),
           ],
@@ -285,6 +298,14 @@ void main() {
           (c) => c.contains('Upcoming Discussed Milestone *(IN PROGRESS)*'),
         );
         check(markdown).contains('  * [ ] 👣 *Step 1.2.1:* Upcoming Step');
+
+        // Parked Sub-Quest and Step use [ ] 🎒 and *(PARKED)*
+        check(markdown).contains(
+          '* [ ] 🎒 🛡️ **Sub-Quest 1.3:** Deferred Milestone *(PARKED)*',
+        );
+        check(
+          markdown,
+        ).contains('  * [ ] 🎒 👣 *Step 1.3.1:* Deferred Step *(PARKED)*');
       },
     );
 
@@ -609,49 +630,93 @@ void main() {
       ).equals(TaskStatus.pending);
     });
 
-    test('supports pending defaults, --start flags, and start command', () async {
-      // 1. Default subquest add and step add start as pending
-      var data = await runAndLoad(['subquest', 'add', '1', 'Roadmap Phase 1']);
-      check(data.quests[0].subQuests[0].status).equals(TaskStatus.pending);
+    test(
+      'supports pending defaults, --start flags, start command, and hierarchy sync',
+      () async {
+        // 1. Default subquest add and step add start as pending
+        var data = await runAndLoad([
+          'subquest',
+          'add',
+          '1',
+          'Roadmap Phase 1',
+        ]);
+        check(data.quests[0].subQuests[0].status).equals(TaskStatus.pending);
 
-      data = await runAndLoad(['step', 'add', '1.1', 'Upcoming Step 1']);
-      check(
-        data.quests[0].subQuests[0].items[0].status,
-      ).equals(TaskStatus.pending);
-      check(data.quests[0].subQuests[0].status).equals(TaskStatus.pending);
+        data = await runAndLoad(['step', 'add', '1.1', 'Upcoming Step 1']);
+        check(
+          data.quests[0].subQuests[0].items[0].status,
+        ).equals(TaskStatus.pending);
+        check(data.quests[0].subQuests[0].status).equals(TaskStatus.pending);
 
-      // 2. Starting a child step promotes both the step and its pending parent subquest to inProgress
-      data = await runAndLoad(['start', '1.1.1']);
-      check(
-        data.quests[0].subQuests[0].items[0].status,
-      ).equals(TaskStatus.inProgress);
-      check(data.quests[0].subQuests[0].status).equals(TaskStatus.inProgress);
+        // 2. Starting a child step promotes both the step and its pending parent subquest to inProgress
+        data = await runAndLoad(['start', '1.1.1']);
+        check(
+          data.quests[0].subQuests[0].items[0].status,
+        ).equals(TaskStatus.inProgress);
+        check(data.quests[0].subQuests[0].status).equals(TaskStatus.inProgress);
 
-      // 3. --start flags on subquest add and step add
-      data = await runAndLoad([
-        'subquest',
-        'add',
-        '1',
-        'Roadmap Phase 2',
-        '--start',
-      ]);
-      check(data.quests[0].subQuests[1].status).equals(TaskStatus.inProgress);
+        // 3. Reopening a parent SubQuest with an inProgress child reverts both to pending
+        data = await runAndLoad(['reopen', '1.1']);
+        check(data.quests[0].subQuests[0].status).equals(TaskStatus.pending);
+        check(
+          data.quests[0].subQuests[0].items[0].status,
+        ).equals(TaskStatus.pending);
 
-      data = await runAndLoad(['subquest', 'add', '1', 'Roadmap Phase 3']);
-      check(data.quests[0].subQuests[2].status).equals(TaskStatus.pending);
+        // 4. Complete 1.1.1, 1.1, and MainQuest 1, then reopen 1.1.1 -> parent 1.1 and MainQuest 1 reopen
+        data = await runAndLoad(['complete', '1.1.1', '1.1', '1']);
+        check(data.quests[0].status).equals(QuestStatus.completed);
+        check(data.quests[0].subQuests[0].status).equals(TaskStatus.completed);
+        check(data.lastCompletionOrder).equals(2);
 
-      data = await runAndLoad([
-        'step',
-        'add',
-        '1.3',
-        'Immediate Step',
-        '--start',
-      ]);
-      check(
-        data.quests[0].subQuests[2].items[0].status,
-      ).equals(TaskStatus.inProgress);
-      check(data.quests[0].subQuests[2].status).equals(TaskStatus.inProgress);
-    });
+        data = await runAndLoad(['reopen', '1.1.1']);
+        check(data.quests[0].status).equals(QuestStatus.active);
+        check(data.quests[0].subQuests[0].status).equals(TaskStatus.pending);
+        check(data.quests[0].subQuests[0].completionOrder).isNull();
+        check(data.lastCompletionOrder).equals(0);
+
+        // 5. Complete 1.1.1 and 1.1 again, then add a new step under 1.1 -> 1.1 reopens to pending
+        data = await runAndLoad(['complete', '1.1.1', '1.1']);
+        check(data.quests[0].subQuests[0].status).equals(TaskStatus.completed);
+        check(data.lastCompletionOrder).equals(2);
+
+        data = await runAndLoad(['step', 'add', '1.1', 'Follow-up Step']);
+        check(data.quests[0].subQuests[0].status).equals(TaskStatus.pending);
+        check(data.quests[0].subQuests[0].completionOrder).isNull();
+        check(data.lastCompletionOrder).equals(1);
+
+        // 6. Starting 1.1.2 promotes 1.1 to inProgress
+        data = await runAndLoad(['start', '1.1.2']);
+        check(data.quests[0].subQuests[0].status).equals(TaskStatus.inProgress);
+        check(
+          data.quests[0].subQuests[0].items[1].status,
+        ).equals(TaskStatus.inProgress);
+
+        // 7. --start flags on subquest add and step add
+        data = await runAndLoad([
+          'subquest',
+          'add',
+          '1',
+          'Roadmap Phase 2',
+          '--start',
+        ]);
+        check(data.quests[0].subQuests[1].status).equals(TaskStatus.inProgress);
+
+        data = await runAndLoad(['subquest', 'add', '1', 'Roadmap Phase 3']);
+        check(data.quests[0].subQuests[2].status).equals(TaskStatus.pending);
+
+        data = await runAndLoad([
+          'step',
+          'add',
+          '1.3',
+          'Immediate Step',
+          '--start',
+        ]);
+        check(
+          data.quests[0].subQuests[2].items[0].status,
+        ).equals(TaskStatus.inProgress);
+        check(data.quests[0].subQuests[2].status).equals(TaskStatus.inProgress);
+      },
+    );
 
     test('rejects non-canonical alias commands', () async {
       // Non-canonical synonyms must fail

@@ -67,7 +67,8 @@ void _printTaskItem(TaskItem item, int lastCompletionOrder) {
   final itemDone = switch (item.status) {
     TaskStatus.completed => '✔',
     TaskStatus.inProgress => '▶',
-    TaskStatus.pending || TaskStatus.parked => ' ',
+    TaskStatus.parked => '🎒',
+    TaskStatus.pending => ' ',
   };
   final icon = item.type == TaskType.blocker ? '👾' : '👣';
   final order = item.completionOrder != null
@@ -76,9 +77,11 @@ void _printTaskItem(TaskItem item, int lastCompletionOrder) {
             : '[#${item.completionOrder}]')
       : '';
   final orderStr = order.isNotEmpty ? '$order ' : '';
-  final statusSuffix = item.status == TaskStatus.inProgress
-      ? ' (IN PROGRESS)'
-      : '';
+  final statusSuffix = switch (item.status) {
+    TaskStatus.inProgress => ' (IN PROGRESS)',
+    TaskStatus.parked => ' (PARKED)',
+    TaskStatus.pending || TaskStatus.completed => '',
+  };
   stdout.writeln(
     '        [$itemDone] $orderStr$icon ${item.id}: "${item.title}"$statusSuffix',
   );
@@ -183,9 +186,42 @@ ItemCompleteResult _completeSideQuest(SideQuest sq, String id, int nextOrder) {
 }
 
 @internal
+void syncParentOnChildStatusChange(
+  SidequestData data,
+  MainQuest quest,
+  SubQuest sub, {
+  required TaskStatus childStatus,
+}) {
+  if (childStatus == TaskStatus.inProgress) {
+    if (quest.status == QuestStatus.completed) {
+      quest.status = QuestStatus.active;
+    }
+    if (sub.status != TaskStatus.inProgress) {
+      final hadOrder = sub.completionOrder != null;
+      sub.status = TaskStatus.inProgress;
+      sub.completionOrder = null;
+      if (hadOrder) recalculateMaxCompletionOrder(data);
+    }
+    return;
+  }
+
+  if (childStatus != TaskStatus.completed &&
+      sub.status == TaskStatus.completed) {
+    if (quest.status == QuestStatus.completed) {
+      quest.status = QuestStatus.active;
+    }
+    sub.completionOrder = null;
+    sub.status = sub.items.any((i) => i.status == TaskStatus.inProgress)
+        ? TaskStatus.inProgress
+        : TaskStatus.pending;
+    recalculateMaxCompletionOrder(data);
+  }
+}
+
+@internal
 bool startSingleItem(SidequestData data, String id) {
   for (final q in data.quests) {
-    if (_startQuest(q, id)) return true;
+    if (_startQuest(data, q, id)) return true;
   }
 
   for (final sq in data.globalSideQuests) {
@@ -199,32 +235,43 @@ bool startSingleItem(SidequestData data, String id) {
   return false;
 }
 
-bool _startQuest(MainQuest q, String id) {
+bool _startQuest(SidequestData data, MainQuest q, String id) {
   if (q.id == id) {
     q.status = QuestStatus.active;
     return true;
   }
   for (final sq in q.subQuests) {
-    if (sq.id == id) {
-      sq.status = TaskStatus.inProgress;
-      sq.completionOrder = null;
-      return true;
-    }
-    for (final item in sq.items) {
-      if (item.id == id) {
-        item.status = TaskStatus.inProgress;
-        item.completionOrder = null;
-        if (sq.status == TaskStatus.pending) {
-          sq.status = TaskStatus.inProgress;
-        }
-        return true;
-      }
-    }
+    if (_startSubQuest(data, q, sq, id)) return true;
   }
   for (final sq in q.sideQuests) {
     if (sq.id == id) {
       sq.status = SideQuestStatus.active;
       sq.completionOrder = null;
+      return true;
+    }
+  }
+  return false;
+}
+
+bool _startSubQuest(SidequestData data, MainQuest q, SubQuest sq, String id) {
+  if (sq.id == id) {
+    if (q.status == QuestStatus.completed) {
+      q.status = QuestStatus.active;
+    }
+    sq.status = TaskStatus.inProgress;
+    sq.completionOrder = null;
+    return true;
+  }
+  for (final item in sq.items) {
+    if (item.id == id) {
+      item.status = TaskStatus.inProgress;
+      item.completionOrder = null;
+      syncParentOnChildStatusChange(
+        data,
+        q,
+        sq,
+        childStatus: TaskStatus.inProgress,
+      );
       return true;
     }
   }
@@ -233,7 +280,7 @@ bool _startQuest(MainQuest q, String id) {
 
 bool reopenSingleItem(SidequestData data, String id) {
   for (final q in data.quests) {
-    if (_reopenQuest(q, id)) return true;
+    if (_reopenQuest(data, q, id)) return true;
   }
 
   for (final sq in data.globalSideQuests) {
@@ -247,29 +294,48 @@ bool reopenSingleItem(SidequestData data, String id) {
   return false;
 }
 
-bool _reopenQuest(MainQuest q, String id) {
+bool _reopenQuest(SidequestData data, MainQuest q, String id) {
   if (q.id == id) {
     q.status = QuestStatus.active;
     return true;
   }
   for (final sq in q.subQuests) {
-    if (sq.id == id) {
-      sq.status = TaskStatus.pending;
-      sq.completionOrder = null;
-      return true;
-    }
-    for (final item in sq.items) {
-      if (item.id == id) {
-        item.status = TaskStatus.pending;
-        item.completionOrder = null;
-        return true;
-      }
-    }
+    if (_reopenSubQuest(data, q, sq, id)) return true;
   }
   for (final sq in q.sideQuests) {
     if (sq.id == id) {
       sq.status = SideQuestStatus.active;
       sq.completionOrder = null;
+      return true;
+    }
+  }
+  return false;
+}
+
+bool _reopenSubQuest(SidequestData data, MainQuest q, SubQuest sq, String id) {
+  if (sq.id == id) {
+    if (q.status == QuestStatus.completed) {
+      q.status = QuestStatus.active;
+    }
+    sq.status = TaskStatus.pending;
+    sq.completionOrder = null;
+    for (final item in sq.items) {
+      if (item.status == TaskStatus.inProgress) {
+        item.status = TaskStatus.pending;
+      }
+    }
+    return true;
+  }
+  for (final item in sq.items) {
+    if (item.id == id) {
+      item.status = TaskStatus.pending;
+      item.completionOrder = null;
+      syncParentOnChildStatusChange(
+        data,
+        q,
+        sq,
+        childStatus: TaskStatus.pending,
+      );
       return true;
     }
   }
@@ -417,6 +483,8 @@ void _applyBatchOp(SidequestData data, Map<String, dynamic> op) {
       _applyBatchStart(data, op);
     case 'complete':
       _applyBatchComplete(data, op);
+    case 'reopen':
+      _applyBatchReopen(data, op);
     case 'subquest_add':
       _applyBatchSubQuestAdd(data, op);
     case 'step_add':
@@ -490,6 +558,16 @@ void _applyBatchStart(SidequestData data, Map<String, dynamic> op) {
   recalculateMaxCompletionOrder(data);
 }
 
+void _applyBatchReopen(SidequestData data, Map<String, dynamic> op) {
+  final validIds = _extractBatchIds(op, action: 'reopen');
+  for (final id in validIds) {
+    if (!reopenSingleItem(data, id)) {
+      throw StateError('Item "$id" not found for reopen.');
+    }
+  }
+  recalculateMaxCompletionOrder(data);
+}
+
 void _applyBatchComplete(SidequestData data, Map<String, dynamic> op) {
   final validIds = _extractBatchIds(op, action: 'complete');
   for (final id in validIds) {
@@ -525,6 +603,9 @@ void _applyBatchSubQuestAdd(
   final nextSubNumber = nextSuffixNumber(quest.subQuests.map((sq) => sq.id));
   final subId = '$qId.$nextSubNumber';
   final status = _resolveBatchTaskStatus(op, defaultStatus: TaskStatus.pending);
+  if (quest.status == QuestStatus.completed && status != TaskStatus.completed) {
+    quest.status = QuestStatus.active;
+  }
   quest.subQuests.add(SubQuest(id: subId, title: title, status: status));
 }
 
@@ -562,10 +643,11 @@ void _applyBatchTaskItemAdd(
       '1.1';
   final title =
       op['title']?.toString() ?? op['description']?.toString() ?? defaultTitle;
-  final sub = findSubQuest(data, subId, silent: true);
-  if (sub == null) {
+  final found = findQuestAndSubQuest(data, subId, silent: true);
+  if (found == null) {
     throw StateError('Sub-Quest "$subId" not found.');
   }
+  final (quest, sub) = found;
   final nextNumber = nextSuffixNumber(sub.items.map((i) => i.id));
   sub.items.add(
     TaskItem(
@@ -575,9 +657,7 @@ void _applyBatchTaskItemAdd(
       status: status,
     ),
   );
-  if (status == TaskStatus.inProgress && sub.status == TaskStatus.pending) {
-    sub.status = TaskStatus.inProgress;
-  }
+  syncParentOnChildStatusChange(data, quest, sub, childStatus: status);
 }
 
 @internal
@@ -646,19 +726,26 @@ MainQuest? findQuest(SidequestData data, String id, {bool silent = false}) {
 }
 
 @internal
-SubQuest? findSubQuest(
+(MainQuest, SubQuest)? findQuestAndSubQuest(
   SidequestData data,
   String subId, {
   bool silent = false,
 }) {
   for (final q in data.quests) {
     for (final sq in q.subQuests) {
-      if (sq.id == subId) return sq;
+      if (sq.id == subId) return (q, sq);
     }
   }
   if (!silent) stderr.writeln('Error: Sub-Quest "$subId" not found.');
   return null;
 }
+
+@internal
+SubQuest? findSubQuest(
+  SidequestData data,
+  String subId, {
+  bool silent = false,
+}) => findQuestAndSubQuest(data, subId, silent: silent)?.$2;
 
 @internal
 int nextSuffixNumber(Iterable<String> ids) =>

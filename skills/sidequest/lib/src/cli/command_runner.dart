@@ -136,17 +136,16 @@ abstract class SidequestCommand extends Command<int> {
   }) async {
     final (subId, title) = requireIdAndTitle(usage);
     final data = await requireData();
-    final sub = findSubQuest(data, subId);
-    if (sub == null) return 1;
+    final match = findQuestAndSubQuest(data, subId);
+    if (match == null) return 1;
+    final (quest, sub) = match;
 
     final nextItemNumber = nextSuffixNumber(sub.items.map((item) => item.id));
     final itemId = '$subId.$nextItemNumber';
     sub.items.add(
       TaskItem(id: itemId, type: type, title: title, status: status),
     );
-    if (status == TaskStatus.inProgress && sub.status == TaskStatus.pending) {
-      sub.status = TaskStatus.inProgress;
-    }
+    syncParentOnChildStatusChange(data, quest, sub, childStatus: status);
     await store.save(data);
     stdout.writeln('✔ Added $label $itemId: "$title"');
     return 0;
@@ -365,6 +364,9 @@ class SubQuestAddCommand extends SidequestCommand {
     final data = await requireData();
     final quest = findQuest(data, questId);
     if (quest == null) return 1;
+    if (quest.status == QuestStatus.completed) {
+      quest.status = QuestStatus.active;
+    }
 
     final nextSubNumber = nextSuffixNumber(quest.subQuests.map((sq) => sq.id));
     final subId = '$questId.$nextSubNumber';
@@ -591,7 +593,8 @@ class ReopenCommand extends SidequestCommand {
   String get name => 'reopen';
 
   @override
-  String get description => 'Reopen one or more completed items.';
+  String get description =>
+      'Reopen completed or in-progress items (reverts to pending).';
 
   ReopenCommand(super.runner);
 
