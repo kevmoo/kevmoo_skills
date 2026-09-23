@@ -138,11 +138,10 @@ class MarkdownEmitter {
     int lastCompletionOrder,
   ) {
     final isDone = sq.status == TaskStatus.completed;
-    final checkbox = isDone ? '[x]' : '[ ]';
+    final isInProgress = sq.status == TaskStatus.inProgress;
+    final checkbox = isDone ? '[x]' : (isInProgress ? '[-]' : '[ ]');
     final tag = _orderTag(sq.completionOrder, lastCompletionOrder);
-    final inProgressTag = (!isDone && sq.status == TaskStatus.inProgress)
-        ? ' *(IN PROGRESS)*'
-        : '';
+    final inProgressTag = isInProgress ? ' *(IN PROGRESS)*' : '';
     final doneTag = isDone ? ' -> *Done*' : '';
 
     buffer.writeln(
@@ -160,7 +159,8 @@ class MarkdownEmitter {
     int lastCompletionOrder,
   ) {
     final isDone = item.status == TaskStatus.completed;
-    final checkbox = isDone ? '[x]' : '[ ]';
+    final isInProgress = item.status == TaskStatus.inProgress;
+    final checkbox = isDone ? '[x]' : (isInProgress ? '[-]' : '[ ]');
     final tag = _orderTag(item.completionOrder, lastCompletionOrder);
     final isBlocker = item.type == TaskType.blocker;
     final label = isBlocker ? 'Blocker' : 'Step';
@@ -176,7 +176,11 @@ class MarkdownEmitter {
         '  * $checkbox $tag$icon ~~*$label ${item.id}:* ${item.title}~~ -> *$doneLabel*',
       );
     } else {
-      buffer.writeln('  * $checkbox $icon *$label ${item.id}:* ${item.title}');
+      final activePrefix = isInProgress ? '⚡ ' : '';
+      final inProgressTag = isInProgress ? ' *(IN PROGRESS)*' : '';
+      buffer.writeln(
+        '  * $checkbox $activePrefix$icon *$label ${item.id}:* ${item.title}$inProgressTag',
+      );
     }
   }
 

@@ -29,6 +29,7 @@ class SidequestCliRunner extends CommandRunner<int> {
     addCommand(StepCommand(this));
     addCommand(BlockerCommand(this));
     addCommand(SideQuestCommand(this));
+    addCommand(StartCommand(this));
     addCommand(CompleteCommand(this));
     addCommand(ReopenCommand(this));
     addCommand(RemoveCommand(this));
@@ -143,6 +144,9 @@ abstract class SidequestCommand extends Command<int> {
     sub.items.add(
       TaskItem(id: itemId, type: type, title: title, status: status),
     );
+    if (status == TaskStatus.inProgress && sub.status == TaskStatus.pending) {
+      sub.status = TaskStatus.inProgress;
+    }
     await store.save(data);
     stdout.writeln('✔ Added $label $itemId: "$title"');
     return 0;
@@ -190,10 +194,10 @@ abstract class SidequestCommand extends Command<int> {
 /// `sidequest status` command.
 class StatusCommand extends SidequestCommand {
   @override
-  final String name = 'status';
+  String get name => 'status';
 
   @override
-  final String description = 'Print compact 10-line session overview.';
+  String get description => 'Print compact 10-line session overview.';
 
   StatusCommand(super.runner);
 
@@ -234,10 +238,10 @@ class StatusCommand extends SidequestCommand {
 /// `sidequest init [title]` command.
 class InitCommand extends SidequestCommand {
   @override
-  final String name = 'init';
+  String get name => 'init';
 
   @override
-  final String description = 'Initialize sidequest session map.';
+  String get description => 'Initialize sidequest session map.';
 
   InitCommand(super.runner);
 
@@ -254,10 +258,10 @@ class InitCommand extends SidequestCommand {
 /// `sidequest quest` command.
 class QuestCommand extends SidequestCommand {
   @override
-  final String name = 'quest';
+  String get name => 'quest';
 
   @override
-  final String description = 'Manage main quests.';
+  String get description => 'Manage main quests.';
 
   QuestCommand(super.runner) {
     addSubcommand(QuestAddCommand(runner));
@@ -268,10 +272,10 @@ class QuestCommand extends SidequestCommand {
 
 class QuestAddCommand extends SidequestCommand {
   @override
-  final String name = 'add';
+  String get name => 'add';
 
   @override
-  final String description = 'Add a new main quest.';
+  String get description => 'Add a new main quest.';
 
   QuestAddCommand(super.runner);
 
@@ -293,10 +297,10 @@ class QuestAddCommand extends SidequestCommand {
 
 class QuestActivateCommand extends SidequestCommand {
   @override
-  final String name = 'activate';
+  String get name => 'activate';
 
   @override
-  final String description = 'Activate a main quest.';
+  String get description => 'Activate a main quest.';
 
   QuestActivateCommand(super.runner);
 
@@ -306,10 +310,10 @@ class QuestActivateCommand extends SidequestCommand {
 
 class QuestPauseCommand extends SidequestCommand {
   @override
-  final String name = 'pause';
+  String get name => 'pause';
 
   @override
-  final String description = 'Pause a main quest.';
+  String get description => 'Pause a main quest.';
 
   QuestPauseCommand(super.runner) {
     argParser.addOption('reason', help: 'Reason for pausing the quest.');
@@ -326,10 +330,10 @@ class QuestPauseCommand extends SidequestCommand {
 /// `sidequest subquest` command.
 class SubQuestCommand extends SidequestCommand {
   @override
-  final String name = 'subquest';
+  String get name => 'subquest';
 
   @override
-  final String description = 'Manage sub-quests.';
+  String get description => 'Manage sub-quests.';
 
   SubQuestCommand(super.runner) {
     addSubcommand(SubQuestAddCommand(runner));
@@ -338,27 +342,33 @@ class SubQuestCommand extends SidequestCommand {
 
 class SubQuestAddCommand extends SidequestCommand {
   @override
-  final String name = 'add';
+  String get name => 'add';
 
   @override
-  final String description = 'Add a sub-quest under a main quest.';
+  String get description => 'Add a sub-quest under a main quest.';
 
-  SubQuestAddCommand(super.runner);
+  SubQuestAddCommand(super.runner) {
+    argParser.addFlag(
+      'start',
+      defaultsTo: false,
+      help: 'Start immediately in in_progress status.',
+    );
+  }
 
   @override
   Future<int> run() async {
     final (questId, title) = requireIdAndTitle(
-      'Usage: subquest add <quest-id> <title>',
+      'Usage: subquest add <quest-id> <title> [--start]',
     );
+    final isStart = argResults?['start'] as bool? ?? false;
+    final status = isStart ? TaskStatus.inProgress : TaskStatus.pending;
     final data = await requireData();
     final quest = findQuest(data, questId);
     if (quest == null) return 1;
 
     final nextSubNumber = nextSuffixNumber(quest.subQuests.map((sq) => sq.id));
     final subId = '$questId.$nextSubNumber';
-    quest.subQuests.add(
-      SubQuest(id: subId, title: title, status: TaskStatus.inProgress),
-    );
+    quest.subQuests.add(SubQuest(id: subId, title: title, status: status));
     await store.save(data);
     stdout.writeln('✔ Added Sub-Quest $subId: "$title"');
     return 0;
@@ -368,10 +378,10 @@ class SubQuestAddCommand extends SidequestCommand {
 /// `sidequest step` command.
 class StepCommand extends SidequestCommand {
   @override
-  final String name = 'step';
+  String get name => 'step';
 
   @override
-  final String description = 'Manage planned steps.';
+  String get description => 'Manage planned steps.';
 
   StepCommand(super.runner) {
     addSubcommand(StepAddCommand(runner));
@@ -380,29 +390,38 @@ class StepCommand extends SidequestCommand {
 
 class StepAddCommand extends SidequestCommand {
   @override
-  final String name = 'add';
+  String get name => 'add';
 
   @override
-  final String description = 'Add a planned step under a sub-quest.';
+  String get description => 'Add a planned step under a sub-quest.';
 
-  StepAddCommand(super.runner);
+  StepAddCommand(super.runner) {
+    argParser.addFlag(
+      'start',
+      defaultsTo: false,
+      help: 'Start immediately in in_progress status.',
+    );
+  }
 
   @override
-  Future<int> run() => addSubQuestItem(
-    usage: 'Usage: step add <subquest-id> <title>',
-    type: TaskType.step,
-    status: TaskStatus.pending,
-    label: 'Step',
-  );
+  Future<int> run() {
+    final isStart = argResults?['start'] as bool? ?? false;
+    return addSubQuestItem(
+      usage: 'Usage: step add <subquest-id> <title> [--start]',
+      type: TaskType.step,
+      status: isStart ? TaskStatus.inProgress : TaskStatus.pending,
+      label: 'Step',
+    );
+  }
 }
 
 /// `sidequest blocker` command.
 class BlockerCommand extends SidequestCommand {
   @override
-  final String name = 'blocker';
+  String get name => 'blocker';
 
   @override
-  final String description = 'Manage unplanned blockers.';
+  String get description => 'Manage unplanned blockers.';
 
   BlockerCommand(super.runner) {
     addSubcommand(BlockerAddCommand(runner));
@@ -411,10 +430,10 @@ class BlockerCommand extends SidequestCommand {
 
 class BlockerAddCommand extends SidequestCommand {
   @override
-  final String name = 'add';
+  String get name => 'add';
 
   @override
-  final String description = 'Add an unplanned blocker under a sub-quest.';
+  String get description => 'Add an unplanned blocker under a sub-quest.';
 
   BlockerAddCommand(super.runner);
 
@@ -430,10 +449,10 @@ class BlockerAddCommand extends SidequestCommand {
 /// `sidequest sidequest` command.
 class SideQuestCommand extends SidequestCommand {
   @override
-  final String name = 'sidequest';
+  String get name => 'sidequest';
 
   @override
-  final String description = 'Manage tangents and side quests.';
+  String get description => 'Manage tangents and side quests.';
 
   SideQuestCommand(super.runner) {
     addSubcommand(SideQuestAddCommand(runner));
@@ -442,10 +461,10 @@ class SideQuestCommand extends SidequestCommand {
 
 class SideQuestAddCommand extends SidequestCommand {
   @override
-  final String name = 'add';
+  String get name => 'add';
 
   @override
-  final String description = 'Add a side quest.';
+  String get description => 'Add a side quest.';
 
   SideQuestAddCommand(super.runner) {
     argParser
@@ -495,13 +514,31 @@ class SideQuestAddCommand extends SidequestCommand {
   }
 }
 
+/// `sidequest start <id...>` command.
+class StartCommand extends SidequestCommand {
+  @override
+  String get name => 'start';
+
+  @override
+  String get description => 'Mark one or more items in-progress.';
+
+  StartCommand(super.runner);
+
+  @override
+  Future<int> run() => mutateItemsByIds(
+    usage: 'Usage: start <id> [id2]...',
+    mutate: startSingleItem,
+    actionLabel: 'Started',
+  );
+}
+
 /// `sidequest complete <id...>` command.
 class CompleteCommand extends SidequestCommand {
   @override
-  final String name = 'complete';
+  String get name => 'complete';
 
   @override
-  final String description = 'Mark one or more items completed.';
+  String get description => 'Mark one or more items completed.';
 
   CompleteCommand(super.runner);
 
@@ -551,10 +588,10 @@ class CompleteCommand extends SidequestCommand {
 /// `sidequest reopen <id...>` command.
 class ReopenCommand extends SidequestCommand {
   @override
-  final String name = 'reopen';
+  String get name => 'reopen';
 
   @override
-  final String description = 'Reopen one or more completed items.';
+  String get description => 'Reopen one or more completed items.';
 
   ReopenCommand(super.runner);
 
@@ -569,10 +606,10 @@ class ReopenCommand extends SidequestCommand {
 /// `sidequest remove <id...>` command.
 class RemoveCommand extends SidequestCommand {
   @override
-  final String name = 'remove';
+  String get name => 'remove';
 
   @override
-  final String description = 'Remove one or more items.';
+  String get description => 'Remove one or more items.';
 
   RemoveCommand(super.runner);
 
@@ -587,10 +624,10 @@ class RemoveCommand extends SidequestCommand {
 /// `sidequest vcs <qId>` command.
 class VcsCommand extends SidequestCommand {
   @override
-  final String name = 'vcs';
+  String get name => 'vcs';
 
   @override
-  final String description = 'Update VCS state for a main quest.';
+  String get description => 'Update VCS state for a main quest.';
 
   VcsCommand(super.runner) {
     argParser
@@ -633,10 +670,10 @@ class VcsCommand extends SidequestCommand {
 /// `sidequest batch <json>` command.
 class BatchCommand extends SidequestCommand {
   @override
-  final String name = 'batch';
+  String get name => 'batch';
 
   @override
-  final String description = 'Execute multiple mutations in a single call.';
+  String get description => 'Execute multiple mutations in a single call.';
 
   BatchCommand(super.runner);
 
@@ -673,10 +710,10 @@ class BatchCommand extends SidequestCommand {
 /// `sidequest render` command.
 class RenderCommand extends SidequestCommand {
   @override
-  final String name = 'render';
+  String get name => 'render';
 
   @override
-  final String description = 'Re-render sidequest.md from sidequest.json.';
+  String get description => 'Re-render sidequest.md from sidequest.json.';
 
   RenderCommand(super.runner);
 
@@ -696,10 +733,10 @@ class RenderCommand extends SidequestCommand {
 /// `sidequest merge-audit` command.
 class MergeAuditCommand extends SidequestCommand {
   @override
-  final String name = 'merge-audit';
+  String get name => 'merge-audit';
 
   @override
-  final String description = 'Merge audited delta JSON into session map.';
+  String get description => 'Merge audited delta JSON into session map.';
 
   MergeAuditCommand(super.runner) {
     argParser.addOption('input', help: 'Path to audited delta JSON file.');

@@ -16,8 +16,10 @@ conversation transcript and build/update the structured JSON session map
      proposed in the session.
 5. Enforce dot-separated hierarchical numbering for Sub-Quests (e.g. `1.1`,
    `2.1`) and nested items (e.g. `1.1.1`, `2.1.2`).
-6. Maintain sequential completion order counts (`completionOrder: N`) on
-   completed items and update `lastCompletionOrder` accordingly.
+6. **Status Precision (`pending` vs `in_progress` vs `completed`):**
+   - Set `"status": "in_progress"` **only** on the `SubQuest` and `TaskItem` (`step` / `blocker`) that are actively being executed at the current head of the transcript.
+   - Set `"status": "pending"` on all upcoming, planned, or discussed `SubQuest`s and `TaskItem`s that have not started execution yet.
+   - Maintain sequential completion order counts (`completionOrder: N`) on `"status": "completed"` items and update `lastCompletionOrder` accordingly.
 7. Track the 5-stage VCS lifecycle for active quests and code detours:
    `dirty`, `local_commit`, `uploaded`, `merged`, `clean`.
 8. Update the watermark with the latest audited `stepIndex` and timestamp.

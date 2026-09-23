@@ -87,14 +87,17 @@ session state** (`sidequest.md`) and **new agent suggestions** (chat reply):
 
 ## 🧭 Hierarchy & Syntax Specification
 
-| Level          | Syntax / Prefix            | Description                          | Status Indicators                              |
-| :------------- | :------------------------- | :----------------------------------- | :--------------------------------------------- |
-| **Main Quest** | `Main Quest N:`            | High-level initiatives / chapters    | `⚔️ [ACTIVE]`, `🏆 [COMPLETED]`, `⏸️ [PAUSED]` |
-| **Sub-Quest**  | `Sub-Quest N.M:`           | Planned milestones                   | `🛡️`                                           |
-| **Blocker**    | `Blocker N.M.K:`           | Critical-path unplanned blocker      | `👾 Active`, `💀 ~~Resolved~~`                 |
-| **Step**       | `Step N.M.K:`              | Planned action item                  | `👣 Active`, `👣 ~~Done~~`                     |
-| **Side Quest** | `[Active]` / `🎒 [Parked]` | Tangents / rabbit holes (`G1`, `S1`) | `🌿`                                           |
+| Level          | Syntax / Prefix            | Description                          | Status Indicators                                                      |
+| :------------- | :------------------------- | :----------------------------------- | :--------------------------------------------------------------------- |
+| **Main Quest** | `Main Quest N:`            | High-level initiatives / chapters    | `⚔️ [ACTIVE HEAD]`, `🏆 [COMPLETED]`, `⏸️ [PAUSED]`                    |
+| **Sub-Quest**  | `Sub-Quest N.M:`           | Planned milestones                   | `[ ] 🛡️` (Pending), `[-] 🛡️ *(IN PROGRESS)*`, `[x] 🛡️ -> *Done*`      |
+| **Blocker**    | `Blocker N.M.K:`           | Critical-path unplanned blocker      | `[-] ⚡ 👾 *(IN PROGRESS)*`, `[ ] 👾` (Pending), `[x] 💀 ~~Resolved~~` |
+| **Step**       | `Step N.M.K:`              | Planned action item                  | `[ ] 👣` (Pending), `[-] ⚡ 👣 *(IN PROGRESS)*`, `[x] 👣 ~~Done~~`     |
+| **Side Quest** | `[Active]` / `🎒 [Parked]` | Tangents / rabbit holes (`G1`, `S1`) | `🌿`                                                                   |
 
+- **Pending (`[ ]`) vs. In-Progress (`[-]`)**:
+  - Newly added `Sub-Quest` and `Step` items default to `pending` (`[ ]`) so mapped-out roadmaps represent upcoming work without false "in-progress" noise.
+  - Only mark the actively executing `Sub-Quest` and `Step` as `in_progress` (`[-]`) using `sidequest start <id...>` (or `--start` on `add`). Starting a child `Step` automatically promotes its parent `Sub-Quest` from `pending` to `in_progress`.
 - **Completion Order (`[#N ⭐]`):** Completed items receive sequential tags
   (`[#1]`, `[#2]`). The most recently completed item receives the star
   (`[#N ⭐]`).
@@ -117,22 +120,26 @@ Execute `sidequest` (or `dart run <path-to-skill>/bin/sidequest.dart`):
 sidequest status
 
 # 2. Initialize or Add Quests, Sub-Quests, Steps, Blockers
+#    (Sub-Quests & Steps default to `pending`; pass `--start` if executing immediately)
 sidequest init "Title"
-sidequest subquest add 1 "UI Implementation"
-sidequest step add 1.1 "Draft UI widget"
+sidequest subquest add 1 "UI Implementation" [--start]
+sidequest step add 1.1 "Draft UI widget" [--start]
 sidequest blocker add 1.1 "Broken build dependency"
 sidequest sidequest add "Tangent item" [--global] [--parked] [--note="..."]
 
-# 3. Batch Operations (Atomic multi-item execution in a single call)
-sidequest batch '[{"type":"subquest_add","quest":"1","title":"Backend"},{"type":"step_add","subquest":"1.2","title":"API client"}]'
+# 3. Start Pending Items When Active Execution Begins
+sidequest start 1.1 1.1.1
 
-# 4. Complete One or Multiple Items (Atomic disk write & star update)
+# 4. Batch Operations (Atomic multi-item execution in a single call)
+sidequest batch '[{"type":"subquest_add","quest":"1","title":"Backend"},{"type":"step_add","subquest":"1.2","title":"API client","status":"pending"},{"type":"start","ids":["1.1.1"]}]'
+
+# 5. Complete One or Multiple Items (Atomic disk write & star update)
 sidequest complete 1.1.1 1.1.2 1.1
 
-# 5. Update VCS Lifecycle
+# 6. Update VCS Lifecycle
 sidequest vcs 1 --stage=dirty|local_commit|uploaded|merged|clean [--branch=B] [--files=F]
 
-# 6. Reopen or Remove
+# 7. Reopen (reverts to `pending`) or Remove
 sidequest reopen 1.1
 sidequest remove 1.1.2
 ```
