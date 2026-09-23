@@ -45,30 +45,18 @@ Synthesizes task hierarchies and context drift into a visual session map.
 
 ## 🎯 Scope & Epistemic Boundaries (Ground-Truth Mandate)
 
-When `/sidequest` is invoked, maintain a strict boundary between **recorded
-session state** (`sidequest.md`) and **new agent suggestions** (chat reply):
-
-### ✅ What MUST Be Included in `sidequest.md`
-
-1. **Completed & In-Flight Work:** Every Main Quest, Sub-Quest, Step, Blocker,
-   and Side Quest executed or actively in progress during the session.
-2. **Discussed Pending & Remaining Work:** Every upcoming task, deferred
-   follow-up, open action item, or parked side quest that has **already been
-   discussed with the human operator, proposed by the agent in prior turns, or
-   documented in session artifacts** (e.g., plans, triage reports, design docs).
-   Before updating the map, check prior chat turns and session artifacts so
-   discussed pending items are never left out.
-
-### 🚫 What MUST Be Excluded from `sidequest.md` (Chat-Only Boundary)
-
-1. **Zero Artifact Speculation:** Invoking `/sidequest` must **never** inspire
-   the agent to brainstorm or invent new steps, sub-quests, or follow-ups inside
-   `sidequest.md` that have not yet been discussed or proposed in the session.
-2. **New Suggestions Belong in Chat:** If you identify additional work or
-   optional follow-ups worth proposing, state them clearly in the **chat
-   window** (e.g., _"Separate from our mapped tasks, we could also
-   consider..."_). Only add them to `sidequest.md` after they have been
-   discussed in chat.
+- **Include (`sidequest.md`):** Every Main Quest, Sub-Quest, Step, Blocker, and
+  Side Quest executed, in flight, or **explicitly discussed/proposed** in prior
+  chat turns or session artifacts (plans, triage reports, design docs). Check
+  prior turns and artifacts so discussed upcoming work is never omitted.
+- **Exclude (Chat-Only Boundary):** Never invent or extrapolate un-discussed
+  future steps inside `sidequest.md`. Surface newly brainstormed ideas strictly
+  in the **chat window** (e.g., _"Separate from our mapped tasks, we could also
+  consider..."_).
+- **Never Park Declined Options:** `🎒 [Parked]` (`--parked`) is strictly for
+  work the user intends to return to later. When the user cherry-picks from a
+  candidate table or passes on remaining options ("not interested", "skip
+  those"), omit the unselected options entirely rather than parking them.
 
 ---
 
@@ -87,14 +75,27 @@ session state** (`sidequest.md`) and **new agent suggestions** (chat reply):
 
 ## 🧭 Hierarchy & Syntax Specification
 
-| Level          | Syntax / Prefix            | Description                          | Status Indicators                              |
-| :------------- | :------------------------- | :----------------------------------- | :--------------------------------------------- |
-| **Main Quest** | `Main Quest N:`            | High-level initiatives / chapters    | `⚔️ [ACTIVE]`, `🏆 [COMPLETED]`, `⏸️ [PAUSED]` |
-| **Sub-Quest**  | `Sub-Quest N.M:`           | Planned milestones                   | `🛡️`                                           |
-| **Blocker**    | `Blocker N.M.K:`           | Critical-path unplanned blocker      | `👾 Active`, `💀 ~~Resolved~~`                 |
-| **Step**       | `Step N.M.K:`              | Planned action item                  | `👣 Active`, `👣 ~~Done~~`                     |
-| **Side Quest** | `[Active]` / `🎒 [Parked]` | Tangents / rabbit holes (`G1`, `S1`) | `🌿`                                           |
+| Level          | Syntax / Prefix            | Description                          | Status Indicators                                                                              |
+| :------------- | :------------------------- | :----------------------------------- | :--------------------------------------------------------------------------------------------- |
+| **Main Quest** | `Main Quest N:`            | High-level initiatives / chapters    | `⚔️ [ACTIVE HEAD]`, `🏆 [COMPLETED]`, `⏸️ [PAUSED]`                                            |
+| **Sub-Quest**  | `Sub-Quest N.M:`           | Planned milestones                   | `[ ] 🛡️` (Pending), `[-] 🛡️ *(IN PROGRESS)*`, `[ ] 🎒 🛡️ *(PARKED)*`, `[x] 🛡️ -> *Done*`       |
+| **Blocker**    | `Blocker N.M.K:`           | Critical-path unplanned blocker      | `[-] ⚡ 👾 *(IN PROGRESS)*`, `[ ] 👾` (Pending), `[ ] 🎒 👾 *(PARKED)*`, `[x] 💀 ~~Resolved~~` |
+| **Step**       | `Step N.M.K:`              | Planned action item                  | `[ ] 👣` (Pending), `[-] ⚡ 👣 *(IN PROGRESS)*`, `[ ] 🎒 👣 *(PARKED)*`, `[x] 👣 ~~Done~~`     |
+| **Side Quest** | `[Active]` / `🎒 [Parked]` | Tangents / rabbit holes (`G1`, `S1`) | `🌿`                                                                                           |
 
+- **Pending (`[ ]`) vs. In-Progress (`[-]`) & Cursor Advancement:**
+  - Newly added `Sub-Quest` and `Step` items default to `pending` (`[ ]`) so
+    mapped-out roadmaps represent upcoming work without false "in-progress"
+    noise.
+  - Mark only the actively executing `Sub-Quest` and `Step` as `in_progress`
+    (`[-]`) using `sidequest start <id...>` (or `--start` on `add`). Starting or
+    adding an `in_progress` child automatically promotes its parent `Sub-Quest`
+    (and `Main Quest`) to `in_progress`.
+  - When finishing `Step 1.1.1` and moving to `Step 1.1.2`, advance both in one
+    turn: `sidequest complete 1.1.1 && sidequest start 1.1.2`.
+  - Completing a parent `Sub-Quest` does not auto-complete its children; pass
+    completed child IDs alongside the parent
+    (`sidequest complete 1.1.1 1.1.2 1.1`).
 - **Completion Order (`[#N ⭐]`):** Completed items receive sequential tags
   (`[#1]`, `[#2]`). The most recently completed item receives the star
   (`[#N ⭐]`).
@@ -117,22 +118,26 @@ Execute `sidequest` (or `dart run <path-to-skill>/bin/sidequest.dart`):
 sidequest status
 
 # 2. Initialize or Add Quests, Sub-Quests, Steps, Blockers
+#    (Sub-Quests & Steps default to `pending`; pass `--start` if executing immediately)
 sidequest init "Title"
-sidequest subquest add 1 "UI Implementation"
-sidequest step add 1.1 "Draft UI widget"
+sidequest subquest add 1 "UI Implementation" [--start]
+sidequest step add 1.1 "Draft UI widget" [--start]
 sidequest blocker add 1.1 "Broken build dependency"
 sidequest sidequest add "Tangent item" [--global] [--parked] [--note="..."]
 
-# 3. Batch Operations (Atomic multi-item execution in a single call)
-sidequest batch '[{"type":"subquest_add","quest":"1","title":"Backend"},{"type":"step_add","subquest":"1.2","title":"API client"}]'
+# 3. Start Pending Items When Active Execution Begins
+sidequest start 1.1 1.1.1
 
-# 4. Complete One or Multiple Items (Atomic disk write & star update)
+# 4. Batch Operations (Atomic multi-item execution in a single call)
+sidequest batch '[{"type":"subquest_add","quest":"1","title":"Backend"},{"type":"step_add","subquest":"1.2","title":"API client","status":"pending"},{"type":"start","ids":["1.1.1"]}]'
+
+# 5. Complete One or Multiple Items (Atomic disk write & star update)
 sidequest complete 1.1.1 1.1.2 1.1
 
-# 5. Update VCS Lifecycle
+# 6. Update VCS Lifecycle
 sidequest vcs 1 --stage=dirty|local_commit|uploaded|merged|clean [--branch=B] [--files=F]
 
-# 6. Reopen or Remove
+# 7. Reopen (reverts to `pending`) or Remove
 sidequest reopen 1.1
 sidequest remove 1.1.2
 ```
