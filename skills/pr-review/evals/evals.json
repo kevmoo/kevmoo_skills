@@ -4,8 +4,8 @@
   ],
   "evals": [
     {
-      "id": "review_pr_task_1",
-      "prompt": "Run review-pr on open PR #42 in ~/github/foo/bar. Assess its review findings and action gate.",
+      "id": "pr_review_task_1",
+      "prompt": "Run pr-review on open PR #42 in ~/github/foo/bar. Assess its review findings and action gate.",
       "expected_chat_output": [
         "Audits diff against 13 angles in RUBRIC.md and applies Inquisitor filter.",
         "Generates a structured review report with GitHub permalinks.",
