@@ -94,8 +94,8 @@ When `kscripts` (`kevmoo_scripts` installed via `dart install`) is available on
 | Repository | Local Directory | Synced Commit |
 | :--- | :--- | :--- |
 | [`dart-lang/skills`](https://github.com/dart-lang/skills) | `~/github/skills` | [`26b2dcc`](https://github.com/dart-lang/skills/commit/26b2dcc5654cbbc3b2ec56ea94719469bc8bae9e) |
-| [`kevmoo/analytica.dart`](https://github.com/kevmoo/analytica.dart) | `~/github/kevmoo/analytica.dart` | [`0114d16`](https://github.com/kevmoo/analytica.dart/commit/0114d16b76df87f7bea27f9b11888518fb787357) |
-| [`kevmoo/dash_skills`](https://github.com/kevmoo/dash_skills) | `~/github/kevmoo/dash_skills` | [`6c39005`](https://github.com/kevmoo/dash_skills/commit/6c3900555225a113d4dbd89b4cda4b41c72130ae) |
+| [`kevmoo/analytica.dart`](https://github.com/kevmoo/analytica.dart) | `~/github/kevmoo/analytica.dart` | [`103ba83`](https://github.com/kevmoo/analytica.dart/commit/103ba839d3d8e4e53853fad600cbde341b153192) |
+| [`kevmoo/dash_skills`](https://github.com/kevmoo/dash_skills) | `~/github/kevmoo/dash_skills` | [`d9e03c6`](https://github.com/kevmoo/dash_skills/commit/d9e03c6f02f8f0b5aa02c12f686cb007bc9873f2) |
 <!-- mdformat on -->
 
 ### A. Refactoring & Code Quality
@@ -141,8 +141,12 @@ When `kscripts` (`kevmoo_scripts` installed via `dart install`) is available on
 * **`dart-multiline-strings`**: Converts consecutive print statements and string
   concatenations into clean triple-quoted multiline strings.
   * *Path*: `~/github/kevmoo/dash_skills/skills/dart-multiline-strings/SKILL.md`
+* **`dart-seal-type-hierarchies`**: Converts closed class hierarchies into
+  `sealed` types to enable compiler-verified exhaustive pattern matching.
+  * *Path*: `~/github/kevmoo/dash_skills/skills/dart-seal-type-hierarchies/SKILL.md`
 * **`dart-use-pattern-matching`**: Applies Dart 3 pattern matching, switch
-  expressions, and destructuring to validate schemas and simplify control flow.
+  expressions, and list/map/split destructuring to validate schemas and simplify
+  control flow.
   * *Path*: `~/github/skills/skills/dart-use-pattern-matching/SKILL.md`
 * **`dart-use-primary-constructors`**: Adopts primary constructor syntax,
   empty-body semicolon syntax, in-body initializers, and concise forms.
