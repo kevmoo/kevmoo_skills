@@ -1,7 +1,7 @@
 ---
-name: review-pr
+name: pr-review
 description: >-
-  Reviews GitHub Pull Requests or local Git branch diffs using an adversarial 13-angle review rubric and the Inquisitor Presumption of Theater doctrine to eliminate LLM noise. Evaluates code correctness, removed behavior, error handling, testing, and simplification, generates a ranked Markdown report with clickable line permalinks, and presents an interactive action gate (keep findings, apply local fixes, or post inline to GitHub). Use when reviewing a PR (#N or URL), auditing a local feature branch, or invoked via /review-pr. Don't use for Google3 Piper changelists (use /cl-finalize or review) or general formatting.
+  Reviews GitHub Pull Requests or local Git branch diffs using an adversarial 13-angle review rubric and the Inquisitor Presumption of Theater doctrine to eliminate LLM noise. Evaluates code correctness, removed behavior, error handling, testing, and simplification, generates a ranked Markdown report with clickable line permalinks, and presents an interactive action gate (keep findings, apply local fixes, or post inline to GitHub). Use when reviewing a PR (#N or URL), auditing a local feature branch, or invoked via /pr-review. Don't use for Google3 Piper changelists (use /cl-finalize or review) or general formatting.
 key_features:
   - 13 analytical review angles (correctness, removed behavior, simplification, testing)
   - Inquisitor Presumption of Theater doctrine (zero AI fluff or pedantry)
@@ -9,7 +9,7 @@ key_features:
   - Interactive 3-way action gate (chat only, apply local fixes, post to GitHub)
 ---
 
-# GitHub PR Reviewer (`/review-pr`)
+# GitHub PR Reviewer (`/pr-review`)
 
 A disciplined, senior-grade code reviewer for GitHub Pull Requests and local Git
 branches. Powered by the 13-angle evaluation rubric and the adversarial
@@ -42,8 +42,8 @@ to purge hallucinatory AI fluff, pedantic theater, and unverified assumptions.
 ### Step 1: Pre-Flight Scope & Diff Detection
 
 1. **Explicit PR Target (URL or Number)**: If a PR URL or issue number is
-   provided (e.g. `/review-pr https://github.com/foo/bar/pull/42` or
-   `/review-pr #42`):
+   provided (e.g. `/pr-review https://github.com/foo/bar/pull/42` or
+   `/pr-review #42`):
 
    ```bash
    # Extract PR metadata, base/head SHAs, and repo details
