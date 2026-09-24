@@ -81,7 +81,7 @@
         {
           "name": "dart-modern-features",
           "repo": "dash_skills",
-          "summary": "Records, pattern matching, switch expressions, extension types, and class modifiers (`interface`, `base`, `sealed`, `final`)."
+          "summary": "Records, extension types, class modifiers (`interface`, `base`, `final`), null-aware elements (`?e`), dot shorthands, and digit separators."
         },
         {
           "name": "dart-multiline-strings",

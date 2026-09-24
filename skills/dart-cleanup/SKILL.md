@@ -135,8 +135,9 @@ When `kscripts` (`kevmoo_scripts` installed via `dart install`) is available on
 * **`dart-long-lines`**: Formats and refactors code to adhere to the 80-column
   line limit (`lines_longer_than_80_chars`).
   * *Path*: `~/github/kevmoo/dash_skills/skills/dart-long-lines/SKILL.md`
-* **`dart-modern-features`**: Records, pattern matching, switch expressions,
-  extension types, and class modifiers (`interface`, `base`, `sealed`, `final`).
+* **`dart-modern-features`**: Records, extension types, class modifiers
+  (`interface`, `base`, `final`), null-aware elements (`?e`), dot shorthands,
+  and digit separators.
   * *Path*: `~/github/kevmoo/dash_skills/skills/dart-modern-features/SKILL.md`
 * **`dart-multiline-strings`**: Converts consecutive print statements and string
   concatenations into clean triple-quoted multiline strings.
