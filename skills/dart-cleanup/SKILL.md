@@ -95,7 +95,7 @@ When `kscripts` (`kevmoo_scripts` installed via `dart install`) is available on
 | :--- | :--- | :--- |
 | [`dart-lang/skills`](https://github.com/dart-lang/skills) | `~/github/skills` | [`26b2dcc`](https://github.com/dart-lang/skills/commit/26b2dcc5654cbbc3b2ec56ea94719469bc8bae9e) |
 | [`kevmoo/analytica.dart`](https://github.com/kevmoo/analytica.dart) | `~/github/kevmoo/analytica.dart` | [`103ba83`](https://github.com/kevmoo/analytica.dart/commit/103ba839d3d8e4e53853fad600cbde341b153192) |
-| [`kevmoo/dash_skills`](https://github.com/kevmoo/dash_skills) | `~/github/kevmoo/dash_skills` | [`d9e03c6`](https://github.com/kevmoo/dash_skills/commit/d9e03c6f02f8f0b5aa02c12f686cb007bc9873f2) |
+| [`kevmoo/dash_skills`](https://github.com/kevmoo/dash_skills) | `~/github/kevmoo/dash_skills` | [`0b6371c`](https://github.com/kevmoo/dash_skills/commit/0b6371c26516df82443ee5491771befa70d60f0f) |
 <!-- mdformat on -->
 
 ### A. Refactoring & Code Quality
