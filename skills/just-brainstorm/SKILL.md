@@ -40,6 +40,12 @@ Examples of trigger phrases:
   `list_dir`) to ground your brainstorming or analysis in reality.
 - **For Impact Analysis ("What-if")**: Gather real statistics. Calculate usage
   counts, identify affected call sites, and map out dependencies. Do not guess.
+- **Epistemic Separation & Capability Matrices**: Explicitly separate **Shipped
+  / Verified Reality** (backed by merged commits, releases, or live code) from
+  **Committed Plans** (open issues/PRs) and **Speculative Proposals / Spikes**
+  (unmerged prototypes or ideas). Never collapse unmerged branches, planned
+  roadmap items, or third-party work into "Available / Shipped" cells in
+  comparison matrices.
 
 ### 2. Interactive Alignment (`ask_question`)
 
@@ -54,6 +60,9 @@ Examples of trigger phrases:
 - **Structure for Design Brainstorming**:
   - Present 2–4 distinct options.
   - Highlight tradeoffs (pros/cons) and relative complexity.
+  - In any capability or gap-analysis table, include a **Provenance / Evidence**
+    column citing the primary source (file path, release version, or open
+    PR/issue) for every status claim.
 - **Structure for Impact Analysis ("What-if")**:
   - Detail the step-by-step impact if the change were executed.
   - List breaking changes, migration friction, and affected modules with
