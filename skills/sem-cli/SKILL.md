@@ -227,5 +227,5 @@ sem blame <file_path> --json
   `/usr/bin` in `PATH`.
 - **Asynchronous Execution for Large Graphs:** On very large repositories, the
   initial index/graph build can take several seconds. Run `sem impact` or
-  `sem graph` with a background timeout (`WaitMsBeforeAsync`) if cold-starting
-  on a massive monorepo.
+  `sem graph` with an extended or background timeout (e.g., `WaitMsBeforeAsync`
+  or `run_in_background`) if cold-starting on a massive monorepo.
