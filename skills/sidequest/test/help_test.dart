@@ -1,7 +1,5 @@
-import 'dart:async';
 import 'package:test/test.dart';
 import '../lib/src/cli/command_runner.dart';
-import 'package:args/command_runner.dart';
 
 void main() {
   group('Help commands', () {
