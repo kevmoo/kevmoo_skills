@@ -934,6 +934,15 @@ void main() {
             {'type': 'complete', 'ids': []},
           ]),
         ], 1);
+
+        // Case 6: Unrecognized key in a batch operation throws and aborts
+        data = await runAndLoad([
+          'batch',
+          jsonEncode([
+            {'type': 'subquest_add', 'quest': '1', 'titel': 'Typo Key'},
+          ]),
+        ], 1);
+        check(data.quests[0].subQuests.length).equals(0);
       },
     );
 
@@ -967,10 +976,53 @@ void main() {
       check(data.quests.first.title).equals('Audited Main Quest');
     });
 
-    test('returns exit code 0 for help arguments', () async {
+    test('returns exit code 0 and prints subcommand and batch help', () async {
       check(await runner.run(['--help'])).equals(0);
       check(await runner.run(['-h'])).equals(0);
       check(await runner.run(['help'])).equals(0);
+
+      await expectLater(
+        () async =>
+            check(await runner.run(['help', 'sidequest', 'add'])).equals(0),
+        prints(
+          allOf(
+            contains('Add a side quest.'),
+            contains('--[no-]parked'),
+            contains('--[no-]global'),
+          ),
+        ),
+      );
+
+      await expectLater(
+        () async =>
+            check(await runner.run(['sidequest', 'add', '--help'])).equals(0),
+        prints(
+          allOf(
+            contains('Add a side quest.'),
+            contains('--[no-]parked'),
+            contains('--[no-]global'),
+          ),
+        ),
+      );
+
+      await expectLater(
+        () async => check(await runner.run(['help', 'batch'])).equals(0),
+        prints(
+          allOf([
+            contains("sidequest batch '<json-array>'"),
+            contains('Supported operation types in JSON array:'),
+            contains('quest_add'),
+            contains('subquest_add'),
+            contains('step_add'),
+            contains('blocker_add'),
+            contains('sidequest_add'),
+            contains('start'),
+            contains('complete'),
+            contains('reopen'),
+            contains('vcs'),
+          ]),
+        ),
+      );
     });
   });
 }

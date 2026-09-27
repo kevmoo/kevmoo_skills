@@ -472,38 +472,146 @@ int _applyLegacyBatchMap(SidequestData data, Map<String, dynamic> map) {
   return count;
 }
 
-void _applyBatchOp(SidequestData data, Map<String, dynamic> op) {
-  final type = (op['type']?.toString() ?? op['op']?.toString() ?? '')
-      .toLowerCase();
+const _kType = 'type';
+const _kOp = 'op';
+const _kQuest = 'quest';
+const _kQuestId = 'questId';
+const _kQuestIdSnake = 'quest_id';
+const _kSubquest = 'subquest';
+const _kSubquestId = 'subquestId';
+const _kSubquestIdSnake = 'subquest_id';
+const _kTitle = 'title';
+const _kDescription = 'description';
+const _kStart = 'start';
+const _kStatus = 'status';
+const _kGlobal = 'global';
+const _kParked = 'parked';
+const _kNote = 'note';
+const _kId = 'id';
+const _kIds = 'ids';
+const _kVcs = 'vcs';
+const _kStage = 'stage';
+const _kBranch = 'branch';
+const _kFiles = 'files';
+const _kDetails = 'details';
 
-  switch (type) {
-    case 'quest_add':
-      _applyBatchQuestAdd(data, op);
-    case 'start':
-      _applyBatchStart(data, op);
-    case 'complete':
-      _applyBatchComplete(data, op);
-    case 'reopen':
-      _applyBatchReopen(data, op);
-    case 'subquest_add':
-      _applyBatchSubQuestAdd(data, op);
-    case 'step_add':
-      _applyBatchStepAdd(data, op);
-    case 'blocker_add':
-      _applyBatchBlockerAdd(data, op);
-    case 'sidequest_add':
-      _applyBatchSideQuestAdd(data, op);
-    case 'vcs':
-      _applyBatchVcs(data, op);
-    default:
-      throw StateError('Unknown operation type: "$type"');
+const _legacyAliasKeys = {_kDescription, _kQuestIdSnake, _kSubquestIdSnake};
+
+@internal
+enum BatchOp {
+  questAdd('quest_add', {_kTitle, _kDescription, _kVcs}),
+  subquestAdd('subquest_add', {
+    _kQuest,
+    _kQuestId,
+    _kQuestIdSnake,
+    _kTitle,
+    _kDescription,
+    _kStart,
+    _kStatus,
+  }),
+  stepAdd('step_add', {
+    _kSubquest,
+    _kSubquestId,
+    _kSubquestIdSnake,
+    _kTitle,
+    _kDescription,
+    _kStart,
+    _kStatus,
+  }),
+  blockerAdd('blocker_add', {
+    _kSubquest,
+    _kSubquestId,
+    _kSubquestIdSnake,
+    _kTitle,
+    _kDescription,
+    _kStart,
+    _kStatus,
+  }),
+  sidequestAdd('sidequest_add', {
+    _kQuest,
+    _kQuestId,
+    _kQuestIdSnake,
+    _kTitle,
+    _kDescription,
+    _kGlobal,
+    _kParked,
+    _kNote,
+  }),
+  start('start', {_kId, _kIds}),
+  complete('complete', {_kId, _kIds}),
+  reopen('reopen', {_kId, _kIds}),
+  vcs('vcs', {
+    _kQuest,
+    _kQuestId,
+    _kQuestIdSnake,
+    _kStage,
+    _kBranch,
+    _kFiles,
+    _kDetails,
+  });
+
+  const BatchOp(this.typeName, this.allowedKeys);
+
+  final String typeName;
+  final Set<String> allowedKeys;
+
+  Iterable<String> get documentedKeys =>
+      allowedKeys.where((k) => !_legacyAliasKeys.contains(k));
+
+  static BatchOp fromTypeName(String rawType) => BatchOp.values.firstWhere(
+    (e) => e.typeName == rawType,
+    orElse: () => throw StateError('Unknown operation type: "$rawType"'),
+  );
+
+  void validateKeys(Map<String, dynamic> op) {
+    final unknown = op.keys
+        .where((k) => k != _kType && k != _kOp && !allowedKeys.contains(k))
+        .toList();
+    if (unknown.isNotEmpty) {
+      throw FormatException(
+        'Unknown key(s) ${unknown.map((k) => '"$k"').join(', ')} '
+        'for "$typeName" (allowed: ${documentedKeys.join(', ')}).',
+      );
+    }
+  }
+
+  static String formatUsageFooter() {
+    final buffer = StringBuffer('\nSupported operation types in JSON array:\n');
+    for (final op in BatchOp.values) {
+      final keys = op.documentedKeys.join(', ');
+      buffer.writeln('  • ${op.typeName.padRight(13)} : keys: $keys');
+    }
+    return buffer.toString().trimRight();
   }
 }
 
+void _applyBatchOp(SidequestData data, Map<String, dynamic> op) {
+  final type = (op[_kType]?.toString() ?? op[_kOp]?.toString() ?? '')
+      .toLowerCase();
+  final batchOp = BatchOp.fromTypeName(type);
+  batchOp.validateKeys(op);
+
+  final handler = _batchOpHandlers[batchOp]!;
+  handler(data, op);
+}
+
+const _batchOpHandlers =
+    <BatchOp, void Function(SidequestData, Map<String, dynamic>)>{
+      BatchOp.questAdd: _applyBatchQuestAdd,
+      BatchOp.start: _applyBatchStart,
+      BatchOp.complete: _applyBatchComplete,
+      BatchOp.reopen: _applyBatchReopen,
+      BatchOp.subquestAdd: _applyBatchSubQuestAdd,
+      BatchOp.stepAdd: _applyBatchStepAdd,
+      BatchOp.blockerAdd: _applyBatchBlockerAdd,
+      BatchOp.sidequestAdd: _applyBatchSideQuestAdd,
+      BatchOp.vcs: _applyBatchVcs,
+    };
+
 String? _extractQuestId(Map<String, dynamic> op, {String? defaultId = '1'}) =>
-    op['quest']?.toString() ??
-    op['quest_id']?.toString() ??
-    op['questId']?.toString() ??
+    op[_kQuest]?.toString() ??
+    op[_kQuestIdSnake]?.toString() ??
+    op[_kQuestId]?.toString() ??
     defaultId;
 
 MainQuest _requireQuest(SidequestData data, String qId) {
@@ -516,8 +624,8 @@ MainQuest _requireQuest(SidequestData data, String qId) {
 
 void _applyBatchQuestAdd(SidequestData data, Map<String, dynamic> op) {
   final title =
-      op['title']?.toString() ??
-      op['description']?.toString() ??
+      op[_kTitle]?.toString() ??
+      op[_kDescription]?.toString() ??
       'New Main Quest';
   final nextQuestNumber =
       data.quests.map((q) => int.tryParse(q.id) ?? 0).fold(0, max) + 1;
@@ -526,8 +634,8 @@ void _applyBatchQuestAdd(SidequestData data, Map<String, dynamic> op) {
       id: '$nextQuestNumber',
       title: title,
       status: QuestStatus.active,
-      vcs: op['vcs'] != null
-          ? VcsState.fromJson(op['vcs'] as Map<String, dynamic>)
+      vcs: op[_kVcs] != null
+          ? VcsState.fromJson(op[_kVcs] as Map<String, dynamic>)
           : null,
     ),
   );
@@ -537,7 +645,7 @@ List<String> _extractBatchIds(
   Map<String, dynamic> op, {
   required String action,
 }) {
-  final rawIds = op['ids'] ?? op['id'];
+  final rawIds = op[_kIds] ?? op[_kId];
   final idList = rawIds is List
       ? rawIds.map((e) => e.toString().trim()).toList()
       : [rawIds?.toString().trim() ?? ''];
@@ -581,10 +689,10 @@ TaskStatus _resolveBatchTaskStatus(
   Map<String, dynamic> op, {
   required TaskStatus defaultStatus,
 }) {
-  if (op['start'] == true) {
+  if (op[_kStart] == true) {
     return TaskStatus.inProgress;
   }
-  final rawStatus = op['status']?.toString();
+  final rawStatus = op[_kStatus]?.toString();
   if (rawStatus != null && rawStatus.trim().isNotEmpty) {
     return TaskStatus.fromJson(rawStatus.trim());
   }
@@ -598,7 +706,7 @@ void _applyBatchSubQuestAdd(
 }) {
   final qId = _extractQuestId(op)!;
   final title =
-      op['title']?.toString() ?? op['description']?.toString() ?? defaultTitle;
+      op[_kTitle]?.toString() ?? op[_kDescription]?.toString() ?? defaultTitle;
   final quest = _requireQuest(data, qId);
   final nextSubNumber = nextSuffixNumber(quest.subQuests.map((sq) => sq.id));
   final subId = '$qId.$nextSubNumber';
@@ -637,12 +745,12 @@ void _applyBatchTaskItemAdd(
   required TaskStatus status,
 }) {
   final subId =
-      op['subquestId']?.toString() ??
-      op['subquest_id']?.toString() ??
-      op['subquest']?.toString() ??
+      op[_kSubquestId]?.toString() ??
+      op[_kSubquestIdSnake]?.toString() ??
+      op[_kSubquest]?.toString() ??
       '1.1';
   final title =
-      op['title']?.toString() ?? op['description']?.toString() ?? defaultTitle;
+      op[_kTitle]?.toString() ?? op[_kDescription]?.toString() ?? defaultTitle;
   final found = findQuestAndSubQuest(data, subId, silent: true);
   if (found == null) {
     throw StateError('Sub-Quest "$subId" not found.');
@@ -691,12 +799,12 @@ String addQuestSideQuest(
 
 void _applyBatchSideQuestAdd(SidequestData data, Map<String, dynamic> op) {
   final title =
-      op['title']?.toString() ?? op['description']?.toString() ?? 'Side Quest';
+      op[_kTitle]?.toString() ?? op[_kDescription]?.toString() ?? 'Side Quest';
   final qId = _extractQuestId(op, defaultId: null);
-  final isGlobal = op['global'] == true || (qId == null && data.quests.isEmpty);
-  final isParked = op['parked'] == true;
+  final isGlobal = op[_kGlobal] == true || (qId == null && data.quests.isEmpty);
+  final isParked = op[_kParked] == true;
   final status = isParked ? SideQuestStatus.parked : SideQuestStatus.active;
-  final note = op['note']?.toString();
+  final note = op[_kNote]?.toString();
 
   if (isGlobal || qId == null) {
     addGlobalSideQuest(data, title: title, status: status, note: note);
@@ -709,12 +817,12 @@ void _applyBatchSideQuestAdd(SidequestData data, Map<String, dynamic> op) {
 void _applyBatchVcs(SidequestData data, Map<String, dynamic> op) {
   final qId = _extractQuestId(op)!;
   final quest = _requireQuest(data, qId);
-  final files = (op['files'] as List<dynamic>?)?.cast<String>() ?? const [];
+  final files = (op[_kFiles] as List<dynamic>?)?.cast<String>() ?? const [];
   quest.vcs = VcsState(
-    stage: VcsStage.fromJson(op['stage']?.toString() ?? 'dirty'),
-    branch: op['branch']?.toString(),
+    stage: VcsStage.fromJson(op[_kStage]?.toString() ?? 'dirty'),
+    branch: op[_kBranch]?.toString(),
     modifiedFiles: files,
-    details: op['details']?.toString(),
+    details: op[_kDetails]?.toString(),
   );
 }
 

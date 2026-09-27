@@ -675,19 +675,7 @@ class BatchCommand extends SidequestCommand {
   String get invocation => '${runner.executableName} batch \'<json-array>\'';
 
   @override
-  String get usageFooter => '''
-
-Supported operation types in JSON array:
-  • quest_add     : keys: title, vcs
-  • subquest_add  : keys: quest|questId, title, start, status
-  • step_add      : keys: subquest|subquestId, title, start, status
-  • blocker_add   : keys: subquest|subquestId, title, start, status
-  • sidequest_add : keys: quest|questId, title, global, parked, note
-  • start         : keys: id|ids
-  • complete      : keys: id|ids
-  • reopen        : keys: id|ids
-  • vcs           : keys: quest|questId, stage, branch, files, details
-''';
+  String get usageFooter => BatchOp.formatUsageFooter();
 
   BatchCommand(super.runner);
 
