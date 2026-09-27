@@ -423,7 +423,6 @@ const _kGlobal = 'global';
 const _kParked = 'parked';
 const _kNote = 'note';
 const _kIds = 'ids';
-const _kVcs = 'vcs';
 const _kStage = 'stage';
 const _kBranch = 'branch';
 const _kFiles = 'files';
@@ -431,7 +430,7 @@ const _kDetails = 'details';
 
 @internal
 enum BatchOp {
-  questAdd('quest_add', {_kTitle, _kVcs}),
+  questAdd('quest_add', {_kTitle}),
   subquestAdd('subquest_add', {_kQuest, _kTitle, _kStart, _kStatus}),
   stepAdd('step_add', {_kSubquest, _kTitle, _kStart, _kStatus}),
   blockerAdd('blocker_add', {_kSubquest, _kTitle, _kStart, _kStatus}),
@@ -446,10 +445,23 @@ enum BatchOp {
   final String typeName;
   final Set<String> allowedKeys;
 
-  static BatchOp fromTypeName(String rawType) => BatchOp.values.firstWhere(
-    (e) => e.typeName == rawType,
-    orElse: () => throw StateError('Unknown operation type: "$rawType"'),
-  );
+  static String get _validTypesList =>
+      BatchOp.values.map((e) => e.typeName).join(', ');
+
+  static BatchOp fromTypeName(String rawType) {
+    if (rawType.isEmpty) {
+      throw FormatException(
+        'Missing required "$_kType" key in batch operation '
+        '(valid types: $_validTypesList).',
+      );
+    }
+    return BatchOp.values.firstWhere(
+      (e) => e.typeName == rawType,
+      orElse: () => throw StateError(
+        'Unknown operation type: "$rawType" (valid types: $_validTypesList).',
+      ),
+    );
+  }
 
   void validateKeys(Map<String, dynamic> op) {
     final unknown = op.keys
@@ -474,7 +486,7 @@ enum BatchOp {
 }
 
 void _applyBatchOp(SidequestData data, Map<String, dynamic> op) {
-  final type = (op[_kType]?.toString() ?? '').toLowerCase();
+  final type = (op[_kType]?.toString() ?? '').trim().toLowerCase();
   final batchOp = BatchOp.fromTypeName(type);
   batchOp.validateKeys(op);
 
@@ -511,14 +523,7 @@ void _applyBatchQuestAdd(SidequestData data, Map<String, dynamic> op) {
   final nextQuestNumber =
       data.quests.map((q) => int.tryParse(q.id) ?? 0).fold(0, max) + 1;
   data.quests.add(
-    MainQuest(
-      id: '$nextQuestNumber',
-      title: title,
-      status: QuestStatus.active,
-      vcs: op[_kVcs] != null
-          ? VcsState.fromJson(op[_kVcs] as Map<String, dynamic>)
-          : null,
-    ),
+    MainQuest(id: '$nextQuestNumber', title: title, status: QuestStatus.active),
   );
 }
 
@@ -527,10 +532,15 @@ List<String> _extractBatchIds(
   required String action,
 }) {
   final rawIds = op[_kIds];
-  final idList = rawIds is List
-      ? rawIds.map((e) => e.toString().trim()).toList()
-      : const <String>[];
-  final validIds = idList.where((s) => s.isNotEmpty).toList();
+  if (rawIds is! List) {
+    throw FormatException(
+      'Key "$_kIds" for "$action" operation must be a JSON array of ID strings.',
+    );
+  }
+  final validIds = rawIds
+      .map((e) => e.toString().trim())
+      .where((s) => s.isNotEmpty)
+      .toList();
   if (validIds.isEmpty) {
     throw StateError('No IDs specified for $action operation.');
   }

@@ -886,6 +886,8 @@ void main() {
           {'type': 'step_add', 'subquestId': '1.1', 'title': 'Legacy Alias'},
           {'op': 'quest_add', 'title': 'Legacy Discriminator'},
           {'type': 'complete', 'id': '1.1.1'},
+          {'type': 'start', 'ids': '1.1.1'},
+          {'type': 'quest_add', 'title': 'No inline vcs', 'vcs': {}},
         ]) {
           data = await runAndLoad([
             'batch',
@@ -937,6 +939,7 @@ void main() {
         prints(
           allOf(
             contains('Add a side quest.'),
+            contains('Usage: sidequest sidequest add <title> [arguments]'),
             contains('--[no-]parked'),
             contains('--[no-]global'),
           ),
@@ -949,8 +952,33 @@ void main() {
         prints(
           allOf(
             contains('Add a side quest.'),
+            contains('Usage: sidequest sidequest add <title> [arguments]'),
             contains('--[no-]parked'),
             contains('--[no-]global'),
+          ),
+        ),
+      );
+
+      await expectLater(
+        () async =>
+            check(await runner.run(['subquest', 'add', '--help'])).equals(0),
+        prints(
+          allOf(
+            contains(
+              'Usage: sidequest subquest add <quest-id> <title> [arguments]',
+            ),
+            contains('--[no-]start'),
+          ),
+        ),
+      );
+
+      await expectLater(
+        () async => check(await runner.run(['vcs', '--help'])).equals(0),
+        prints(
+          allOf(
+            contains('Usage: sidequest vcs [quest-id] [arguments]'),
+            contains('VCS lifecycle stage.'),
+            contains('local_commit'),
           ),
         ),
       );
