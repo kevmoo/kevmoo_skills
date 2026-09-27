@@ -775,115 +775,57 @@ void main() {
       check(data.quests.length).equals(1);
     });
 
-    test(
-      'executes batch mutations with operations list and legacy formats',
-      () async {
-        final batchListJson = jsonEncode([
-          {'type': 'quest_add', 'title': 'Batch Main Quest 2'},
-          {'type': 'subquest_add', 'questId': '1', 'title': 'Batch SubQuest 1'},
-          {'type': 'step_add', 'subquestId': '1.1', 'title': 'Step 1.1.1'},
-          {
-            'type': 'step_add',
-            'subquestId': '1.1',
-            'title': 'Step 1.1.2 (Pending)',
-            'status': 'pending',
-          },
-          {
-            'type': 'blocker_add',
-            'subquestId': '1.1',
-            'title': 'Blocker 1.1.3',
-          },
-          {
-            'type': 'start',
-            'ids': ['1.1.2'],
-          },
-          {
-            'type': 'complete',
-            'ids': ['1.1.1'],
-          },
-          {
-            'type': 'vcs',
-            'quest': '1',
-            'stage': 'dirty',
-            'branch': 'feat/batch',
-            'files': ['lib/test.dart'],
-          },
-        ]);
+    test('executes batch mutations with canonical operations list', () async {
+      final batchListJson = jsonEncode([
+        {'type': 'quest_add', 'title': 'Batch Main Quest 2'},
+        {'type': 'subquest_add', 'quest': '1', 'title': 'Batch SubQuest 1'},
+        {'type': 'step_add', 'subquest': '1.1', 'title': 'Step 1.1.1'},
+        {
+          'type': 'step_add',
+          'subquest': '1.1',
+          'title': 'Step 1.1.2 (Pending)',
+          'status': 'pending',
+        },
+        {'type': 'blocker_add', 'subquest': '1.1', 'title': 'Blocker 1.1.3'},
+        {'type': 'sidequest_add', 'quest': '1', 'title': 'Scoped SideQuest'},
+        {'type': 'sidequest_add', 'global': true, 'title': 'Global SideQuest'},
+        {
+          'type': 'start',
+          'ids': ['1.1.2'],
+        },
+        {
+          'type': 'complete',
+          'ids': ['1.1.1'],
+        },
+        {
+          'type': 'vcs',
+          'quest': '1',
+          'stage': 'dirty',
+          'branch': 'feat/batch',
+          'files': ['lib/test.dart'],
+        },
+      ]);
 
-        var data = await runAndLoad(['batch', batchListJson]);
-        check(data.quests.length).equals(2);
-        check(data.quests[1].title).equals('Batch Main Quest 2');
-        check(data.quests[0].subQuests.length).equals(1);
-        check(data.quests[0].subQuests[0].items.length).equals(3);
-        check(
-          data.quests[0].subQuests[0].items[0].status,
-        ).equals(TaskStatus.completed);
-        check(
-          data.quests[0].subQuests[0].items[1].status,
-        ).equals(TaskStatus.inProgress);
-        check(
-          data.quests[0].subQuests[0].items[2].status,
-        ).equals(TaskStatus.inProgress);
-        check(data.quests[0].vcs?.branch).equals('feat/batch');
-
-        // 2. Legacy format
-        final legacyJson = jsonEncode({
-          'addSubQuest': {'quest': '1', 'title': 'Legacy SubQuest'},
-          'start': ['1.2'],
-          'complete': ['1.1.3'],
-        });
-        data = await runAndLoad(['batch', legacyJson]);
-        check(data.quests[0].subQuests.length).equals(2);
-        check(data.quests[0].subQuests[1].status).equals(TaskStatus.inProgress);
-        check(
-          data.quests[0].subQuests[0].items[2].status,
-        ).equals(TaskStatus.completed);
-      },
-    );
-
-    test(
-      'successfully applies batch mutations using documented aliases (#105)',
-      () async {
-        final aliasBatchJson = jsonEncode([
-          {'op': 'subquest_add', 'quest_id': '1', 'title': 'Alias SubQuest'},
-          {'op': 'step_add', 'subquest_id': '1.1', 'title': 'Alias Step'},
-          {'op': 'blocker_add', 'subquest_id': '1.1', 'title': 'Alias Blocker'},
-          {
-            'op': 'sidequest_add',
-            'quest_id': '1',
-            'title': 'Scoped SideQuest with quest_id',
-          },
-          {
-            'op': 'sidequest_add',
-            'global': true,
-            'title': 'Global SideQuest with op alias',
-          },
-          {'op': 'complete', 'id': '1.1.1'},
-        ]);
-
-        final data = await runAndLoad(['batch', aliasBatchJson]);
-        check(data.quests[0].subQuests.length).equals(1);
-        check(data.quests[0].subQuests[0].title).equals('Alias SubQuest');
-        check(data.quests[0].subQuests[0].items.length).equals(2);
-        check(data.quests[0].subQuests[0].items[0].title).equals('Alias Step');
-        check(
-          data.quests[0].subQuests[0].items[0].status,
-        ).equals(TaskStatus.completed);
-        check(
-          data.quests[0].subQuests[0].items[1].title,
-        ).equals('Alias Blocker');
-
-        check(data.quests[0].sideQuests.length).equals(1);
-        check(
-          data.quests[0].sideQuests[0].title,
-        ).equals('Scoped SideQuest with quest_id');
-
-        check(data.globalSideQuests.length).equals(1);
-        check(
-          data.globalSideQuests[0].title,
-        ).equals('Global SideQuest with op alias');
-      },
-    );
+      final data = await runAndLoad(['batch', batchListJson]);
+      check(data.quests.length).equals(2);
+      check(data.quests[1].title).equals('Batch Main Quest 2');
+      check(data.quests[0].subQuests.length).equals(1);
+      check(data.quests[0].subQuests[0].items.length).equals(3);
+      check(
+        data.quests[0].subQuests[0].items[0].status,
+      ).equals(TaskStatus.completed);
+      check(
+        data.quests[0].subQuests[0].items[1].status,
+      ).equals(TaskStatus.inProgress);
+      check(
+        data.quests[0].subQuests[0].items[2].status,
+      ).equals(TaskStatus.inProgress);
+      check(data.quests[0].sideQuests.length).equals(1);
+      check(data.quests[0].sideQuests[0].title).equals('Scoped SideQuest');
+      check(data.globalSideQuests.length).equals(1);
+      check(data.globalSideQuests[0].title).equals('Global SideQuest');
+      check(data.quests[0].vcs?.branch).equals('feat/batch');
+    });
 
     test(
       'fails explicitly without mutating for bad batch schemas (#105)',
@@ -892,11 +834,11 @@ void main() {
         check(initialData.quests.length).equals(1);
         check(initialData.quests[0].subQuests.length).equals(0);
 
-        // Case 1: non-existent 'quest_id' throws and aborts.
+        // Case 1: non-existent 'quest' throws and aborts.
         final missingQuestJson = jsonEncode([
           {
-            'op': 'subquest_add',
-            'quest_id': 'invalid-id',
+            'type': 'subquest_add',
+            'quest': 'invalid-id',
             'title': 'Lost SubQuest',
           },
         ]);
@@ -914,18 +856,20 @@ void main() {
 
         // Case 3: Mixed batch where one succeeds but the next fails, ensuring atomic rollback
         final atomicRollbackJson = jsonEncode([
-          {
-            'op': 'subquest_add',
-            'quest_id': '1',
-            'title': 'Temporary SubQuest',
-          },
-          {'op': 'unknown_fail'},
+          {'type': 'subquest_add', 'quest': '1', 'title': 'Temporary SubQuest'},
+          {'type': 'unknown_fail'},
         ]);
         data = await runAndLoad(['batch', atomicRollbackJson], 1);
         check(data.quests[0].subQuests.length).equals(0);
 
-        // Case 4: Non-collection primitive payload throws
+        // Case 4: Non-array payload (primitive or legacy map) throws
         await runAndLoad(['batch', jsonEncode(123)], 1);
+        await runAndLoad([
+          'batch',
+          jsonEncode({
+            'addSubQuest': {'quest': '1', 'title': 'Legacy SubQuest'},
+          }),
+        ], 1);
 
         // Case 5: Complete operation with empty IDs throws
         await runAndLoad([
@@ -934,6 +878,23 @@ void main() {
             {'type': 'complete', 'ids': []},
           ]),
         ], 1);
+
+        // Case 6: Unrecognized or legacy alias key in a batch operation throws and aborts
+        for (final badOp in [
+          {'type': 'subquest_add', 'quest': '1', 'titel': 'Typo Key'},
+          {'type': 'subquest_add', 'questId': '1', 'title': 'Legacy Alias'},
+          {'type': 'step_add', 'subquestId': '1.1', 'title': 'Legacy Alias'},
+          {'op': 'quest_add', 'title': 'Legacy Discriminator'},
+          {'type': 'complete', 'id': '1.1.1'},
+          {'type': 'start', 'ids': '1.1.1'},
+          {'type': 'quest_add', 'title': 'No inline vcs', 'vcs': {}},
+        ]) {
+          data = await runAndLoad([
+            'batch',
+            jsonEncode([badOp]),
+          ], 1);
+          check(data.quests[0].subQuests.length).equals(0);
+        }
       },
     );
 
@@ -967,10 +928,79 @@ void main() {
       check(data.quests.first.title).equals('Audited Main Quest');
     });
 
-    test('returns exit code 0 for help arguments', () async {
+    test('returns exit code 0 and prints subcommand and batch help', () async {
       check(await runner.run(['--help'])).equals(0);
       check(await runner.run(['-h'])).equals(0);
       check(await runner.run(['help'])).equals(0);
+
+      await expectLater(
+        () async =>
+            check(await runner.run(['help', 'sidequest', 'add'])).equals(0),
+        prints(
+          allOf(
+            contains('Add a side quest.'),
+            contains('Usage: sidequest sidequest add <title> [arguments]'),
+            contains('--[no-]parked'),
+            contains('--[no-]global'),
+          ),
+        ),
+      );
+
+      await expectLater(
+        () async =>
+            check(await runner.run(['sidequest', 'add', '--help'])).equals(0),
+        prints(
+          allOf(
+            contains('Add a side quest.'),
+            contains('Usage: sidequest sidequest add <title> [arguments]'),
+            contains('--[no-]parked'),
+            contains('--[no-]global'),
+          ),
+        ),
+      );
+
+      await expectLater(
+        () async =>
+            check(await runner.run(['subquest', 'add', '--help'])).equals(0),
+        prints(
+          allOf(
+            contains(
+              'Usage: sidequest subquest add <quest-id> <title> [arguments]',
+            ),
+            contains('--[no-]start'),
+          ),
+        ),
+      );
+
+      await expectLater(
+        () async => check(await runner.run(['vcs', '--help'])).equals(0),
+        prints(
+          allOf(
+            contains('Usage: sidequest vcs [quest-id] [arguments]'),
+            contains('VCS lifecycle stage.'),
+            contains('local_commit'),
+          ),
+        ),
+      );
+
+      await expectLater(
+        () async => check(await runner.run(['help', 'batch'])).equals(0),
+        prints(
+          allOf([
+            contains("sidequest batch '<json-array>'"),
+            contains('Supported operation types in JSON array:'),
+            contains('quest_add'),
+            contains('subquest_add'),
+            contains('step_add'),
+            contains('blocker_add'),
+            contains('sidequest_add'),
+            contains('start'),
+            contains('complete'),
+            contains('reopen'),
+            contains('vcs'),
+          ]),
+        ),
+      );
     });
   });
 }

@@ -45,13 +45,6 @@ class SidequestCliRunner extends CommandRunner<int> {
   Future<int> run(Iterable<String> args) async {
     final argsList = args.toList();
 
-    if (argsList.contains('-h') ||
-        argsList.contains('--help') ||
-        (argsList.isNotEmpty && argsList.first == 'help')) {
-      printUsage();
-      return 0;
-    }
-
     if (argsList.isEmpty) {
       final existing = await store.load();
       if (existing != null && existing.quests.isNotEmpty) {
@@ -276,6 +269,9 @@ class QuestAddCommand extends SidequestCommand {
   @override
   String get description => 'Add a new main quest.';
 
+  @override
+  String get invocation => '${runner.executableName} quest add <title>';
+
   QuestAddCommand(super.runner);
 
   @override
@@ -301,6 +297,9 @@ class QuestActivateCommand extends SidequestCommand {
   @override
   String get description => 'Activate a main quest.';
 
+  @override
+  String get invocation => '${runner.executableName} quest activate [quest-id]';
+
   QuestActivateCommand(super.runner);
 
   @override
@@ -313,6 +312,10 @@ class QuestPauseCommand extends SidequestCommand {
 
   @override
   String get description => 'Pause a main quest.';
+
+  @override
+  String get invocation =>
+      '${runner.executableName} quest pause [quest-id] [arguments]';
 
   QuestPauseCommand(super.runner) {
     argParser.addOption('reason', help: 'Reason for pausing the quest.');
@@ -345,6 +348,10 @@ class SubQuestAddCommand extends SidequestCommand {
 
   @override
   String get description => 'Add a sub-quest under a main quest.';
+
+  @override
+  String get invocation =>
+      '${runner.executableName} subquest add <quest-id> <title> [arguments]';
 
   SubQuestAddCommand(super.runner) {
     argParser.addFlag(
@@ -397,6 +404,10 @@ class StepAddCommand extends SidequestCommand {
   @override
   String get description => 'Add a planned step under a sub-quest.';
 
+  @override
+  String get invocation =>
+      '${runner.executableName} step add <subquest-id> <title> [arguments]';
+
   StepAddCommand(super.runner) {
     argParser.addFlag(
       'start',
@@ -437,6 +448,10 @@ class BlockerAddCommand extends SidequestCommand {
   @override
   String get description => 'Add an unplanned blocker under a sub-quest.';
 
+  @override
+  String get invocation =>
+      '${runner.executableName} blocker add <subquest-id> <title>';
+
   BlockerAddCommand(super.runner);
 
   @override
@@ -467,6 +482,10 @@ class SideQuestAddCommand extends SidequestCommand {
 
   @override
   String get description => 'Add a side quest.';
+
+  @override
+  String get invocation =>
+      '${runner.executableName} sidequest add <title> [arguments]';
 
   SideQuestAddCommand(super.runner) {
     argParser
@@ -524,6 +543,9 @@ class StartCommand extends SidequestCommand {
   @override
   String get description => 'Mark one or more items in-progress.';
 
+  @override
+  String get invocation => '${runner.executableName} start <id> [id2]...';
+
   StartCommand(super.runner);
 
   @override
@@ -541,6 +563,9 @@ class CompleteCommand extends SidequestCommand {
 
   @override
   String get description => 'Mark one or more items completed.';
+
+  @override
+  String get invocation => '${runner.executableName} complete <id> [id2]...';
 
   CompleteCommand(super.runner);
 
@@ -596,6 +621,9 @@ class ReopenCommand extends SidequestCommand {
   String get description =>
       'Reopen completed or in-progress items (reverts to pending).';
 
+  @override
+  String get invocation => '${runner.executableName} reopen <id> [id2]...';
+
   ReopenCommand(super.runner);
 
   @override
@@ -613,6 +641,9 @@ class RemoveCommand extends SidequestCommand {
 
   @override
   String get description => 'Remove one or more items.';
+
+  @override
+  String get invocation => '${runner.executableName} remove <id> [id2]...';
 
   RemoveCommand(super.runner);
 
@@ -632,12 +663,21 @@ class VcsCommand extends SidequestCommand {
   @override
   String get description => 'Update VCS state for a main quest.';
 
+  @override
+  String get invocation =>
+      '${runner.executableName} vcs [quest-id] [arguments]';
+
   VcsCommand(super.runner) {
     argParser
-      ..addOption('stage', defaultsTo: 'dirty')
-      ..addOption('branch')
-      ..addOption('files')
-      ..addOption('details');
+      ..addOption(
+        'stage',
+        defaultsTo: 'dirty',
+        allowed: ['dirty', 'local_commit', 'uploaded', 'merged', 'clean'],
+        help: 'VCS lifecycle stage.',
+      )
+      ..addOption('branch', help: 'Active branch name.')
+      ..addOption('files', help: 'Comma-separated list of modified files.')
+      ..addOption('details', help: 'Optional PR/CL or commit details.');
   }
 
   @override
@@ -677,6 +717,12 @@ class BatchCommand extends SidequestCommand {
 
   @override
   String get description => 'Execute multiple mutations in a single call.';
+
+  @override
+  String get invocation => '${runner.executableName} batch \'<json-array>\'';
+
+  @override
+  String get usageFooter => BatchOp.formatUsageFooter();
 
   BatchCommand(super.runner);
 
