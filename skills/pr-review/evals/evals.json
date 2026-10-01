@@ -1,19 +1,33 @@
 {
-  "repo_criteria": [
-    "evals/code_quality_rubric.json"
-  ],
+  "repo_criteria": ["evals/code_quality_rubric.json"],
   "evals": [
     {
       "id": "pr_review_task_1",
       "prompt": "Run pr-review on open PR #42 in ~/github/foo/bar. Assess its review findings and action gate.",
       "expected_chat_output": [
+        "Renders the explicit 3D Paranoia Header (Paranoia Tier: Ring ... · Confidence: ... · Door: ... -> Review Mode: Standard | Deep).",
         "Audits diff against 13 angles in RUBRIC.md and applies Inquisitor filter.",
         "Generates a structured review report with GitHub permalinks.",
-        "Presents an interactive 3-option action gate via ask_question (chat only, apply local fixes, or post inline)."
+        "Selects the Tier 2 (external/peer repository) read-only action gate via ask_question (keep findings in local report artifact, select findings to post inline to GitHub, or escalate to --deep review)."
       ],
       "expected_repo_state": [
         "A pr_review report artifact is generated.",
         "No unauthorized write or push operations are executed autonomously."
+      ],
+      "agent_config": "bare-agent"
+    },
+    {
+      "id": "pr_review_own_repo_and_spec_matrix",
+      "prompt": "Run pr-review on my feature branch in ~/github/kevmoo/demo_pkg that fixes issue #42.",
+      "expected_chat_output": [
+        "Renders the explicit 3D Paranoia Header at the top of the report and in visible chat.",
+        "Includes a 'Spec & Issue Contract Traceability' table mapping each requirement from issue #42 to Met / Partial / Unmet / Out-of-Scope with file:line and test evidence.",
+        "Audits Dart code against ~/.agents/CODING_STANDARDS.md (flagging stateful single-use _Populator/_Runner classes and unscoped export leaks) and Angle 7 testing rules (flagging tests that import package:<pkg>/src/... instead of package:<pkg>/<pkg>.dart or use tautological assertions).",
+        "Selects the Tier 1 (kevmoo/* own repo) action gate via ask_question with '(Recommended) Auto-fix valid findings locally, run tests (kscripts pr-check), and stage/push' as Option 1 and '--deep' escalation."
+      ],
+      "expected_repo_state": [
+        "A pr_review report artifact is generated with the 3D Paranoia Header and Spec & Issue Contract Traceability table.",
+        "No source files are mutated before the user selects an action in ask_question."
       ],
       "agent_config": "bare-agent"
     }
