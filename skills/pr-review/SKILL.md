@@ -54,11 +54,12 @@ to purge hallucinatory AI fluff, pedantic theater, and unverified assumptions.
      gh pr view --json author,headRepositoryOwner,headRefName,number,title,url,headRefOid 2>/dev/null
      ```
    - Classify ownership into two tiers:
-     - **Tier 1 (Own Repo `kevmoo/*` + Author `kevmoo` or local feature
-       branch)**: Local remediation and test execution (`kscripts pr-check`)
-       enabled.
-     - **Tier 2 (External/Peer PR or non-`kevmoo` author)**: Strictly read-only
-       local checkout.
+     - **Tier 1 (Own Repo `kevmoo/*` + Author `kevmoo` /
+       `$(gh api user --jq .login)` with `headRefName` checked out locally, or
+       local feature branch)**: Local remediation and test execution
+       (`kscripts pr-check`) enabled.
+     - **Tier 2 (External/Peer PR, non-`kevmoo` author, or PR branch not checked
+       out locally)**: Strictly read-only local checkout.
 
 2. **Linked Issue & Spec Extraction (`FU1`)**:
    - When a PR links an issue (`Fixes #N`, `Closes #N`, or prompt issue URL),
