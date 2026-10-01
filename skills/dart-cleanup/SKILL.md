@@ -89,14 +89,15 @@ output:
        (`--check` when `api.txt` is tracked, or
        `diff -u /tmp/api_before.txt /tmp/api_after.txt` otherwise) to verify
        zero unintended public API leaks.
-     - **Testing & Test Doubles (`dart-test-fundamentals` over `mockito`)**:
-       Package integration tests import `package:<pkg>/<pkg>.dart`; subsystem
-       unit tests may import internal **deep modules**
-       (`package:<pkg>/src/<subsystem>.dart`), never shallow helpers. Prefer
-       real implementations (`Directory.systemTemp`) and first-party fakes
-       (`package:http/testing.dart` `MockClient`) over `package:mockito`
-       (`dart-generate-test-mocks` is a last resort). Never write constant-echo
-       tautologies or `readAsStringSync()` source-regex proxy tests.
+     - **Testing & Real Test Doubles (`dart-test-fundamentals`)**: Import
+       `package:<pkg>/<pkg>.dart` for package integration tests and
+       `package:<pkg>/src/<subsystem>.dart` when unit-testing internal **deep
+       modules** (testing thin helpers through their owning module). Use real
+       implementations (`package:test_descriptor` `d.sandbox`/`d.dir`,
+       `Directory.systemTemp`, loopback `HttpServer`), first-party fakes
+       (`package:http/testing.dart` `MockClient`), and `@TestOn('browser')` for
+       DOM/Wasm interop. Assert boundary behavior of functions consuming
+       constants and execute or render units directly.
 2. **Optional `kscripts` Config Hygiene (`lint-cleanup` & `tighten`)**:
    - When `kscripts` is on `PATH`, use `kscripts lint-cleanup --rewrite` to
      prune redundant lints in `analysis_options.yaml` and `kscripts tighten` (or

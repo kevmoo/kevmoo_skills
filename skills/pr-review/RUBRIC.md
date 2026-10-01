@@ -92,36 +92,33 @@ Inspect exception and error paths:
   informative error classes?
 - Is error context preserved when wrapping/re-throwing exceptions?
 
-### 7. Testing (Seam Discipline, Anti-Tautology & Fakes Over Mocks)
+### 7. Testing (Seam Discipline, Behavioral Assertions & Real Test Doubles)
 
 Scrutinize test quality, seam discipline, and assertion substance (`FU2`):
 
 - **Test Seam Discipline (`lib/<pkg>.dart` vs. `lib/src/` Deep Modules)**:
-  - Flag package-level/integration tests that import `package:<pkg>/src/...`
-    when the behavior belongs at the public `package:<pkg>/<pkg>.dart` seam, and
-    flag any `lib/src/` symbol exported in `lib/<pkg>.dart` solely for tests.
-  - Allow—and encourage—subsystem unit tests that import an internal **deep
-    module** (`package:<pkg>/src/<subsystem>.dart`, such as an unexported
-    parser, data model, or algorithm with a simple interface and rich internal
-    logic). Flag `lib/src/` tests that couple to shallow single-caller helpers,
-    `@visibleForTesting` private state, or internal call choreography.
-- **Anti-Tautology & Constant-Echo Assertions**: Flag tests that merely assert a
-  constant or enum's literal value (`expect(kMaxLimit, 280)`), duplicate
-  production formulas in `expect(...)`, echo literal DTO getters without domain
-  logic, or only assert mock call counts (`verify(...)`) without checking output
-  values or state invariants.
-- **No Source-File String / Regex Proxy Tests**: Flag tests that read executable
-  source or UI files (`lib/**.dart`, `bin/**.dart`, `.html`, `.ts`) as raw
-  strings (`readAsStringSync()`, regexes, `indexOf`) to assert runtime behavior,
-  control flow, or UI rendering order instead of executing or rendering the
-  unit. _(Allow golden/codegen fixtures, `README.md` `--help` drift checks, and
-  static `BUILD` / `pubspec.yaml` metadata sync tests)._
-- **Test Double Hierarchy ("Tests That Can Fail")**: Flag over-mocked tests
-  (`package:mockito` `@GenerateNiceMocks`, stubbed `http.Client`, `Process`, or
-  browser/DOM APIs on the VM) that mask real failure modes when a real
-  implementation (`Directory.systemTemp`, loopback `HttpServer`), first-party
-  fake (`package:http/testing.dart` `MockClient`), or real `@TestOn('browser')`
-  test can be used.
+  - Require package-level and integration tests to import the public
+    `package:<pkg>/<pkg>.dart` entrypoint, keeping `lib/<pkg>.dart` exports
+    strictly scoped to public consumers.
+  - Allow—and encourage—subsystem unit tests to import internal **deep modules**
+    (`package:<pkg>/src/<subsystem>.dart`, such as unexported parsers, state
+    machines, data models, or algorithms with simple interfaces and rich
+    internal logic), while requiring thin single-caller helpers to be tested
+    through their owning module's entrypoint.
+- **Behavioral & Boundary Assertions**: Require tests to assert observable
+  outputs, state transitions, and boundary conditions of code that consumes
+  constants and models against concrete expected values (rather than echoing
+  constant literals, DTO getters, or production formulas).
+- **Direct Execution & Rendering Verification**: Require runtime behavior,
+  control flow, and UI/CLI output to be verified by executing functions or
+  rendering components directly, reserving raw file-text reads
+  (`readAsStringSync()`) for `README.md` `--help` drift checks, `BUILD` /
+  `pubspec.yaml` metadata sync, and code-generator fixtures.
+- **Real Implementations & First-Party Fakes ("Tests That Can Fail")**: Require
+  real implementations (`package:test_descriptor` `d.sandbox`/`d.dir`,
+  `Directory.systemTemp`, loopback `HttpServer`, in-memory stores), first-party
+  fakes (`package:http/testing.dart` `MockClient`), or real `@TestOn('browser')`
+  runs for DOM and JS/Wasm interop so tests exercise real failure modes.
 - **Public API Surface Verification**: When refactors extract helpers across
   files, require `dart run api_summary@^1.1.0` diff or `api.txt` verification so
   extracted helpers do not leak into the public package entrypoint.
