@@ -92,19 +92,33 @@ Inspect exception and error paths:
   informative error classes?
 - Is error context preserved when wrapping/re-throwing exceptions?
 
-### 7. Testing (Anti-Tautology & Public-Entrypoint Seams)
+### 7. Testing (Seam Discipline, Behavioral Assertions & Real Test Doubles)
 
 Scrutinize test quality, seam discipline, and assertion substance (`FU2`):
 
-- **Public-Entrypoint Test Seam Rule**: Flag unit/integration tests that import
-  internal `package:<pkg>/src/...` libraries when the behavior can and should be
-  tested through the public `package:<pkg>/<pkg>.dart` entrypoint (allow direct
-  `package:<pkg>/src/...` imports only for complex pure algorithms explicitly
-  annotated with `@visibleForTesting`).
-- **Anti-Tautology & Mirror Assertions**: Flag tautological tests that duplicate
-  implementation formulas, re-assert literal DTO constructor inputs/getters
-  without testing domain logic, or only assert mock call counts (`verify(...)`)
-  without asserting output values or state invariants.
+- **Test Seam Discipline (`lib/<pkg>.dart` vs. `lib/src/` Deep Modules)**:
+  - Require package-level and integration tests to import the public
+    `package:<pkg>/<pkg>.dart` entrypoint, keeping `lib/<pkg>.dart` exports
+    strictly scoped to public consumers.
+  - Allow—and encourage—subsystem unit tests to import internal **deep modules**
+    (`package:<pkg>/src/<subsystem>.dart`, such as unexported parsers, state
+    machines, data models, or algorithms with simple interfaces and rich
+    internal logic), while requiring thin single-caller helpers to be tested
+    through their owning module's entrypoint.
+- **Behavioral & Boundary Assertions**: Require tests to assert observable
+  outputs, state transitions, and boundary conditions of code that consumes
+  constants and models against concrete expected values (rather than echoing
+  constant literals, DTO getters, or production formulas).
+- **Direct Execution & Rendering Verification**: Require runtime behavior,
+  control flow, and UI/CLI output to be verified by executing functions or
+  rendering components directly, reserving raw file-text reads
+  (`readAsStringSync()`) for `README.md` `--help` drift checks, `BUILD` /
+  `pubspec.yaml` metadata sync, and code-generator fixtures.
+- **Real Implementations & First-Party Fakes ("Tests That Can Fail")**: Require
+  real implementations (`package:test_descriptor` `d.sandbox`/`d.dir`,
+  `Directory.systemTemp`, loopback `HttpServer`, in-memory stores), first-party
+  fakes (`package:http/testing.dart` `MockClient`), or real `@TestOn('browser')`
+  runs for DOM and JS/Wasm interop so tests exercise real failure modes.
 - **Public API Surface Verification**: When refactors extract helpers across
   files, require `dart run api_summary@^1.1.0` diff or `api.txt` verification so
   extracted helpers do not leak into the public package entrypoint.
