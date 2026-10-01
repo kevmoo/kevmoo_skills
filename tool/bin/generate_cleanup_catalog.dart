@@ -534,7 +534,6 @@ String generateCatalogMarkdown(
   // 1. Required Local Repositories table
   buffer.writeln('### Required Local Repositories');
   buffer.writeln();
-  buffer.writeln('<!-- mdformat off(prevent table wrapping) -->');
   buffer.writeln('| Repository | Local Directory | Synced Commit |');
   buffer.writeln('| :--- | :--- | :--- |');
 
@@ -563,7 +562,6 @@ String generateCatalogMarkdown(
     buffer.writeln('| $repoLink | `$rawPath` | $commitLink |');
   }
 
-  buffer.writeln('<!-- mdformat on -->');
   buffer.writeln();
 
   // 2. Categorized Skills

@@ -12,10 +12,12 @@ compatibility: "Requires local checkouts in ~/github/kevmoo and ~/github/skills"
 
 # 🎯 Dart Cleanup & Refactoring Router
 
-> [!NOTE] **Personal Environment Router**: This skill is optimized for
-> `@kevmoo`'s local development environment and assumes specialized skills are
-> checked out under `~/github/kevmoo/` and `~/github/skills/`. Other users
-> should clone the required repositories or adapt the catalog paths in
+> [!NOTE]
+>
+> **Personal Environment Router**: This skill is optimized for `@kevmoo`'s local
+> development environment and assumes specialized skills are checked out under
+> `~/github/kevmoo/` and `~/github/skills/`. Other users should clone the
+> required repositories or adapt the catalog paths in
 > [Skill Catalog](#-skill-catalog) to match their local layout.
 
 Orchestrates specialized Dart workflows from local GitHub checkouts without
@@ -64,21 +66,32 @@ output:
 > `~/github/...`. Please ensure `https://github.com/<org>/<repo>` is cloned into
 > `~/github/`.
 
-### 3. Optional `kscripts` Config & Constraint Hygiene (`lint-cleanup` & `tighten`)
+### 3. Coding Standards, Public API & Config Guardrails
 
-When `kscripts` (`kevmoo_scripts` installed via `dart install`) is available on
-`PATH` (`command -v kscripts >/dev/null 2>&1`) and the cleanup request includes
-`analysis_options.yaml` or `pubspec.yaml` dependency constraints:
-
-- **`analysis_options.yaml` Cleanup (`kscripts lint-cleanup`)**: Run
-  `kscripts lint-cleanup --rewrite` (or
-  `kscripts lint-cleanup -d <dir> --rewrite`) to strip duplicate, redundant, or
-  deprecated lint rules already included by `package:dart_flutter_team_lints` /
-  `package:lints`.
-- **`pubspec.yaml` Constraint Tightening (`kscripts tighten`)**: When preparing
-  a package or workspace for release (or when asked to tighten dependency lower
-  bounds), run `kscripts tighten` (or `kscripts tighten --workspace`) to align
-  `pubspec.yaml` minimum constraints with resolved `pubspec.lock` versions.
+1. **Architecture & Boundary Guardrails (`~/.agents/CODING_STANDARDS.md`)**:
+   - Always review `~/.agents/CODING_STANDARDS.md` before executing multi-file
+     Dart refactors, complexity reductions, or package maintenance:
+     - **Deep Externally, Pure Internally**: Keep `lib/<pkg>.dart` exports
+       minimal (`export 'src/...' show ...;`). Never lower complexity by
+       introducing stateful single-use `_Populator` / `_Runner` helper classes
+       that mutate caller maps/sets in-place; extract file-private pure
+       functions (`_computeX(input) -> output`).
+     - **Load-Bearing Library Boundary Rule**: Extract a standalone `lib/src/`
+       library (`Tier 1`) only when the cut requires zero `_private` visibility
+       widening; use `part` / `part of` (`Tier 2`) when types share
+       library-scoped access (`sealed`, `final`, `interface`, `base`, `._()`, or
+       `_private` members). Never widen `_private` members to `@internal` just
+       to split files.
+     - **Public API Surface Verification (`dart run api_summary@^1.1.0`)**: Run
+       `dart run api_summary@^1.1.0` before and after multi-file refactors
+       (`--check` when `api.txt` is tracked, or
+       `diff -u /tmp/api_before.txt /tmp/api_after.txt` otherwise) to verify
+       zero unintended public API leaks.
+2. **Optional `kscripts` Config Hygiene (`lint-cleanup` & `tighten`)**:
+   - When `kscripts` is on `PATH`, use `kscripts lint-cleanup --rewrite` to
+     prune redundant lints in `analysis_options.yaml` and `kscripts tighten` (or
+     `kscripts tighten --workspace`) to align `pubspec.yaml` lower bounds with
+     `pubspec.lock`.
 
 ---
 
@@ -90,13 +103,11 @@ When `kscripts` (`kevmoo_scripts` installed via `dart install`) is available on
 
 ### Required Local Repositories
 
-<!-- mdformat off(prevent table wrapping) -->
 | Repository | Local Directory | Synced Commit |
 | :--- | :--- | :--- |
 | [`dart-lang/skills`](https://github.com/dart-lang/skills) | `~/github/skills` | [`26b2dcc`](https://github.com/dart-lang/skills/commit/26b2dcc5654cbbc3b2ec56ea94719469bc8bae9e) |
 | [`kevmoo/analytica.dart`](https://github.com/kevmoo/analytica.dart) | `~/github/kevmoo/analytica.dart` | [`103ba83`](https://github.com/kevmoo/analytica.dart/commit/103ba839d3d8e4e53853fad600cbde341b153192) |
 | [`kevmoo/dash_skills`](https://github.com/kevmoo/dash_skills) | `~/github/kevmoo/dash_skills` | [`0b6371c`](https://github.com/kevmoo/dash_skills/commit/0b6371c26516df82443ee5491771befa70d60f0f) |
-<!-- mdformat on -->
 
 ### A. Refactoring & Code Quality
 * **`dart-build-cli-app`**: CLI entrypoint structure, argument parsing
