@@ -10,6 +10,7 @@ with the sharpen-saw skill.
 import argparse
 import json
 import os
+import re
 import sys
 import time
 from pathlib import Path
@@ -44,22 +45,30 @@ def main(argv=None):
     )
     parser.add_argument("--later-file", type=Path, default=default_ledger())
     args = parser.parse_args(argv)
+    note = " ".join(args.note.split())
+    if not note:
+        parser.error("the note is empty")
+    # A terminal that cannot encode the receipt must not fail a write that succeeded.
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(errors="replace")
 
     ledger = args.later_file
     ledger.parent.mkdir(parents=True, exist_ok=True)
     count = len(ledger.read_text(encoding="utf-8").splitlines()) if ledger.exists() else 0
     session = args.session.strip() or "unknown"
+    if session == "unknown":
+        print("No session id: pass --session so the bookmark can be traced.", file=sys.stderr)
     entry = {
-        "id": f"L-{session[:8]}-{count + 1}",
+        "id": f"L-{re.sub(r'[^A-Za-z0-9]', '', session)[:8]}-{count + 1}",
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "session": session,
         "cwd": os.getcwd(),
         "category": args.cat,
-        "human_note": args.note.strip(),
-        "agent_note": args.agent_note.strip(),
+        "human_note": note,
+        "agent_note": " ".join(args.agent_note.split()),
         "status": "OPEN",
     }
-    # A single O_APPEND write, so concurrent sessions cannot clobber each other.
+    # A single O_APPEND write, so concurrent bookmarks never overwrite each other.
     with ledger.open("a", encoding="utf-8") as out:
         out.write(json.dumps(entry, ensure_ascii=False) + "\n")
 

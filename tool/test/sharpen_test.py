@@ -58,7 +58,8 @@ class SharpenTestCase(unittest.TestCase):
         self.projects = self.root / "projects"
         self.ledger = self.root / "state" / "later.jsonl"
         # Keeps the budget and installed-skill lookups off the real home directory.
-        home = mock.patch.dict(os.environ, {"HOME": str(self.root)})
+        config = str(self.root / ".claude")
+        home = mock.patch.dict(os.environ, {"HOME": str(self.root), "CLAUDE_CONFIG_DIR": config})
         home.start()
         self.addCleanup(home.stop)
 
@@ -139,7 +140,10 @@ class CommandKeyTest(unittest.TestCase):
         cases = {
             "cd ~/x && PAGER=cat timeout -k 5s 30s gh pr view 12 --json url": "gh pr view",
             "git worktree add -b x ../y origin/main": "git worktree add",
-            "git -C /x status": "git",
+            "git -C /x status": "git status",
+            "git --git-dir=/x/.git diff": "git diff",
+            "env FOO=1 gh pr view 3": "gh pr view",
+            'echo "step 1; git push origin main"': None,
             "git checkout main": "git checkout",
             'echo "---"; command cat foo | head': "cat",
             "~/.local/bin/relay-whoami --check": "relay-whoami",
@@ -156,6 +160,34 @@ class CommandKeyTest(unittest.TestCase):
             with self.subTest(command=command):
                 self.assertEqual(saw.command_key(command), expected)
 
+    def test_lists_every_command_of_a_chain(self):
+        cases = {
+            "ls lib && echo '=== x; y ===' && grep -rn Foo lib/": ["ls", "grep"],
+            "python3 - << 'PY'\nimport json\nx = 'a; b'\nPY\necho done; jq . f": ["python3", "jq"],
+            'cat <<< "x" && wc -l f': ["cat", "wc"],
+            "git fetch -q; git fetch origin": ["git fetch"],
+        }
+        for command, expected in cases.items():
+            with self.subTest(command=command):
+                self.assertEqual(saw.command_keys(command), expected)
+
+
+class BlameTest(unittest.TestCase):
+    def test_names_the_failing_part_of_a_chain(self):
+        cases = [
+            (["gh pr view"], "anything", "gh pr view"),
+            (["relay-gh issue", "gh pr view"], "ok\n(eval):1: === not found", "shell"),
+            (["ls"], "(eval):1: no matches found: results/*.md", "shell"),
+            (["grep", "sed"], "sed: -e expression #1, char 5: unknown command", "sed"),
+            (["git fetch", "ls"], "fatal: 'main' is already used by worktree", "git fetch"),
+            (["git fetch", "git checkout"], "fatal: ambiguous", "chain"),
+            (["ls", "grep"], "a.dart\nb.dart", "chain"),
+            ([], "boom", None),
+        ]
+        for keys, error, expected in cases:
+            with self.subTest(keys=keys, error=error):
+                self.assertEqual(saw.blame(keys, error), expected)
+
 
 class ErrorSignatureTest(unittest.TestCase):
     def test_masks_paths_and_numbers(self):
@@ -169,10 +201,19 @@ class ErrorSignatureTest(unittest.TestCase):
         raw = "Exit code 1\nTraceback (most recent call last):\nIndexError: list index out of range"
         self.assertEqual(saw.error_signature(raw), "IndexError: list index out of range")
 
-    def test_failed_command_with_only_stdout_gets_generic_signature(self):
+    def test_failed_command_with_only_stdout_reports_its_exit_code(self):
+        raw = "Exit code 2\nsdk.dart\nterminal.dart"
+        self.assertEqual(saw.error_signature(raw), "Exit code 2")
+        self.assertEqual(saw.error_example(raw), "Exit code 2")
+
+    def test_shell_errors_count_as_error_lines(self):
+        raw = "Exit code 1\nheader\n(eval):1: no matches found: results/*.md"
+        self.assertEqual(saw.error_signature(raw), "(eval):N: no matches found: PATH")
+
+    def test_separator_runs_of_any_length_cluster_together(self):
         self.assertEqual(
-            saw.error_signature("Exit code 2\nsdk.dart\nterminal.dart"),
-            "Exit code N, no error line in output",
+            saw.error_signature("Exit code 1\n(eval):1: ===== not found"),
+            saw.error_signature("Exit code 1\n(eval):1: ==== not found"),
         )
 
     def test_tool_errors_keep_their_message(self):
@@ -214,6 +255,7 @@ class AuditTest(SharpenTestCase):
         self.assertEqual(report["runs"]["Bash (gh pr view)"][0], 1)
         self.assertEqual(report["runs"]["Edit"][0], 1)
         self.assertEqual(report["commands"]["gh pr view"]["total"], 4)
+        self.assertEqual(report["commands"]["git push"]["total"], 1)
         self.assertEqual(report["var_prefixed"], {"gh pr view": 1})
         self.assertEqual([hog[2:4] for hog in report["hogs"]], [(5, "Skill")])
         self.assertEqual(report["spirals"], {"/repo/lib/a.dart": {SID: 4}})
@@ -243,12 +285,29 @@ class AuditTest(SharpenTestCase):
         (cluster,) = saw.audit([saw.read_session(path)])["clusters"]
         self.assertEqual(cluster["siblings"], [])
 
+    def test_chain_failures_are_blamed_on_the_command_that_failed(self):
+        path = self.write_session(
+            [
+                *bash("c1", "grep -n x f && sed -n '1,+3q' f", "Exit code 1\nsed: unknown command", True),
+                *bash("c2", "sed -n 1,3p f"),
+                *bash("c3", "gh pr view 1; echo ====; ls", "Exit code 1\n(eval):1: === not found", True),
+                *bash("c4", "ls lib && grep -c x lib/a", "Exit code 1\n0", True),
+            ]
+        )
+        clusters = {c["key"]: c for c in saw.audit([saw.read_session(path)])["clusters"]}
+
+        self.assertEqual(set(clusters), {"sed", "shell", "chain"})
+        self.assertEqual(clusters["sed"]["siblings"], ["sed -n 1,3p f"])
+        self.assertEqual(clusters["shell"]["siblings"], [])
+        self.assertEqual(clusters["chain"]["signature"], "Exit code 1")
+
 
 class LedgerAndCliTest(SharpenTestCase):
     def log(self, note, session=SID):
         out = io.StringIO()
-        with contextlib.redirect_stdout(out):
-            later.main([note, "--cat", "cli-gap", "--session", session, "--later-file", str(self.ledger)])
+        argv = [note, "--cat", "cli-gap", "--session", session, "--later-file", str(self.ledger)]
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            later.main(argv)
         return out.getvalue()
 
     def test_later_appends_and_resolve_closes(self):
@@ -258,6 +317,9 @@ class LedgerAndCliTest(SharpenTestCase):
 
         entries = saw.open_entries(self.ledger)
         self.assertEqual([e["id"] for e in entries], ["L-aaaaaaaa-1", "L-unknown-2"])
+        self.assertEqual(saw.resolve_entries(self.ledger, ""), 0)
+        with self.assertRaises(SystemExit):
+            self.run_saw("resolve", "L-nope-9")
         self.assertIn("2 open item(s)", self.run_saw("queue"))
 
         self.assertIn("Resolved 1", self.run_saw("resolve", "L-aaaaaaaa-1"))
@@ -265,6 +327,28 @@ class LedgerAndCliTest(SharpenTestCase):
         self.assertEqual(saw.load_ledger(self.ledger)[0]["status"], "RESOLVED")
         self.assertIn("Resolved 1", self.run_saw("resolve", "all"))
         self.assertIn("No open", self.run_saw("queue"))
+
+    def test_resolve_keeps_ledger_lines_it_cannot_parse(self):
+        self.log("first")
+        with self.ledger.open("a", encoding="utf-8") as out:
+            out.write('{"truncated": \n')
+        self.log("third")
+
+        self.run_saw("resolve", "L-aaaaaaaa-1")
+        lines = self.ledger.read_text(encoding="utf-8").splitlines()
+        self.assertEqual(len(lines), 3)
+        self.assertEqual(lines[1], '{"truncated": ')
+        self.assertEqual([e["id"] for e in saw.open_entries(self.ledger)], ["L-aaaaaaaa-3"])
+
+    def test_later_normalizes_notes_and_ids(self):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            later.main(["two\nlines", "--session", "foo.bar/baz", "--later-file", str(self.ledger)])
+        (entry,) = saw.open_entries(self.ledger)
+        self.assertEqual((entry["id"], entry["human_note"]), ("L-foobarba-1", "two lines"))
+        self.assertTrue(saw.BOOKMARK_RE.match(entry["id"]))
+        with self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):
+            later.main(["  ", "--later-file", str(self.ledger)])
 
     def test_view_bookmark_windows_around_its_timestamp(self):
         records = [user("start", ts="2020-01-01T00:00:00.000Z")]
@@ -275,10 +359,11 @@ class LedgerAndCliTest(SharpenTestCase):
         self.log("make is flaky")
 
         out = self.run_saw("view", "L-aaaaaaaa-1", "--window", "2")
+        self.assertTrue(out.startswith("📌 [L-aaaaaaaa-1] cli-gap: make is flaky\n"))
         self.assertNotIn("step5", out)
         self.assertIn("$ make step7", out)
-        self.assertIn("$ make step8", out)
-        self.assertIn("$ make after", out)
+        self.assertLess(out.index("$ make step8"), out.index("bookmarked here"))
+        self.assertLess(out.index("bookmarked here"), out.index("$ make after"))
 
     def test_view_defaults_to_conversation_and_filters_errors(self):
         self.write_session(
@@ -289,6 +374,9 @@ class LedgerAndCliTest(SharpenTestCase):
         self.assertIn("=== [3] tool Bash [ERROR]", errors)
         self.assertNotIn("$ ls", errors)
         self.assertIn("$ ls", self.run_saw("view", SID[:8], "--step", "2"))
+        with self.assertRaises(SystemExit) as bad_step:
+            self.run_saw("view", SID[:8], "--step", "abc")
+        self.assertEqual(bad_step.exception.code, "--step takes N or A-B")
 
     def test_scan_ranks_by_query_and_errors(self):
         failed = bash("g1", "git rebase main", "Exit code 1\nfatal: conflict", True)
@@ -297,7 +385,7 @@ class LedgerAndCliTest(SharpenTestCase):
 
         out = self.run_saw("scan", "--query", "rebase")
         self.assertIn("Found 1 candidate session(s)", out)
-        self.assertIn("[aaaaaaaa] score 5 (matches 2, errors 1", out)
+        self.assertIn("[aaaaaaaa] score 3 (errors 1, >15KB steps 0, query matches 2)", out)
         self.assertIn("Bash (git rebase): fatal: conflict", out)
 
     def test_audit_includes_sessions_with_open_bookmarks(self):

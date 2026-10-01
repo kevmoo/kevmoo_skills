@@ -21,10 +21,10 @@ in the **same turn**. A dedicated `/sharpen-saw` session investigates it later.
 ## The Same-Turn Contract
 
 1. **Log it with one command.** `scripts/later.py` sits in this skill's
-   directory; call it by its full path.
+   directory: replace `<skill-dir>` with that directory.
 
    ```bash
-   python3 scripts/later.py "<what the user said went wrong>" \
+   python3 <skill-dir>/scripts/later.py "<what the user said went wrong>" \
      --agent-note "<the failing command, tool or rule, in one line>" \
      --cat <category>
    ```
@@ -59,5 +59,5 @@ in the **same turn**. A dedicated `/sharpen-saw` session investigates it later.
   `${XDG_STATE_HOME:-~/.local/state}/sharpen-saw/later.jsonl` (`--later-file`
   overrides).
 - The session id comes from `$CLAUDE_CODE_SESSION_ID`; under another agent, pass
-  `--session <id>`.
+  `--session <id>`. A subagent logs against its parent session.
 - Needs Python 3.9+ and nothing else.

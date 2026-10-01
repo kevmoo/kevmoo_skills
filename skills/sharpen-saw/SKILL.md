@@ -34,9 +34,11 @@ tools, rules and skills that caused it.
 
 ## Workflow
 
-`scripts/sharpen_saw.py` sits in this skill's directory; call it by its full
-path. It needs Python 3.9+ and nothing else, and reads
-`~/.claude/projects/**/*.jsonl` without loading transcripts into context.
+`scripts/sharpen_saw.py` sits in this skill's directory: replace `<skill-dir>`
+below with that directory. It needs Python 3.9+ and nothing else, and reads the
+session transcripts under `~/.claude/projects/` without loading them into
+context. Subagent transcripts are left out unless you pass
+`--include-subagents`.
 
 ### 1. Intake
 
@@ -46,31 +48,42 @@ days).
 
 ### 2. One Offline Scan
 
-Run **one** of these. Each prints the open `/sharpen-later` queue first and the
-rule and skill budget last.
+Run **one** of these two. Each prints the open `/sharpen-later` queue first and
+the rule and skill budget last.
 
 ```bash
-# Domain scan: rank recent sessions by friction around a regex.
-python3 scripts/sharpen_saw.py scan --query "git|gh|rebase" --days 14 --limit 5
+# Domain scan: the sessions that mention a regex, ranked by failures.
+python3 <skill-dir>/scripts/sharpen_saw.py scan --query "\b(git|gh)\b|rebase" --days 14 --limit 5
 
 # Deep audit: the 8-section report over the last N sessions, plus every
 # session that has an open bookmark.
-python3 scripts/sharpen_saw.py audit --last 5 --prompts first
-
-# Surgical look around one bookmark, or at one session's failures.
-python3 scripts/sharpen_saw.py view <L-id> --window 5
-python3 scripts/sharpen_saw.py view <session-prefix> --errors
+python3 <skill-dir>/scripts/sharpen_saw.py audit --last 5 --prompts first
 ```
 
-Work from the scanner's summary. Reach for `view` on a specific step when a
-finding needs its surrounding context; leave the raw `.jsonl` files unread.
+`--query` only selects sessions; the error clusters under a scan cover every
+failure in the sessions it lists. `--prompts none` keeps user prompts out of the
+report when sessions hold private material.
+
+Work from that summary. When a finding needs its surrounding steps, use `view`
+and leave the raw `.jsonl` files unread:
+
+```bash
+python3 <skill-dir>/scripts/sharpen_saw.py view <L-id>                    # around a bookmark
+python3 <skill-dir>/scripts/sharpen_saw.py view <session-prefix> --errors # one session's failures
+python3 <skill-dir>/scripts/sharpen_saw.py view <session-prefix> --step 40 --window 3
+```
 
 Reading the audit:
 
 - **Section 8 (error clusters) comes first.** Prioritize clusters that span two
-  or more sessions. `Failed Cmd` beside `Succeeding Sibling` shows the working
-  invocation of the same subcommand; confirm the sibling shares the intent
-  before copying its flags.
+  or more sessions. Each is labelled with the command that failed:
+  - `Bash (gh pr view)`: that command failed. `Succeeding Sibling` shows a
+    working invocation of the same subcommand; confirm it shares the intent
+    before copying its flags.
+  - `Bash (shell)`: the shell rejected the line itself (an unmatched glob, an
+    unquoted separator, a parse error). The fix is in how commands are written.
+  - `Bash (chain)`: one command of a multi-command line failed and the output
+    does not say which. Read `Failed Cmd`, or `view` the step.
 - **Section 2 (repeated sequences)** and **Section 5 (edit spirals)** mark
   iterative struggle: one session means a missing error hint, many sessions
   means a missing tool.
@@ -120,7 +133,7 @@ Grow an edited `SKILL.md` by at most 20%; past that, split into `references/`.
 3. Close the bookmarks each fix addresses:
 
    ```bash
-   python3 scripts/sharpen_saw.py resolve <L-id|session-prefix|all>
+   python3 <skill-dir>/scripts/sharpen_saw.py resolve <L-id|session-prefix|all>
    ```
 
 4. Record, for each landed fix, the regex of its old symptom. After a week of

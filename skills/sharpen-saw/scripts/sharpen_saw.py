@@ -88,11 +88,19 @@ class Session:
 
     @property
     def short(self):
-        return self.sid[:8]
+        parent, _, agent = self.sid.partition("/")
+        return f"{parent[:8]}/{agent}" if agent else parent[:8]
 
 
-def projects_dir():
-    return Path(os.environ.get("CLAUDE_CONFIG_DIR") or Path.home() / ".claude") / "projects"
+def config_dir():
+    return Path(os.environ.get("CLAUDE_CONFIG_DIR") or Path.home() / ".claude")
+
+
+def _mtime(path):
+    try:
+        return path.stat().st_mtime
+    except OSError:  # deleted mid-scan, or a dangling symlink
+        return 0.0
 
 
 def session_files(root, include_subagents=False):
@@ -100,7 +108,7 @@ def session_files(root, include_subagents=False):
     files = list(root.glob("*/*.jsonl"))
     if include_subagents:
         files += root.glob("*/*/subagents/*.jsonl")
-    return sorted(files, key=lambda p: p.stat().st_mtime, reverse=True)
+    return sorted((p for p in files if p.is_file()), key=_mtime, reverse=True)
 
 
 def session_id(path):
@@ -191,7 +199,7 @@ def read_session(path):
 
 # --- Ledger written by the sharpen-later skill -------------------------------
 
-BOOKMARK_RE = re.compile(r"^L-[\w-]+-\d+$")
+BOOKMARK_RE = re.compile(r"^L-\w+-\d+$")
 
 
 def default_ledger():
@@ -199,18 +207,22 @@ def default_ledger():
     return Path(state) / "sharpen-saw" / "later.jsonl"
 
 
-def load_ledger(path):
+def _ledger_rows(path):
+    """(raw line, parsed entry or None) for each ledger line."""
     if not path.exists():
         return []
-    entries = []
-    for line in path.read_text(encoding="utf-8").splitlines():
+    rows = []
+    for raw in path.read_text(encoding="utf-8", errors="replace").splitlines():
         try:
-            entry = json.loads(line)
+            entry = json.loads(raw)
         except ValueError:
-            continue
-        if isinstance(entry, dict):
-            entries.append(entry)
-    return entries
+            entry = None
+        rows.append((raw, entry if isinstance(entry, dict) else None))
+    return rows
+
+
+def load_ledger(path):
+    return [entry for _, entry in _ledger_rows(path) if entry]
 
 
 def open_entries(path):
@@ -219,24 +231,23 @@ def open_entries(path):
 
 def resolve_entries(path, target):
     """Marks open entries matching an id, a session prefix or "all" as RESOLVED."""
-    entries = load_ledger(path)
+    if not target:
+        return 0
+    rows = _ledger_rows(path)
     now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     resolved = 0
-    for entry in entries:
-        matches = (
-            target == "all"
-            or entry.get("id") == target
-            or (not BOOKMARK_RE.match(target) and entry.get("session", "").startswith(target))
-        )
-        if entry.get("status") == "OPEN" and matches:
+    for _, entry in rows:
+        if not entry or entry.get("status") != "OPEN":
+            continue
+        by_session = not BOOKMARK_RE.match(target) and entry.get("session", "").startswith(target)
+        if target == "all" or entry.get("id") == target or by_session:
             entry.update(status="RESOLVED", resolved_at=now)
             resolved += 1
     if resolved:
+        # Lines that did not parse are written back untouched.
+        lines = [json.dumps(entry, ensure_ascii=False) if entry else raw for raw, entry in rows]
         tmp = path.with_suffix(".tmp")
-        tmp.write_text(
-            "".join(json.dumps(e, ensure_ascii=False) + "\n" for e in entries),
-            encoding="utf-8",
-        )
+        tmp.write_text("\n".join(lines) + "\n", encoding="utf-8")
         tmp.replace(path)
     return resolved
 
@@ -266,40 +277,60 @@ TOOL_ERROR_TAG_RE = re.compile(r"</?tool_use_error>")
 ERROR_LINE_RE = re.compile(
     r"\b(?:\w*error|\w*exception|fatal|failed|failure|unrecognized|unknown|invalid|"
     r"denied|blocked|not found|not allowed|no such|cannot|usage|mismatch|missing|"
-    r"conflict|rejected)\b|✗|❌",
+    r"conflict|rejected)\b|✗|❌|^\(eval\):\d+:",
     re.I,
 )
 PATH_TOKEN_RE = re.compile(r"""[^ \t\n"'`()]*/[^ \t\n"'`()]*""")
 DIGITS_RE = re.compile(r"\d+")
 SANDBOX_RE = re.compile(r"Operation not permitted|Read-only file system", re.I)
+PUNCT_RUN_RE = re.compile(r"([=#*~_-])\1{3,}")
+SHELL_ERROR_RE = re.compile(r"^\(eval\):\d+: |^(?:zsh|bash|sh): ", re.M)
 
 
-def _focus_error(raw):
-    """(text from the last line naming a failure, whether such a line exists)."""
+def _error_text(raw):
+    """The part of a failed tool result that names the failure."""
     text = ANSI_RE.sub("", raw.strip())
-    body = TOOL_ERROR_TAG_RE.sub("", EXIT_HEADER_RE.sub("", text)).strip()
-    lines = [ln.strip() for ln in (body or text).splitlines() if ln.strip()]
+    exit_header = EXIT_HEADER_RE.match(text)
+    body = TOOL_ERROR_TAG_RE.sub("", text[exit_header.end():] if exit_header else text)
+    lines = [ln.strip() for ln in body.splitlines() if ln.strip()]
     window = lines[-25:]
     hits = [i for i, ln in enumerate(window) if ERROR_LINE_RE.search(ln)]
-    focused = window[hits[-1]:] if hits else window[-3:]
-    return WS_RE.sub(" ", " ".join(focused)), bool(hits)
+    if hits:
+        return WS_RE.sub(" ", " ".join(window[hits[-1]:]))
+    if exit_header:
+        # Output that names no error is stdout; quoting or clustering it is noise.
+        return exit_header.group().strip()
+    return WS_RE.sub(" ", " ".join(window[-3:]))
 
 
 def error_example(raw):
     """Verbatim failure text, short enough to quote."""
-    return _focus_error(raw)[0][:200].rstrip()
+    return _error_text(raw)[:200].rstrip()
 
 
 def error_signature(raw):
-    """The failure with paths and numbers masked, so repeats cluster."""
-    focused, named = _focus_error(raw)
-    exit_header = EXIT_HEADER_RE.match(raw.strip())
-    if exit_header and not named:
-        # A failed command whose output names no error is mostly stdout;
-        # clustering on that text is noise.
-        focused = f"{exit_header.group().strip()}, no error line in output"
-    masked = DIGITS_RE.sub("N", PATH_TOKEN_RE.sub("PATH", focused[:400]))
+    """The failure with paths, numbers and separator runs masked, so repeats cluster."""
+    text = _error_text(raw)
+    if EXIT_HEADER_RE.fullmatch(text):
+        return text  # the exit code is the only signal there is; keep it exact
+    masked = PATH_TOKEN_RE.sub("PATH", text[:400])
+    masked = PUNCT_RUN_RE.sub(r"\1\1\1", DIGITS_RE.sub("N", masked))
     return WS_RE.sub(" ", masked)[:120].rstrip()
+
+
+def blame(keys, error):
+    """The command of a chain that failed, as far as the output says."""
+    if SHELL_ERROR_RE.search(error):
+        return "shell"  # the shell rejected the line itself
+    if len(keys) <= 1:
+        return keys[0] if keys else None
+    for key in keys:
+        if re.search(rf"^{re.escape(key.split()[0])}: ", error, re.M):
+            return key
+    gits = [key for key in keys if key.split()[0] == "git"]
+    if len(gits) == 1 and re.search(r"^fatal: ", error, re.M):
+        return gits[0]
+    return "chain"  # one of several commands failed and the output does not say which
 
 
 LEADING_VAR_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
@@ -308,7 +339,7 @@ LEADING_ENV_RE = re.compile(
 )
 CHAIN_SPLIT_RE = re.compile(r"\s*(?:&&|;|\|\|)\s*")
 DURATION_RE = re.compile(r"^\d+[smhd]?$")
-SUBCOMMAND_RE = re.compile(r"^[a-zA-Z0-9_:-]+$")
+SUBCOMMAND_RE = re.compile(r"^[a-zA-Z][a-zA-Z0-9_:-]*$")
 EXECUTABLE_RE = re.compile(r"^[a-zA-Z0-9_][a-zA-Z0-9_.-]*$")
 IGNORED_BUILTINS = {
     "set", "cd", "export", "unset", "true", "echo", "printf", "sleep", "mkdir",
@@ -324,7 +355,9 @@ NO_SUBCOMMAND = {
     "cat", "ls", "grep", "rg", "sed", "awk", "head", "tail", "find", "wc", "jq",
     "rm", "cp", "mv", "touch", "chmod", "stat", "sort", "cut", "tr", "diff", "curl",
 }  # fmt: skip
-HEREDOC_RE = re.compile(r"""<<-?\s*['"]?(\w+)""")
+HEREDOC_RE = re.compile(r"""(?<!<)<<(?!<)-?\s*['"]?(\w+)""")
+SHELL_HEREDOC_RE = re.compile(r"\b(?:bash|sh|zsh)\b[^|;&]*<<")
+QUOTED_RE = re.compile(r'"(?:[^"\\]|\\.)*"' + r"|'[^']*'")
 # A shared interpreter says nothing about intent, so these get no sibling contrast.
 INTERPRETERS = {"bash", "sh", "zsh", "python", "python3", "node", "dart"}
 
@@ -345,11 +378,14 @@ def _segment_key(segment):
             (
                 i
                 for i, tok in enumerate(tokens[1:], 1)
-                if not tok.startswith("-") and not DURATION_RE.match(tok)
+                if not tok.startswith("-") and "=" not in tok and not DURATION_RE.match(tok)
             ),
             0,
         )
         exe = tokens[at].rsplit("/", 1)[-1]
+    if exe == "git":  # step over global options: `git -C path status`
+        while at + 1 < len(tokens) and tokens[at + 1].startswith("-"):
+            at += 2 if tokens[at + 1] in ("-C", "-c") else 1
     if exe in IGNORED_BUILTINS or not EXECUTABLE_RE.match(exe):
         return None
     first = tokens[at + 1] if at + 1 < len(tokens) else ""
@@ -368,29 +404,52 @@ def _segment_key(segment):
     return f"{exe} {first}"
 
 
-def command_key(command):
-    """`cd x && PAGER=cat timeout 30s gh pr view 1` -> `gh pr view`."""
-    terminators = set(HEREDOC_RE.findall(command or ""))
-    for line in (command or "").splitlines():
+def _shell_lines(command):
+    """Lines the shell itself runs: heredoc bodies fed to other programs are dropped."""
+    until, keep = None, False
+    for line in command.splitlines():
+        if until:
+            if line.strip() == until:
+                until = None
+            elif keep:
+                yield line
+            continue
+        yield line
+        heredoc = HEREDOC_RE.search(line)
+        if heredoc:
+            until, keep = heredoc.group(1), bool(SHELL_HEREDOC_RE.search(line))
+
+
+def command_keys(command):
+    """`cd x && PAGER=cat gh pr view 1; git -C y status` -> [`gh pr view`, `git status`]."""
+    keys = []
+    # Quoted text is blanked first so a `;` or `&&` inside a string splits nothing.
+    for line in QUOTED_RE.sub('""', "\n".join(_shell_lines(command or ""))).splitlines():
         line = line.strip()
-        if not line or line.startswith("#") or line in terminators:
+        if not line or line.startswith("#"):
             continue
         for segment in CHAIN_SPLIT_RE.split(line):
             key = _segment_key(segment)
-            if key:
-                return key
-    return None
+            if key and key not in keys:
+                keys.append(key)
+    return keys
+
+
+def command_key(command):
+    """The first key of `command_keys`, or None."""
+    return next(iter(command_keys(command)), None)
 
 
 # --- Audit -------------------------------------------------------------------
 
 
-def installed_skills(home):
-    names = set()
-    for rel in (".claude/skills", ".agents/skills"):
-        for skill_md in (home / rel).glob("*/SKILL.md"):
-            names.add(skill_md.parent.name)
-    return names
+def skill_files():
+    """Every installed SKILL.md, once (the skill roots often symlink to each other)."""
+    found = {}
+    for root in (config_dir() / "skills", Path.home() / ".agents" / "skills"):
+        for skill_md in sorted(root.glob("*/SKILL.md")):
+            found.setdefault(skill_md.resolve(), skill_md)
+    return list(found.values())
 
 
 def audit(sessions, prompts="first", skills=frozenset()):
@@ -430,31 +489,28 @@ def audit(sessions, prompts="first", skills=frozenset()):
                 continue
 
             tool_counts[step.tool] += 1
-            key = command_key(step.input.get("command")) if step.tool == "Bash" else None
-            run_key = f"Bash ({key})" if key else step.tool
+            command = step.input.get("command") if step.tool == "Bash" else None
+            keys = command_keys(command)
+            run_key = f"Bash ({keys[0]})" if keys else step.tool
             if run_key == last_key:
                 run_length += 1
             else:
                 close_run(last_key, run_length, session.sid)
                 last_key, run_length = run_key, 1
 
-            command = step.input.get("command") if step.tool == "Bash" else None
             if command:
-                stat = commands.setdefault(
-                    key or "(unparsed)", {"total": 0, "sessions": set(), "cwds": set()}
-                )
-                stat["total"] += 1
-                stat["sessions"].add(session.sid)
-                stat["cwds"].add(step.cwd)
+                for key in keys or ["(unparsed)"]:
+                    stat = commands.setdefault(key, {"total": 0, "sessions": set(), "cwds": set()})
+                    stat["total"] += 1
+                    stat["sessions"].add(session.sid)
+                    stat["cwds"].add(step.cwd)
                 if LEADING_VAR_RE.match(command.lstrip()):
-                    var_prefixed[key or "(unparsed)"] += 1
+                    var_prefixed[keys[0] if keys else "(unparsed)"] += 1
             path = step.input.get("file_path") or step.input.get("notebook_path")
             if step.tool in EDIT_TOOLS and path:
                 edits[path][session.sid] += 1
             if step.tool == "Skill" and step.input.get("skill"):
                 activated[step.input["skill"]] += 1
-            elif step.tool == "Read" and str(path).endswith("/SKILL.md"):
-                activated[Path(path).parent.name] += 1
 
             if step.denied:
                 denials[run_key] += 1
@@ -463,6 +519,7 @@ def audit(sessions, prompts="first", skills=frozenset()):
                 if SANDBOX_RE.search(step.text):
                     sandbox += 1
                 signature = error_signature(step.text)
+                key = blame(keys, step.text) if command else None
                 cluster = clusters.setdefault(
                     (step.tool, key, signature),
                     {
@@ -477,10 +534,11 @@ def audit(sessions, prompts="first", skills=frozenset()):
                 )
                 cluster["count"] += 1
                 cluster["sessions"].add(session.sid)
-            elif key and len(successes[key]) < 4:
+            elif command:
                 brief = squash(command, 120, 80)
-                if brief not in successes[key]:
-                    successes[key].append(brief)
+                for key in keys:
+                    if len(successes[key]) < 4 and brief not in successes[key]:
+                        successes[key].append(brief)
         close_run(last_key, run_length, session.sid)
 
     for cluster in clusters.values():
@@ -597,11 +655,11 @@ def format_audit(report):
     return "\n".join(out)
 
 
-def budget_section(home):
+def budget_section():
     """Sizes of always-loaded rule files and of oversized skills."""
     out = ["=== RULE & SKILL BUDGET AUDIT ==="]
     seen, total = set(), 0
-    for rule_file in (home / ".claude" / "CLAUDE.md", home / "AGENTS.md"):
+    for rule_file in (config_dir() / "CLAUDE.md", Path.home() / "AGENTS.md"):
         real = rule_file.resolve()
         if not real.is_file() or real in seen:
             continue
@@ -612,15 +670,10 @@ def budget_section(home):
     verdict = "✅ OK" if total <= RULE_BYTES_CEILING else "⚠️ BUDGET OVERFLOW"
     out.append(f"Global rules: {verdict} ({total:,} / {RULE_BYTES_CEILING:,} bytes, soft ceiling)")
     oversized = []
-    for rel in (".claude/skills", ".agents/skills"):
-        for skill_md in sorted((home / rel).glob("*/SKILL.md")):
-            real = skill_md.resolve()
-            if real in seen:
-                continue
-            seen.add(real)
-            lines = len(real.read_text(encoding="utf-8", errors="replace").splitlines())
-            if lines > SKILL_LINES_CEILING:
-                oversized.append((lines, skill_md))
+    for skill_md in skill_files():
+        lines = len(skill_md.read_text(encoding="utf-8", errors="replace").splitlines())
+        if lines > SKILL_LINES_CEILING:
+            oversized.append((lines, skill_md))
     out.append(f"Skills over {SKILL_LINES_CEILING} lines: {len(oversized)} (largest 10 shown)")
     out += [f"  - {lines} lines: {skill_md}" for lines, skill_md in sorted(oversized, reverse=True)[:10]]
     return "\n".join(out)
@@ -630,15 +683,19 @@ def budget_section(home):
 
 
 def find_session(root, token):
-    """Resolves a path or a session-id prefix to a transcript file."""
-    if token and Path(token).is_file():
-        return Path(token)
+    """Resolves a transcript path or a session-id prefix to a transcript file."""
+    if token.endswith(".jsonl"):
+        return Path(token) if Path(token).is_file() else None
     files = session_files(root)
     if not token:
         return files[0] if files else None
     # Main sessions first: a subagent's id starts with its parent's.
     files += [p for p in session_files(root, include_subagents=True) if p not in files]
-    return next((p for p in files if session_id(p).startswith(token)), None)
+    matches = [p for p in files if session_id(p).startswith(token)]
+    mains = [p for p in matches if p.parent.name != "subagents"]
+    if len(mains) > 1:
+        print(f"{len(mains)} sessions match {token!r}; using the newest.", file=sys.stderr)
+    return matches[0] if matches else None
 
 
 def cmd_scan(args):
@@ -649,7 +706,7 @@ def cmd_scan(args):
     cutoff = time.time() - args.days * 86400
     candidates = []
     for path in session_files(args.projects_dir, args.include_subagents):
-        if path.stat().st_mtime < cutoff:
+        if _mtime(path) < cutoff:
             break
         session = read_session(path)
         matches = sum(
@@ -657,11 +714,12 @@ def cmd_scan(args):
         )
         failures = [s for s in session.steps if s.is_error and not s.denied]
         large = sum(1 for s in session.steps if len(s.text) > 15_000)
-        score = matches + 3 * len(failures) + large
+        # The query only selects sessions; friction alone ranks them.
+        score = 3 * len(failures) + large
         if (pattern and not matches) or score < args.min_score:
             continue
         candidates.append((score, matches, failures, large, session))
-    candidates.sort(key=lambda c: -c[0])
+    candidates.sort(key=lambda c: (-c[0], -c[1]))
     candidates = candidates[: args.limit]
 
     print(format_queue(open_entries(args.later_file)), end="")
@@ -670,7 +728,7 @@ def cmd_scan(args):
         title = f' "{session.title}"' if session.title else ""
         print(
             f"\n[{session.short}]{title} score {score}"
-            f" (matches {matches}, errors {len(failures)}, >15KB steps {large})"
+            f" (errors {len(failures)}, >15KB steps {large}, query matches {matches})"
         )
         first = next((s.text for s in session.steps if s.kind == "prompt"), "")
         print(f"  First prompt: {squash(first, 200, 100)}")
@@ -678,7 +736,7 @@ def cmd_scan(args):
             sample = failures[0]
             print(f"  Sample failure: {squash(sample.summary, 80, 40)} -> {error_example(sample.text)}")
     print("\n" + format_clusters(audit([c[4] for c in candidates], prompts="none")))
-    print("\n" + budget_section(Path.home()))
+    print("\n" + budget_section())
 
 
 def cmd_audit(args):
@@ -706,43 +764,56 @@ def cmd_audit(args):
                     sessions[path] = session
     sessions = list(sessions.values())
     print(format_queue(ledger), end="")
-    print(format_audit(audit(sessions, args.prompts, installed_skills(Path.home()))))
-    print("\n" + budget_section(Path.home()))
+    skills = {skill_md.parent.name for skill_md in skill_files()}
+    print(format_audit(audit(sessions, args.prompts, skills)))
+    print("\n" + budget_section())
 
 
 def cmd_view(args):
     target = args.target or os.environ.get("CLAUDE_CODE_SESSION_ID", "")
-    anchor_ts = None
+    bookmark = None
     if BOOKMARK_RE.match(target):
-        entry = next((e for e in load_ledger(args.later_file) if e.get("id") == target), None)
-        if entry is None:
+        bookmark = next((e for e in load_ledger(args.later_file) if e.get("id") == target), None)
+        if bookmark is None:
             sys.exit(f"No bookmark {target} in {args.later_file}")
-        target, anchor_ts = entry.get("session", ""), entry.get("timestamp", "")
+        target = bookmark.get("session", "")
     path = find_session(args.projects_dir, target)
     if path is None:
         sys.exit(f"No transcript for session {target!r} (it may have been cleaned up)")
     steps = read_session(path).steps
 
-    bounds = None
+    bounds = marker = None
     if args.step:
-        low, _, high = args.step.partition("-")
-        bounds = (int(low) - args.window, int(high or low) + args.window)
-    elif anchor_ts:
-        before = [s.index for s in steps if s.ts[:19] <= anchor_ts[:19]]
-        anchor = before[-1] if before else 0
+        span = re.fullmatch(r"(\d+)(?:-(\d+))?", args.step)
+        if not span:
+            sys.exit("--step takes N or A-B")
+        low = int(span.group(1))
+        bounds = (low - args.window, int(span.group(2) or low) + args.window)
+    elif bookmark:
+        stamp = bookmark.get("timestamp", "")[:19]
+        marker = max((s.index for s in steps if s.ts[:19] <= stamp), default=0)
         window = args.window or 5
-        bounds = (anchor - window, anchor + window)
+        bounds = (marker - window, marker + window)
+        print(f"📌 [{bookmark.get('id')}] {bookmark.get('category')}: {bookmark.get('human_note')}")
+        if bookmark.get("agent_note"):
+            print(f"   {bookmark['agent_note']}")
+        print()
     if bounds:
         steps = [s for s in steps if bounds[0] <= s.index <= bounds[1]]
     if args.errors:
         steps = [s for s in steps if s.is_error]
     elif not (bounds or args.tools):
         steps = [s for s in steps if s.kind != "tool"]
-    if args.tail:
+    if args.tail > 0:
         steps = steps[-args.tail :]
+    if not steps:
+        print("No steps matched.", file=sys.stderr)
 
     head = (args.max_len * 2) // 3
     for s in steps:
+        if marker is not None and s.index > marker:
+            print("--- 📌 bookmarked here ---\n")
+            marker = None
         flag = " [DENIED]" if s.denied else " [ERROR]" if s.is_error else ""
         label = f"tool {s.tool}" if s.kind == "tool" else s.kind
         print(f"=== [{s.index}] {label}{flag} ({s.ts[:19]}) ===")
@@ -751,6 +822,8 @@ def cmd_view(args):
         if s.text:
             print(squash(s.text, head, args.max_len - head))
         print()
+    if marker is not None:
+        print("--- 📌 bookmarked here ---")
 
 
 def cmd_queue(args):
@@ -758,15 +831,22 @@ def cmd_queue(args):
 
 
 def cmd_resolve(args):
-    count = resolve_entries(args.later_file, args.target)
+    count = resolve_entries(args.later_file, args.target.strip())
+    if not count:
+        sys.exit(f"No open /sharpen-later item matches {args.target!r}.")
     print(f"✅ Resolved {count} /sharpen-later item(s) matching {args.target!r}.")
 
 
 def main(argv=None):
+    # A terminal that cannot encode an emoji must not crash a command that already ran.
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(errors="replace")
     common = argparse.ArgumentParser(add_help=False)
-    common.add_argument("--projects-dir", type=Path, default=projects_dir())
+    common.add_argument("--projects-dir", type=Path, default=config_dir() / "projects")
     common.add_argument("--later-file", type=Path, default=default_ledger())
-    common.add_argument("--include-subagents", action="store_true")
+    common.add_argument(
+        "--include-subagents", action="store_true", help="treat subagent transcripts as sessions"
+    )
 
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = parser.add_subparsers(dest="command", required=True)
@@ -780,14 +860,24 @@ def main(argv=None):
 
     deep = sub.add_parser("audit", parents=[common], help="8-section report across sessions")
     deep.add_argument("sessions", nargs="*", help="session id prefixes or bookmark ids")
-    deep.add_argument("--last", type=int, default=0, help="include the N most recent sessions")
+    deep.add_argument(
+        "--last",
+        type=int,
+        default=0,
+        help="also audit the N most recent sessions (1 when no session is named)",
+    )
     deep.add_argument("--prompts", choices=("first", "all", "none"), default="first")
     deep.set_defaults(run=cmd_audit)
 
     view = sub.add_parser("view", parents=[common], help="print steps of one session")
     view.add_argument("target", nargs="?", default="", help="session id prefix, bookmark id or path")
     view.add_argument("--step", help="N or A-B")
-    view.add_argument("--window", type=int, default=0, help="steps of context around --step")
+    view.add_argument(
+        "--window",
+        type=int,
+        default=0,
+        help="steps of context around --step or a bookmark (bookmarks default to 5)",
+    )
     view.add_argument("--tools", action="store_true", help="include tool calls")
     view.add_argument("--errors", action="store_true", help="only failed tool calls")
     view.add_argument("--tail", type=int, default=0)
