@@ -92,19 +92,36 @@ Inspect exception and error paths:
   informative error classes?
 - Is error context preserved when wrapping/re-throwing exceptions?
 
-### 7. Testing (Anti-Tautology & Public-Entrypoint Seams)
+### 7. Testing (Seam Discipline, Anti-Tautology & Fakes Over Mocks)
 
 Scrutinize test quality, seam discipline, and assertion substance (`FU2`):
 
-- **Public-Entrypoint Test Seam Rule**: Flag unit/integration tests that import
-  internal `package:<pkg>/src/...` libraries when the behavior can and should be
-  tested through the public `package:<pkg>/<pkg>.dart` entrypoint (allow direct
-  `package:<pkg>/src/...` imports only for complex pure algorithms explicitly
-  annotated with `@visibleForTesting`).
-- **Anti-Tautology & Mirror Assertions**: Flag tautological tests that duplicate
-  implementation formulas, re-assert literal DTO constructor inputs/getters
-  without testing domain logic, or only assert mock call counts (`verify(...)`)
-  without asserting output values or state invariants.
+- **Test Seam Discipline (`lib/<pkg>.dart` vs. `lib/src/` Deep Modules)**:
+  - Flag package-level/integration tests that import `package:<pkg>/src/...`
+    when the behavior belongs at the public `package:<pkg>/<pkg>.dart` seam, and
+    flag any `lib/src/` symbol exported in `lib/<pkg>.dart` solely for tests.
+  - Allow—and encourage—subsystem unit tests that import an internal **deep
+    module** (`package:<pkg>/src/<subsystem>.dart`, such as an unexported
+    parser, data model, or algorithm with a simple interface and rich internal
+    logic). Flag `lib/src/` tests that couple to shallow single-caller helpers,
+    `@visibleForTesting` private state, or internal call choreography.
+- **Anti-Tautology & Constant-Echo Assertions**: Flag tests that merely assert a
+  constant or enum's literal value (`expect(kMaxLimit, 280)`), duplicate
+  production formulas in `expect(...)`, echo literal DTO getters without domain
+  logic, or only assert mock call counts (`verify(...)`) without checking output
+  values or state invariants.
+- **No Source-File String / Regex Proxy Tests**: Flag tests that read executable
+  source or UI files (`lib/**.dart`, `bin/**.dart`, `.html`, `.ts`) as raw
+  strings (`readAsStringSync()`, regexes, `indexOf`) to assert runtime behavior,
+  control flow, or UI rendering order instead of executing or rendering the
+  unit. _(Allow golden/codegen fixtures, `README.md` `--help` drift checks, and
+  static `BUILD` / `pubspec.yaml` metadata sync tests)._
+- **Test Double Hierarchy ("Tests That Can Fail")**: Flag over-mocked tests
+  (`package:mockito` `@GenerateNiceMocks`, stubbed `http.Client`, `Process`, or
+  browser/DOM APIs on the VM) that mask real failure modes when a real
+  implementation (`Directory.systemTemp`, loopback `HttpServer`), first-party
+  fake (`package:http/testing.dart` `MockClient`), or real `@TestOn('browser')`
+  test can be used.
 - **Public API Surface Verification**: When refactors extract helpers across
   files, require `dart run api_summary@^1.1.0` diff or `api.txt` verification so
   extracted helpers do not leak into the public package entrypoint.

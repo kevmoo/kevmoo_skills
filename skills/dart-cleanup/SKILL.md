@@ -68,9 +68,11 @@ output:
 
 ### 3. Coding Standards, Public API & Config Guardrails
 
-1. **Architecture & Boundary Guardrails (`~/.agents/CODING_STANDARDS.md`)**:
+1. **Architecture, Boundary & Testing Guardrails
+   (`~/.agents/CODING_STANDARDS.md`)**:
    - Always review `~/.agents/CODING_STANDARDS.md` before executing multi-file
-     Dart refactors, complexity reductions, or package maintenance:
+     Dart refactors, complexity reductions, test updates, or package
+     maintenance:
      - **Deep Externally, Pure Internally**: Keep `lib/<pkg>.dart` exports
        minimal (`export 'src/...' show ...;`). Never lower complexity by
        introducing stateful single-use `_Populator` / `_Runner` helper classes
@@ -87,6 +89,14 @@ output:
        (`--check` when `api.txt` is tracked, or
        `diff -u /tmp/api_before.txt /tmp/api_after.txt` otherwise) to verify
        zero unintended public API leaks.
+     - **Testing & Test Doubles (`dart-test-fundamentals` over `mockito`)**:
+       Package integration tests import `package:<pkg>/<pkg>.dart`; subsystem
+       unit tests may import internal **deep modules**
+       (`package:<pkg>/src/<subsystem>.dart`), never shallow helpers. Prefer
+       real implementations (`Directory.systemTemp`) and first-party fakes
+       (`package:http/testing.dart` `MockClient`) over `package:mockito`
+       (`dart-generate-test-mocks` is a last resort). Never write constant-echo
+       tautologies or `readAsStringSync()` source-regex proxy tests.
 2. **Optional `kscripts` Config Hygiene (`lint-cleanup` & `tighten`)**:
    - When `kscripts` is on `PATH`, use `kscripts lint-cleanup --rewrite` to
      prune redundant lints in `analysis_options.yaml` and `kscripts tighten` (or
