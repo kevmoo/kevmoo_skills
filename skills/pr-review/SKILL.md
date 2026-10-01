@@ -3,10 +3,10 @@ name: pr-review
 description: >-
   Reviews GitHub Pull Requests or local Git branch diffs using an adversarial 13-angle review rubric and the Inquisitor Presumption of Theater doctrine to eliminate LLM noise. Evaluates code correctness, removed behavior, error handling, testing, and simplification, generates a ranked Markdown report with clickable line permalinks, and presents an interactive action gate (keep findings, apply local fixes, or post inline to GitHub). Use when reviewing a PR (#N or URL), auditing a local feature branch, or invoked via /pr-review. Don't use for Google3 Piper changelists (use /cl-finalize or review) or general formatting.
 key_features:
-  - 13 analytical review angles (correctness, removed behavior, simplification, testing)
-  - Inquisitor Presumption of Theater doctrine (zero AI fluff or pedantry)
-  - Clickable GitHub permalinks to source lines
-  - Interactive 3-way action gate (chat only, apply local fixes, post to GitHub)
+  - Explicit 3D Paranoia Tiering (Ring, Confidence, One-Way/Two-Way Door) with --deep escalation
+  - Two-Axis Evaluation (Linked Issue Spec Traceability + CODING_STANDARDS.md)
+  - 13 analytical review angles + Inquisitor Presumption of Theater doctrine
+  - 2-Tier ownership action gate (own repo auto-fix vs. external read-only)
 ---
 
 # GitHub PR Reviewer (`/pr-review`)
@@ -122,7 +122,10 @@ Never review diff hunks in isolation. Inspect complete modified files
      Simplification_ · _10. Efficiency_ · _11. Altitude_ · _12. Readability &
      Conventions_ · _13. Cyclomatic Complexity_.
    - In `Review Mode: Deep`, dispatch parallel subagents across angle clusters
-     before running the Inquisitor pass.
+     before running the Inquisitor pass. Subagents must return their markdown
+     findings in their response message (never call `write_to_file` on a parent
+     conversation's `<appDataDir>/brain/<parent_cid>/` path, which is blocked by
+     the subagent artifact sandbox).
 2. **Execute Inquisitor Filters ("Presumption of Theater")**: Discard any
    finding matching `[DISMISSED: INVENTED_ARCHITECTURE]`,
    `[DISMISSED: PARANOIA]`, `[DISMISSED: PEDANTIC_ESCALATION]`,
@@ -134,8 +137,11 @@ Never review diff hunks in isolation. Inspect complete modified files
 
 ### Step 4: Report Formatting & Artifact Persistence
 
-Save the report to `<appDataDir>/brain/<conversation_id>/pr_review_<PR>.md` (and
-echo the Paranoia Header in visible chat):
+Save the report to `<appDataDir>/brain/<conversation_id>/pr_review_<PR>.md`
+using the active conversation's own `<conversation_id>` (if running inside a
+delegated subagent, return the markdown directly in your response for the parent
+agent to write `pr_review_<PR>.md`, and echo the Paranoia Header in visible
+chat):
 
 ````markdown
 # Code Review: <Repo> PR #<Number> — <PR Title>

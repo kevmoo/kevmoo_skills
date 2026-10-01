@@ -26,8 +26,8 @@ database servers or external imports.
 
 ## Quick Start & Execution Setup
 
-DuckDB runs as a standalone CLI binary. Always invoke `~/.local/bin/duckdb` (or
-`duckdb` when `~/.local/bin` is in `$PATH`) with **`-batch -dark-mode`**.
+DuckDB runs as a standalone CLI binary. Always invoke `duckdb` with
+**`-batch -dark-mode`**.
 
 ### Installation & Subshell PATH Setup (Linux & macOS)
 
@@ -78,10 +78,10 @@ subshells (where `mise` or `asdf` shims are not sourced):
 
 ```bash
 # Human-readable boxed table (non-interactive safe, zero 5s hang)
-~/.local/bin/duckdb -batch -dark-mode -box -c "SELECT 42 AS answer;"
+duckdb -batch -dark-mode -box -c "SELECT 42 AS answer;"
 
 # Programmatic JSON output
-~/.local/bin/duckdb -batch -dark-mode -json -c "SELECT 42 AS answer;"
+duckdb -batch -dark-mode -json -c "SELECT 42 AS answer;"
 ```
 
 ---
@@ -126,12 +126,12 @@ subshells (where `mise` or `asdf` shims are not sourced):
 
 ```bash
 # Preview JSONL with irregular schema / interrupted lines tolerance
-~/.local/bin/duckdb -batch -dark-mode -box -c "
+duckdb -batch -dark-mode -box -c "
 SELECT * FROM read_json('logs/*.jsonl', union_by_name=true, ignore_errors=true) LIMIT 10;
 "
 
 # Dot access, 1-based array indexing, and unnest()
-~/.local/bin/duckdb -batch -dark-mode -box -c "
+duckdb -batch -dark-mode -box -c "
 SELECT id, user.email, tags[1] AS primary_tag, unnest(tags) AS tag FROM 'users.jsonl';
 "
 ```
@@ -140,10 +140,10 @@ SELECT id, user.email, tags[1] AS primary_tag, unnest(tags) AS tag FROM 'users.j
 
 ```bash
 # Auto-detect CSV/TSV or read compressed .csv.gz directly
-~/.local/bin/duckdb -batch -dark-mode -box -c "SELECT * FROM 'export.csv.gz' LIMIT 10;"
+duckdb -batch -dark-mode -box -c "SELECT * FROM 'export.csv.gz' LIMIT 10;"
 
 # Read Parquet globs and inspect schema without scanning rows
-~/.local/bin/duckdb -batch -dark-mode -box -c "
+duckdb -batch -dark-mode -box -c "
 SELECT * FROM 'metrics/*.parquet' WHERE value > 100 LIMIT 10;
 SELECT * FROM parquet_schema('metrics/part-00.parquet');
 "
@@ -153,7 +153,7 @@ SELECT * FROM parquet_schema('metrics/part-00.parquet');
 
 ```bash
 curl -s "https://api.example.com/items" | \
-  ~/.local/bin/duckdb -batch -dark-mode -box -c "SELECT * FROM read_json('/dev/stdin') LIMIT 10;"
+  duckdb -batch -dark-mode -box -c "SELECT * FROM read_json('/dev/stdin') LIMIT 10;"
 ```
 
 ### 4. Local Databases (`.db`, `.duckdb`, `.sqlite`)
@@ -162,10 +162,10 @@ Always check `file path/to/database.db` first:
 
 ```bash
 # Native DuckDB database file
-~/.local/bin/duckdb -batch -dark-mode -box path/to/database.db -c "SHOW TABLES;"
+duckdb -batch -dark-mode -box path/to/database.db -c "SHOW TABLES;"
 
 # SQLite 3.x database file
-~/.local/bin/duckdb -batch -dark-mode -box -c "
+duckdb -batch -dark-mode -box -c "
 ATTACH 'path/to/database.db' AS db (TYPE SQLITE, READ_ONLY);
 SELECT * FROM db.my_table LIMIT 10;
 "

@@ -45,7 +45,7 @@ explicit schema projection is used.
 
   ```bash
   fd -H -I -t f --changed-within 7d 'transcript\.jsonl$' ~/.gemini/ > recent_transcripts.txt
-  ~/.local/bin/duckdb -batch -dark-mode -box -c "
+  duckdb -batch -dark-mode -box -c "
   SET VARIABLE recent_files = (SELECT list(column0) FROM read_csv('recent_transcripts.txt', header=false));
   SELECT count(*) FROM read_json(
     getvariable('recent_files'),
@@ -114,7 +114,7 @@ GROUP BY 1 ORDER BY user_msgs DESC LIMIT 10;
 ### Recipe 1.1: Aggregating Across All Conversations
 
 ```bash
-~/.local/bin/duckdb -batch -dark-mode -box -c "
+duckdb -batch -dark-mode -box -c "
 SELECT
   count(*) AS total_steps,
   count(distinct filename) AS num_conversations,
@@ -132,7 +132,7 @@ FROM read_json(
 ### Recipe 1.2: Top 15 Tools Used Across History
 
 ```bash
-~/.local/bin/duckdb -batch -dark-mode -box -c "
+duckdb -batch -dark-mode -box -c "
 WITH tool_usage AS (
   SELECT
     tc.name AS tool_name,
@@ -160,7 +160,7 @@ LIMIT 15;
 Find conversations where specific keywords or workflows were discussed:
 
 ```bash
-~/.local/bin/duckdb -batch -dark-mode -box -c "
+duckdb -batch -dark-mode -box -c "
 SELECT
   regexp_extract(filename, 'brain/([^/]+)/', 1) AS convo_id,
   created_at,
@@ -183,7 +183,7 @@ Identify which tools fail most often across sessions (correlating the planner
 step with the subsequent tool failure status):
 
 ```bash
-~/.local/bin/duckdb -batch -dark-mode -box -c "
+duckdb -batch -dark-mode -box -c "
 WITH steps AS (
   SELECT
     filename,
@@ -236,7 +236,7 @@ LIMIT 10;
   (`dart-review\.googlesource\.com/c/sdk/\+/[0-9]+`) URLs.
 
 ```bash
-~/.local/bin/duckdb -batch -dark-mode -box -c "
+duckdb -batch -dark-mode -box -c "
 WITH raw AS (
   SELECT
     regexp_extract(filename, 'brain/([^/]+)/', 1) AS convo_id,
@@ -286,7 +286,7 @@ LIMIT 15;
 DuckDB allows joins across heterogeneous file formats in a single SQL statement:
 
 ```bash
-~/.local/bin/duckdb -batch -dark-mode -box -c "
+duckdb -batch -dark-mode -box -c "
 SELECT
   u.id,
   u.meta.owner AS owner,
@@ -310,7 +310,7 @@ DuckDB automatically parses directory partitions (e.g. `year=2026/month=08/`):
 
 ```bash
 # Read multi-level partitioned dataset
-~/.local/bin/duckdb -batch -dark-mode -box -c "
+duckdb -batch -dark-mode -box -c "
 SELECT year, month, count(*) AS event_count
 FROM read_parquet('events/*/*/*.parquet', hive_partitioning=true)
 GROUP BY year, month
@@ -325,7 +325,7 @@ ORDER BY year DESC, month DESC;
 Export query results into Hive-partitioned Parquet files:
 
 ```bash
-~/.local/bin/duckdb -batch -dark-mode -c "
+duckdb -batch -dark-mode -c "
 COPY (
   SELECT
     id,
@@ -352,12 +352,12 @@ To persist tables across multiple shell invocations:
 
 ```bash
 # Create or open a local DuckDB database file
-~/.local/bin/duckdb -batch -dark-mode analytics.duckdb -c "
+duckdb -batch -dark-mode analytics.duckdb -c "
 CREATE TABLE users AS SELECT * FROM 'users.jsonl';
 "
 
 # Query the persistent table later
-~/.local/bin/duckdb -batch -dark-mode analytics.duckdb -box -c "
+duckdb -batch -dark-mode analytics.duckdb -box -c "
 SELECT count(*) FROM users;
 "
 ```
@@ -372,7 +372,7 @@ and pipe directly into `read_json('/dev/stdin')`:
 
 ```bash
 sed -n '/<<<BENCH_PRESS_JSON_START>>>/,/<<<BENCH_PRESS_JSON_END>>>/{//!p;}' test.log | \
-~/.local/bin/duckdb -batch -dark-mode -box -c "
+duckdb -batch -dark-mode -box -c "
 SELECT * FROM read_json('/dev/stdin');
 "
 ```
@@ -382,7 +382,7 @@ multi-tier benchmarks across AOT, JIT, and Wasm targets), unnest target arrays
 and compute isolated before/after speedups directly in SQL:
 
 ```bash
-~/.local/bin/duckdb -batch -dark-mode -markdown -c "
+duckdb -batch -dark-mode -markdown -c "
 WITH benchmarks AS (
   SELECT
     target,
@@ -411,14 +411,14 @@ future scans and 80%+ disk space savings, or export query results to CSV:
 
 ```bash
 # Convert JSONL to ZSTD-compressed Parquet
-~/.local/bin/duckdb -batch -dark-mode -c "
+duckdb -batch -dark-mode -c "
 COPY (
   SELECT * FROM read_json('raw_logs/*.jsonl', union_by_name=true, ignore_errors=true)
 ) TO 'compacted_logs.parquet' (FORMAT PARQUET, COMPRESSION ZSTD);
 "
 
 # Export query results directly to CSV
-~/.local/bin/duckdb -batch -dark-mode -c "
+duckdb -batch -dark-mode -c "
 COPY (SELECT id, user.email FROM 'users.jsonl') TO 'users_summary.csv' (HEADER, DELIMITER ',');
 "
 ```
@@ -426,7 +426,7 @@ COPY (SELECT id, user.email FROM 'users.jsonl') TO 'users_summary.csv' (HEADER, 
 For large datasets (`>10GB`), bound memory and thread usage explicitly:
 
 ```bash
-~/.local/bin/duckdb -batch -dark-mode -c "
+duckdb -batch -dark-mode -c "
 SET max_memory = '16GB';
 SET threads = 8;
 SET preserve_insertion_order = false;
