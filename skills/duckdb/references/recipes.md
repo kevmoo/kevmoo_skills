@@ -364,14 +364,25 @@ SELECT count(*) FROM users;
 
 ---
 
-## 6. Benchmark JSON Artifacts & Multi-Target Pivots
+## 6. Benchmark JSON Artifacts, Embedded Log Blocks & Multi-Target Pivots
+
+When benchmark or test runners embed JSON payloads inside standard output logs
+(e.g. `<<<BENCH_PRESS_JSON_START>>>` ... `<<<BENCH_PRESS_JSON_END>>>`), extract
+and pipe directly into `read_json('/dev/stdin')`:
+
+```bash
+sed -n '/<<<BENCH_PRESS_JSON_START>>>/,/<<<BENCH_PRESS_JSON_END>>>/{//!p;}' test.log | \
+~/.local/bin/duckdb -batch -dark-mode -box -c "
+SELECT * FROM read_json('/dev/stdin');
+"
+```
 
 When analyzing benchmark JSON reports (e.g. `bench_press` or `codable`
 multi-tier benchmarks across AOT, JIT, and Wasm targets), unnest target arrays
 and compute isolated before/after speedups directly in SQL:
 
 ```bash
-~/.local/bin/duckdb -batch -markdown -c "
+~/.local/bin/duckdb -batch -dark-mode -markdown -c "
 WITH benchmarks AS (
   SELECT
     target,
@@ -388,5 +399,37 @@ SELECT
 FROM benchmarks
 GROUP BY benchmark_name
 ORDER BY benchmark_name;
+"
+```
+
+---
+
+## 7. Format Conversion & Large Dataset Tuning
+
+Convert bloated JSONL or CSV datasets into compressed Parquet for 10x–50x faster
+future scans and 80%+ disk space savings, or export query results to CSV:
+
+```bash
+# Convert JSONL to ZSTD-compressed Parquet
+~/.local/bin/duckdb -batch -dark-mode -c "
+COPY (
+  SELECT * FROM read_json('raw_logs/*.jsonl', union_by_name=true, ignore_errors=true)
+) TO 'compacted_logs.parquet' (FORMAT PARQUET, COMPRESSION ZSTD);
+"
+
+# Export query results directly to CSV
+~/.local/bin/duckdb -batch -dark-mode -c "
+COPY (SELECT id, user.email FROM 'users.jsonl') TO 'users_summary.csv' (HEADER, DELIMITER ',');
+"
+```
+
+For large datasets (`>10GB`), bound memory and thread usage explicitly:
+
+```bash
+~/.local/bin/duckdb -batch -dark-mode -c "
+SET max_memory = '16GB';
+SET threads = 8;
+SET preserve_insertion_order = false;
+SELECT count(*) FROM 'massive_dataset/*.parquet';
 "
 ```

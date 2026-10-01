@@ -120,186 +120,71 @@ subshells (where `mise` or `asdf` shims are not sourced):
 
 ---
 
-## Format Recipes
+## Quick Format & Streaming Patterns
 
-### 1. JSON and JSON Lines (JSONL / NDJSON)
-
-DuckDB automatically discovers schemas and flattens top-level keys into columns.
+### 1. JSON / JSONL & Nested Unnesting
 
 ```bash
-# Auto-detect schema and preview first 10 rows
-duckdb -dark-mode -box -c "
-SELECT * FROM 'data.jsonl' LIMIT 10;
+# Preview JSONL with irregular schema / interrupted lines tolerance
+~/.local/bin/duckdb -batch -dark-mode -box -c "
+SELECT * FROM read_json('logs/*.jsonl', union_by_name=true, ignore_errors=true) LIMIT 10;
 "
 
-# Handle irregular schemas and malformed lines
-duckdb -dark-mode -box -c "
-SELECT * FROM read_json('logs/*.jsonl', union_by_name=true, ignore_errors=true)
-LIMIT 10;
-"
-
-# Inspect inferred column names and types
-duckdb -dark-mode -box -c "
-DESCRIBE SELECT * FROM 'data.jsonl';
+# Dot access, 1-based array indexing, and unnest()
+~/.local/bin/duckdb -batch -dark-mode -box -c "
+SELECT id, user.email, tags[1] AS primary_tag, unnest(tags) AS tag FROM 'users.jsonl';
 "
 ```
 
-#### Nested Fields and Arrays
-
-- **Struct / Object**: Dot notation `col.nested_field` or bracket
-  `col['nested_field']`.
-- **List Index**: 1-based indexing `tags[1]`.
-- **Array Unnest**: `unnest(tags)` explodes array elements into multiple rows.
+### 2. CSV, TSV & Parquet
 
 ```bash
-duckdb -dark-mode -box -c "
-SELECT
-  id,
-  user.email,
-  tags[1] AS primary_tag,
-  unnest(tags) AS individual_tag
-FROM 'users.jsonl';
-"
-```
+# Auto-detect CSV/TSV or read compressed .csv.gz directly
+~/.local/bin/duckdb -batch -dark-mode -box -c "SELECT * FROM 'export.csv.gz' LIMIT 10;"
 
-### 2. CSV & TSV
-
-DuckDB auto-detects delimiters (comma, tab, pipe), quoting, and header rows.
-
-```bash
-# Auto-detect headers and delimiter
-duckdb -dark-mode -box -c "
-SELECT * FROM 'export.csv' LIMIT 10;
-"
-
-# Explicit delimiter and column types
-duckdb -dark-mode -box -c "
-SELECT * FROM read_csv('dump.tsv', delim='\t', header=true, all_varchar=true)
-LIMIT 10;
-"
-
-# Read gzipped CSV directly
-duckdb -dark-mode -box -c "
-SELECT count(*) FROM 'large_data.csv.gz';
-"
-```
-
-### 3. Parquet
-
-Parquet is the most performant format for analytical scans.
-
-```bash
-# Read Parquet files (supports globbing)
-duckdb -dark-mode -box -c "
+# Read Parquet globs and inspect schema without scanning rows
+~/.local/bin/duckdb -batch -dark-mode -box -c "
 SELECT * FROM 'metrics/*.parquet' WHERE value > 100 LIMIT 10;
-"
-
-# Inspect Parquet schema without scanning data
-duckdb -dark-mode -box -c "
 SELECT * FROM parquet_schema('metrics/part-00.parquet');
 "
-
-# Inspect Parquet row groups and metadata
-duckdb -dark-mode -box -c "
-SELECT num_rows, num_row_groups, format_version
-FROM parquet_file_metadata('metrics/part-00.parquet');
-"
 ```
 
-### 4. Format Conversion & Materialization
-
-Convert bloated JSONL or CSV datasets into compressed Parquet for 10x-50x faster
-future scans and 80%+ disk space savings.
+### 3. Standard Input Streaming (`/dev/stdin`)
 
 ```bash
-# Convert JSONL to Parquet (Snappy compression by default, zstd optional)
-duckdb -dark-mode -c "
-COPY (
-  SELECT * FROM read_json('raw_logs/*.jsonl', union_by_name=true, ignore_errors=true)
-) TO 'compacted_logs.parquet' (FORMAT PARQUET, COMPRESSION ZSTD);
-"
-
-# Export query results directly to CSV
-duckdb -dark-mode -c "
-COPY (SELECT id, user.email FROM 'users.jsonl') TO 'users_summary.csv' (HEADER, DELIMITER ',');
-"
-```
-
-### 5. Standard Input Streaming
-
-Query data directly from shell pipelines without intermediate files:
-
-```bash
-# Stream JSON from a curl command or shell pipeline
 curl -s "https://api.example.com/items" | \
-duckdb -dark-mode -box -c "
-SELECT * FROM read_json('/dev/stdin') LIMIT 10;
-"
-
-# Stream CSV pipeline
-cat input.csv | \
-~/.local/bin/duckdb -batch -dark-mode -box -c "
-SELECT col1, sum(col2) FROM read_csv('/dev/stdin', header=true) GROUP BY col1;
-"
+  ~/.local/bin/duckdb -batch -dark-mode -box -c "SELECT * FROM read_json('/dev/stdin') LIMIT 10;"
 ```
 
-### 6. Local Databases (`.db`, `.duckdb`, `.sqlite`)
+### 4. Local Databases (`.db`, `.duckdb`, `.sqlite`)
 
-Since `.db` files can be either native DuckDB or SQLite databases, check with
-`file <path>` first:
+Always check `file path/to/database.db` first:
 
 ```bash
-# 1. Inspect database file format
-file path/to/database.db
+# Native DuckDB database file
+~/.local/bin/duckdb -batch -dark-mode -box path/to/database.db -c "SHOW TABLES;"
 
-# 2a. If "DuckDB database file": pass file path directly
-~/.local/bin/duckdb -batch -dark-mode -box path/to/database.db -c "
-SHOW TABLES;
-SELECT * FROM my_table LIMIT 10;
-"
-
-# 2b. If "SQLite 3.x database": attach with TYPE SQLITE
+# SQLite 3.x database file
 ~/.local/bin/duckdb -batch -dark-mode -box -c "
 ATTACH 'path/to/database.db' AS db (TYPE SQLITE, READ_ONLY);
-SHOW ALL TABLES;
 SELECT * FROM db.my_table LIMIT 10;
 "
 ```
 
-### 7. Embedded JSON Blocks in Log Files
-
-When benchmark or test runners embed JSON payloads inside standard output logs
-(e.g. `<<<BENCH_PRESS_JSON_START>>>` ... `<<<BENCH_PRESS_JSON_END>>>`), extract
-and pipe directly into `read_json('/dev/stdin')`:
-
-```bash
-sed -n '/<<<BENCH_PRESS_JSON_START>>>/,/<<<BENCH_PRESS_JSON_END>>>/{//!p;}' test.log | \
-~/.local/bin/duckdb -batch -dark-mode -box -c "
-SELECT * FROM read_json('/dev/stdin');
-"
-```
-
 ---
 
-## Memory & Resource Management
+## SQL Cookbook & Advanced Recipes
 
-For large datasets (>10GB):
+Read [`references/recipes.md`](references/recipes.md) for detailed SQL cookbook
+patterns:
 
-```bash
-duckdb -dark-mode -c "
-SET max_memory = '16GB';
-SET threads = 8;
-SET preserve_insertion_order = false;
-SELECT count(*) FROM 'massive_dataset/*.parquet';
-"
-```
-
----
-
-## Advanced Recipes
-
-For specialized workflows, see:
-
-- [references/recipes.md](references/recipes.md): Analyzing agent conversation
-  history (`~/.gemini/*/brain/...`), cross-format joins (JSON + CSV + Parquet),
-  and partitioned exports.
+- **Agent Conversation Transcript Mining**: Fast-path `columns={...}` projection
+  across `~/.gemini/*/brain/*/.system_generated/logs/transcript.jsonl` and
+  `~/.claude/projects/**/*.jsonl`, tool usage/error audits, and stripping
+  `EPHEMERAL_MESSAGE` `<memory>` echoes.
+- **Format Conversions & Parquet Materialization**: Converting JSONL/CSV logs to
+  ZSTD Parquet (`COPY ... TO`), Hive-partitioned reads/writes, and cross-format
+  SQL joins (JSON + CSV + Parquet).
+- **Benchmark JSON & Log Extraction**: Piping `<<<BENCH_PRESS_JSON_START>>>` log
+  blocks into DuckDB, pivoting multi-target (`aot` / `jit` / `wasm`) benchmark
+  JSON artifacts, and tuning memory/thread limits for `>10GB` datasets.

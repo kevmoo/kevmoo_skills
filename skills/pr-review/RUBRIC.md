@@ -39,8 +39,12 @@ Trace dependencies beyond the diff hunks:
 
 - Did an interface, signature, or exported type change without updating all call
   sites?
-- Do package exports (`index.dart`, `__init__.py`, `mod.rs`) properly re-export
-  new APIs?
+- Do package exports (`lib/<pkg>.dart`, `index.dart`, `__init__.py`, `mod.rs`)
+  avoid leaking internal helper types (`export 'src/...' show ...;`)?
+- When a refactor extracts helpers across files in a Dart package, require
+  public API surface verification (`dart run api_summary@^1.1.0 --check` if
+  `api.txt` is tracked, or before/after `api_summary` diff) to guarantee zero
+  unintended public API leaks.
 - Do mock implementations in test fixtures still mirror the updated production
   contract?
 
@@ -70,22 +74,16 @@ Inspect abstraction boundaries and invariants:
 
 - Are domain invariants enforced in public constructors or factory methods?
 - Does a wrapper type leak its underlying implementation primitives to callers?
+- **Load-Bearing Library Boundary Rule (Dart)**: Does a file split widen
+  `_private` class members to `@internal` just to extract a separate `lib/src/`
+  library? Require `part` / `part of` (`Tier 2`) whenever types share privileged
+  library-scoped access (`sealed`, `final`, `interface`, `base`, private
+  constructors `._()`, or `_private` members), reserving standalone `lib/src/`
+  libraries (`Tier 1`) for cuts with zero visibility widening.
 - Are state transitions atomic, or can the object be left in an inconsistent
   intermediate state upon failure?
 
-### 6. Testing Skeptic
-
-Scrutinize test quality, not just line coverage:
-
-- Are tests asserting actual behavior, or are they assertion-free "smoke tests"
-  that only verify non-crashing execution?
-- Do tests exercise negative paths, timeout behavior, and invalid inputs, or
-  only the happy path?
-- Are mocks over-specified (testing the mock instead of real behavior)?
-- Does every bug fix include a deterministic regression test reproducing the
-  original issue?
-
-### 7. Error Handling
+### 6. Error Handling
 
 Inspect exception and error paths:
 
@@ -93,6 +91,27 @@ Inspect exception and error paths:
 - Do functions return ambiguous `null` or `-1` instead of throwing typed,
   informative error classes?
 - Is error context preserved when wrapping/re-throwing exceptions?
+
+### 7. Testing (Anti-Tautology & Public-Entrypoint Seams)
+
+Scrutinize test quality, seam discipline, and assertion substance (`FU2`):
+
+- **Public-Entrypoint Test Seam Rule**: Flag unit/integration tests that import
+  internal `package:<pkg>/src/...` libraries when the behavior can and should be
+  tested through the public `package:<pkg>/<pkg>.dart` entrypoint (allow direct
+  `package:<pkg>/src/...` imports only for complex pure algorithms explicitly
+  annotated with `@visibleForTesting`).
+- **Anti-Tautology & Mirror Assertions**: Flag tautological tests that duplicate
+  implementation formulas, re-assert literal DTO constructor inputs/getters
+  without testing domain logic, or only assert mock call counts (`verify(...)`)
+  without asserting output values or state invariants.
+- **Public API Surface Verification**: When refactors extract helpers across
+  files, require `dart run api_summary@^1.1.0` diff or `api.txt` verification so
+  extracted helpers do not leak into the public package entrypoint.
+- Do tests exercise negative paths, timeout behavior, and invalid inputs, or
+  only the happy path?
+- Does every bug fix include a deterministic regression test reproducing the
+  original issue?
 
 ### 8. Reuse
 
@@ -109,8 +128,10 @@ Check for wheel reinvention:
 The subtractive lens (eliminate over-engineering):
 
 - Is this more complex than the problem requires?
-- Does the change add premature abstractions, single-caller interfaces, or
-  speculative configuration knobs that nothing uses?
+- Does the change add premature abstractions, single-caller interfaces, stateful
+  single-use `_Populator` / `_Runner` helper classes that mutate caller
+  maps/sets in-place (prefer pure file-private functions), or speculative
+  configuration knobs that nothing uses?
 - Can nested conditional branches be flattened with early-return guard clauses
   or switch expressions?
 

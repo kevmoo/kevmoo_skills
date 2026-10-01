@@ -20,185 +20,174 @@ to purge hallucinatory AI fluff, pedantic theater, and unverified assumptions.
 
 ## 🎯 Primary Capabilities
 
-1. **Native Git & GitHub Scope Detection**: Audits open GitHub PRs
-   (`gh pr diff <PR>`) or local branch diffs
-   (`git diff $(git merge-base origin/main HEAD)..HEAD`) with zero Google3 /
-   Critique dependencies.
-2. **Adversarial Inquisitor Gating**: Every candidate finding must survive the
-   Five Inquisitorial Filters in [`RUBRIC.md`](RUBRIC.md) (Imaginary
-   Architecture, Synchronous Paranoia, Pedantic Escalation, Harmless
-   Idempotence, and Hallucinated APIs) before reaching the report.
-3. **Clickable GitHub Permalinks**: Formats all findings with direct permalinks
-   to source files and line ranges on GitHub
+1. **Explicit 3D Paranoia Tiering (`OQ3`)**: Computes Audience Ring
+   (`Ring 0..4B`), Author Domain Confidence (`High|Low`), and Reversibility
+   (`🚪 One-Way` vs. `🔄 Two-Way` Door) to select `Standard` (single-pass) or
+   `Deep` (multi-subagent parallel) review mode.
+2. **Two-Axis Evaluation (`Spec` vs. `Standards`)**: Verifies issue requirement
+   traceability (`gh issue view <N>`) alongside `~/.agents/CODING_STANDARDS.md`
+   and the 13-angle defect rubric in [`RUBRIC.md`](RUBRIC.md).
+3. **Adversarial Inquisitor Gating & Clickable Permalinks**: Filters every
+   candidate finding through the Five Inquisitorial Filters in
+   [`RUBRIC.md`](RUBRIC.md) and links directly to GitHub source lines
    (`https://github.com/<owner>/<repo>/blob/<sha>/<file>#L<start>-L<end>`).
-4. **Interactive Action Gate (`ask_question`)**: Concludes with a 3-way decision
-   gate allowing the user to keep findings in chat, auto-remediate nits locally
-   in the worktree, or post comments to GitHub.
+4. **2-Tier Ownership Action Gate (`OQ1`)**: Adapts `ask_question` defaults
+   between owned `kevmoo/*` branches (auto-fix + `kscripts pr-check`) and
+   external/peer PRs (strictly read-only local checkout).
 
 ---
 
 ## 🛠️ Execution Protocol
 
-### Step 1: Pre-Flight Scope & Diff Detection
+### Step 1: Pre-Flight Scope, Ownership & 3D Paranoia Classification
 
-1. **Explicit PR Target (URL or Number)**: If a PR URL or issue number is
-   provided (e.g. `/pr-review https://github.com/foo/bar/pull/42` or
-   `/pr-review #42`):
-
-   ```bash
-   # Extract PR metadata, base/head SHAs, and repo details
-   gh pr view <PR> --json headRepositoryOwner,headRepository,headRefName,baseRefName,headRefOid,number,title,body,url
-
-   # Extract full patch diff
-   gh pr diff <PR>
-   ```
-
-2. **Active Worktree / Branch Detection**: If invoked inside a Git repository
-   without arguments:
-
-   ```bash
-   # Determine target base commit
-   TARGET_BASE=$(git merge-base origin/main HEAD 2>/dev/null || git merge-base origin/master HEAD 2>/dev/null || git merge-base main HEAD)
-
-   # Extract local working diff
-   git diff ${TARGET_BASE}..HEAD
-
-   # Detect if current branch has an associated open PR
-   gh pr view --json number,title,url,headRefOid 2>/dev/null
-   ```
-
-3. **PR Intent & Linked Issues**:
-   - Inspect the PR title and description body.
-   - If the PR description references a tracking issue (e.g. `Fixes #123`,
-     `Closes #456`), fetch the issue context:
+1. **Target & Ownership Detection (`OQ1`)**:
+   - **Explicit PR (`#N` or URL)**:
      ```bash
-     gh issue view <issue_number> --json title,body
+     gh pr view <PR> --json author,headRepositoryOwner,headRepository,headRefName,baseRefName,headRefOid,number,title,body,url
+     gh pr diff <PR>
      ```
+   - **Local Branch / Worktree (no arguments)**:
+     ```bash
+     TARGET_BASE=$(git merge-base origin/main HEAD 2>/dev/null || git merge-base origin/master HEAD 2>/dev/null || git merge-base main HEAD)
+     git diff ${TARGET_BASE}..HEAD
+     gh pr view --json author,headRepositoryOwner,headRefName,number,title,url,headRefOid 2>/dev/null
+     ```
+   - Classify ownership into two tiers:
+     - **Tier 1 (Own Repo `kevmoo/*` + Author `kevmoo` or local feature
+       branch)**: Local remediation and test execution (`kscripts pr-check`)
+       enabled.
+     - **Tier 2 (External/Peer PR or non-`kevmoo` author)**: Strictly read-only
+       local checkout.
+
+2. **Linked Issue & Spec Extraction (`FU1`)**:
+   - When a PR links an issue (`Fixes #N`, `Closes #N`, or prompt issue URL),
+     fetch the specification contract:
+     ```bash
+     gh issue view <N> --json title,body
+     ```
+
+3. **3D Paranoia Header & Review Mode Selection (`OQ3`)**:
+   - Always compute and render at the top of `pr_review_<PR>.md` and in visible
+     chat:
+     `🛡️ Paranoia Tier: Ring <0..4B> (<Label>) · Confidence: <High|Low> · Door: <🚪 One-Way | 🔄 Two-Way> -> Review Mode: <Standard | Deep>`
+   - **Ring Defaults**:
+     - **`Ring 0-2` (`kevmoo/*` personal dotfiles, skills, scripts)**: Default
+       to `Review Mode: Standard` (single-pass review across the 13 angles)
+       unless `--deep` / `--paranoid` is passed or `Door: 🚪 One-Way`.
+     - **`Ring 3-4` (`kevmoo/*` published `pub.dev` packages, `dart-lang/*`,
+       `flutter/*`, `google/*`, or low-confidence C++/VM/Wasm/Skwasm/WIMP
+       domains) or `Door: 🚪 One-Way` (public API/wire/schema changes)**:
+       Default to `Review Mode: Deep` (multi-subagent parallel angle audit +
+       adversarial verification).
+   - Support `--deep` (`--paranoid`) as an upfront flag to force
+     `Review Mode: Deep` on any ring.
 
 ---
 
-### Step 2: Grounding & Local Code Inspection
+### Step 2: Two-Axis Grounding (`Spec` + `CODING_STANDARDS.md`)
 
-Never review diff hunks in isolation. A finding without surrounding context is a
-guess.
+Never review diff hunks in isolation. Inspect complete modified files
+(`view_file`) and verify callers and SDK/package dependencies.
 
-1. **Caller & Interface Tracing**:
-   - Inspect the complete modified files in the local worktree (`view_file` or
-     `grep_search`).
-   - When public methods, parameters, or types are modified, search for call
-     sites across the repository to verify that all consumers are updated.
-2. **Dependency & SDK Verification**:
-   - If a finding contemplates suggesting an alternative function or class,
-     verify that the symbol exists in the language SDK or `pubspec.yaml` /
-     `go.mod` / `requirements.txt` / `package.json`.
+1. **Axis A — Spec & Issue Contract Traceability (`FU1`)**:
+   - Cross-check every requirement in the linked issue (`gh issue view <N>`)
+     against the implementation and test suite (`Met ✅`, `Partial ⚠️`,
+     `Unmet ❌`, `Out-of-Scope ➖`). Flag unwired CLI flags or missing
+     acceptance criteria.
+2. **Axis B — Dart & Package Standards (`~/.agents/CODING_STANDARDS.md`)**:
+   - Audit Dart diffs against `~/.agents/CODING_STANDARDS.md`:
+     - **Deep Externally, Pure Internally**: Keep `lib/<pkg>.dart` and `api.txt`
+       minimal. Forbid stateful single-use `_Populator` / `_Runner` helper
+       classes that mutate caller collections in-place; require pure private
+       functions (`_computeX(input) -> output`).
+     - **Load-Bearing Library Boundary Rule**: Extract a standalone `lib/src/`
+       library (`Tier 1`) only when zero `_private` visibility widening is
+       needed; use `part` / `part of` (`Tier 2`) when crossing `sealed`,
+       `final`, `interface`, `base`, `._()`, or `_private` class members (never
+       widen `_private` to `@internal`).
+     - **Public API Surface Verification**: When refactors extract helpers
+       across files, verify public API stability with
+       `dart run api_summary@^1.1.0` (`--check` if `api.txt` exists, or
+       before/after diff).
 
 ---
 
 ### Step 3: Adversarial Evaluation (`RUBRIC.md`)
 
-Evaluate the diff against [`RUBRIC.md`](RUBRIC.md):
-
-1. **Sweep the 13 Angles**:
-   - _1. Line Scan_ (null safety, off-by-one, type casts, boolean logic).
-   - _2. Removed Behavior_ (broken silent contracts, deleted invariants).
-   - _3. Cross-File Tracer_ (interface drift, mock parity, export lists).
-   - _4. Language Pitfalls_ (unawaited futures, mutable defaults, goroutine
-     leaks).
-   - _5. Invariants & Wrappers_ (leaky abstractions, unvalidated constructors).
-   - _6. Testing Skeptic_ (assertion-free tests, happy-path bias, missing
-     regression tests).
-   - _7. Error Handling_ (swallowed exceptions, missing rethrows, silent nulls).
-   - _8. Reuse_ (reinventing existing standard library or dependency helpers).
-   - _9. Simplification_ (premature abstractions, speculative knobs, YAGNI).
-   - _10. Efficiency_ (allocations in loops, unindexed lookups, N+1 queries).
-   - _11. Altitude_ (high-level architectural coherence and layering).
-   - _12. Readability & Conventions_ (docstrings on public symbols, formatting).
-   - _13. Cyclomatic Complexity_ (arrow anti-patterns, deeply nested branches).
-
-2. **Execute Inquisitor Filters ("Presumption of Theater")**: Cross-examine
-   every candidate finding. Summarily discard any finding that falls into:
-   - `[DISMISSED: INVENTED_ARCHITECTURE]` — Imaginary contracts not in code.
-   - `[DISMISSED: PARANOIA]` — Concurrency/lifetime warnings in synchronous
-     paths.
-   - `[DISMISSED: PEDANTIC_ESCALATION]` — Elevating minor preferences to
-     architectural flaws.
-   - `[DISMISSED: HARMLESS]` — Defensive null-checks or harmless cleanup.
-   - `[DISMISSED: HALLUCINATED_API]` — Recommending non-existent
-     symbols/packages.
-
-3. **Assign Severity**:
-   - 🚨 **`[BLOCKING]`**: Runtime defects, data loss, race conditions, broken
-     tests, security issues, public API breaks.
-   - 💡 **`[SUGGESTION]`**: Measurable performance wins, significant
-     simplification, eliminating wheel reinvention.
-   - 🧹 **`[HYGIENE_NIT]`**: Typos, dead imports, docstring drift. (Suppress if
-     zero blocking/suggestions exist to prevent comment noise on clean PRs).
+1. **Sweep the 13 Angles in [`RUBRIC.md`](RUBRIC.md)**:
+   - _1. Line Scan_ · _2. Removed Behavior_ · _3. Cross-File Tracer_ · _4.
+     Language Pitfalls_ · _5. Invariants & Wrappers_ · _6. Error Handling_ · _7.
+     Testing (Anti-Tautology & Public-Entrypoint Seams)_ · _8. Reuse_ · _9.
+     Simplification_ · _10. Efficiency_ · _11. Altitude_ · _12. Readability &
+     Conventions_ · _13. Cyclomatic Complexity_.
+   - In `Review Mode: Deep`, dispatch parallel subagents across angle clusters
+     before running the Inquisitor pass.
+2. **Execute Inquisitor Filters ("Presumption of Theater")**: Discard any
+   finding matching `[DISMISSED: INVENTED_ARCHITECTURE]`,
+   `[DISMISSED: PARANOIA]`, `[DISMISSED: PEDANTIC_ESCALATION]`,
+   `[DISMISSED: HARMLESS]`, or `[DISMISSED: HALLUCINATED_API]`.
+3. **Assign Severity**: 🚨 `[BLOCKING]`, 💡 `[SUGGESTION]`, or 🧹
+   `[HYGIENE_NIT]` (suppress nits if zero blocking/suggestions exist).
 
 ---
 
 ### Step 4: Report Formatting & Artifact Persistence
 
-1. **Write Review Report Artifact**: Save the full review report to:
-   `<appDataDir>/brain/<conversation_id>/pr_review_<owner>_<repo>_<PR_NUMBER>.md`
+Save the report to `<appDataDir>/brain/<conversation_id>/pr_review_<PR>.md` (and
+echo the Paranoia Header in visible chat):
 
-2. **Format Structure**:
+````markdown
+# Code Review: <Repo> PR #<Number> — <PR Title>
 
-   ````markdown
-   # Code Review: <Repo> PR #<Number> — <PR Title>
+🛡️ Paranoia Tier: Ring <0..4B> (<Label>) · Confidence: <High|Low> · Door: <🚪 One-Way | 🔄 Two-Way> -> Review Mode: <Standard | Deep>
 
-   **PR**: [<owner>/<repo>#<number>](https://github.com/<owner>/<repo>/pull/<number>) | **Base**: `<baseRef>` | **Head**: `<headRef>` (`<headSHA>`)
-   **Verdict**: `✅ Approved` | `⚠️ Approved with suggestions` | `❌ Changes requested`
+**PR**: [<owner>/<repo>#<number>](https://github.com/<owner>/<repo>/pull/<number>) | **Author**: `<author>` | **Head**: `<headRef>` (`<headSHA>`)
+**Verdict**: `✅ Approved` | `⚠️ Approved with suggestions` | `❌ Changes requested`
 
-   ---
+## Executive Summary
+- <1-2 bullet summary of change intent, review outcome, and Inquisitor filter count>
 
-   ## Executive Summary
-   - <1-2 bullet summary of the change intent and review outcome>
-   - <Filter count: N findings reviewed, M dismissed by Inquisitor filter>
+### Spec & Issue Contract Traceability
+| Requirement | Status [Met ✅ / Partial ⚠️ / Unmet ❌ / Out-of-Scope ➖] | Evidence (file:line & test) |
+| :--- | :--- | :--- |
+| <Requirement from issue #N> | Met ✅ | `lib/foo.dart:42`, `test/foo_test.dart:18` |
 
-   ---
+## Findings
 
-   ## Findings
+### 🚨 Blocking Issues
+- [ ] [**path/to/file.dart#L42-L48**](https://github.com/<owner>/<repo>/blob/<sha>/path/to/file.dart#L42-L48)
+  **Defect**: <Concrete runtime, spec, or architectural failure.>
+  **Suggested Fix**:
+  ```dart
+  // Exact replacement code
+  ```
 
-   ### 🚨 Blocking Issues
-   - [ ] [**path/to/file.dart#L42-L48**](https://github.com/<owner>/<repo>/blob/<sha>/path/to/file.dart#L42-L48)
-     **Defect**: <Concise explanation of the concrete runtime or architectural failure.>
-     **Suggested Fix**:
-     ```dart
-     // Exact replacement code
-   ````
+### 💡 Suggestions
+- [ ] [**path/to/file.dart#L105**](https://github.com/<owner>/<repo>/blob/<sha>/path/to/file.dart#L105)
+  **Improvement**: <Concrete simplification, test seam fix, or reuse opportunity.>
 
-   ### 💡 Suggestions
-   - [ ] [**path/to/file.dart#L105**](https://github.com/<owner>/<repo>/blob/<sha>/path/to/file.dart#L105)
-         **Improvement**: <Concrete simplification or reuse opportunity.>
-
-   ### 🧹 Hygiene Nits
-   - [ ] [**path/to/file.dart#L12**](https://github.com/<owner>/<repo>/blob/<sha>/path/to/file.dart#L12)
-         **Nit**: <Dead import or typo.>
-
-   ```
-
-   ```
+### 🧹 Hygiene Nits
+- [ ] [**path/to/file.dart#L12**](https://github.com/<owner>/<repo>/blob/<sha>/path/to/file.dart#L12)
+  **Nit**: <Dead import or typo.>
+````
 
 ---
 
-### Step 5: Interactive Action Gate (`ask_question`)
+### Step 5: 2-Tier Interactive Action Gate (`ask_question`)
 
-Immediately after presenting the review summary in chat and linking the report
-artifact, invoke `ask_question` to present a 3-way decision gate:
+Present the `ask_question` gate tailored to the Ownership Tier (`OQ1`) and
+`Review Mode` (`OQ3`):
 
-```text
-Question: "PR #<number> review complete (<N> blocking, <M> suggestions, <K> nits). What action would you like to take?"
-Options:
-  1. "(Recommended) Keep findings in chat & artifact only (do not mutate working copy or GitHub)"
-  2. "Apply fixes locally (auto-remediate high-confidence nits & format in worktree)"
-  3. "Post findings inline to GitHub PR (stage comments via GitHub API/gh pr review)"
-```
-
-#### Action Execution Details:
-
-- **Option 1 (Report Only)**: Yield cleanly. No files or remote state touched.
-- **Option 2 (Local Fixes)**: Apply the verified fixes directly to the local
-  worktree files, run formatters (`dart format`, `black`, `gofmt`), run project
-  tests (`dart test`, `go test`), and prompt to commit/push.
-- **Option 3 (Post to GitHub)**: Format findings as inline review comments and
-  post to GitHub using `gh api` or `gh pr review --comment --body "<summary>"`.
+- **Tier 1 (Own Repo `kevmoo/*` + Author `kevmoo` or local feature branch)**:
+  1. `"(Recommended) Auto-fix valid findings locally, run tests (kscripts pr-check), and stage/push"`
+  2. `"Keep findings in local report artifact"`
+  3. `"Select findings to post inline to GitHub"`
+  4. _(Include whenever `Review Mode: Standard` was used)_
+     `"Escalate to Deep / Paranoid Review (--deep multi-agent pass)"`
+- **Tier 2 (External/Peer PR or non-`kevmoo` author — Strictly Read-Only Local
+  Checkout)**:
+  1. `"(Recommended) Keep findings in local report artifact"`
+  2. `"Select findings to post inline to GitHub"`
+  3. _(Include whenever `Review Mode: Standard` was used)_
+     `"Escalate to Deep / Paranoid Review (--deep multi-agent pass)"`
