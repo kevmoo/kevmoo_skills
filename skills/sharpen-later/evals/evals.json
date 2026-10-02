@@ -1,0 +1,19 @@
+{
+  "repo_criteria": ["evals/code_quality_rubric.json"],
+  "evals": [
+    {
+      "id": "sharpen_later_1_same_turn_bookmark",
+      "prompt": "While fixing a failing test the agent's `gh pr checks --watch` call hung for ten minutes. The user says: /sharpen-later that watch command hung again. Then keep fixing the test.",
+      "expected_chat_output": [
+        "Runs the skill's scripts/later.py exactly once, with the user's note, an --agent-note naming `gh pr checks --watch`, and --cat cli-gap.",
+        "Echoes the printed '📌 Logged for /sharpen-saw' receipt as the first line of the reply.",
+        "Resumes fixing the test in the same turn without asking follow-up questions about the friction."
+      ],
+      "expected_repo_state": [
+        "One line is appended to the sharpen-saw later.jsonl ledger with status OPEN.",
+        "No rules, skills, hooks or CLI wrappers are modified."
+      ],
+      "agent_config": "bare-agent"
+    }
+  ]
+}

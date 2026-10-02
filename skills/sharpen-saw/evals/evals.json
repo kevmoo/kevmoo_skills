@@ -1,0 +1,30 @@
+{
+  "repo_criteria": ["evals/code_quality_rubric.json"],
+  "evals": [
+    {
+      "id": "sharpen_saw_1_single_scan_then_report",
+      "prompt": "/sharpen-saw audit my last five sessions for general friction.",
+      "expected_chat_output": [
+        "Runs scripts/sharpen_saw.py audit --last 5 once instead of reading raw .jsonl transcripts into context.",
+        "Prioritizes error clusters that recur across two or more sessions and contrasts each failed command with its succeeding sibling.",
+        "Classifies each finding by root cause and proposes fixes by tier (global rule, hook or shim, skill, project docs) using affirmative wording.",
+        "Asks for the user's go-ahead before changing any rule, hook, script or skill."
+      ],
+      "expected_repo_state": [
+        "A tool_optimization_report.md is written to a scratch location.",
+        "No rules, settings, skills or scripts are modified before the user approves."
+      ],
+      "agent_config": "bare-agent"
+    },
+    {
+      "id": "sharpen_saw_2_drain_bookmark",
+      "prompt": "Using the sharpen-saw skill, how do I look at what happened around bookmark L-a1b2c3d4-3 and then close it once the fix has landed?",
+      "expected_chat_output": [
+        "Recommends scripts/sharpen_saw.py view L-a1b2c3d4-3 (optionally with --window) to see the steps around the bookmark.",
+        "Recommends scripts/sharpen_saw.py resolve L-a1b2c3d4-3 to close it."
+      ],
+      "expected_repo_state": ["No files are modified."],
+      "agent_config": "bare-agent"
+    }
+  ]
+}
