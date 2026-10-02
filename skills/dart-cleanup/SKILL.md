@@ -81,8 +81,8 @@ output:
        once a function reaches the **Target Zone (`8–15`, not `0`)**, cap
        extracted pure helpers at `<= 4` parameters (`<= 3` preferred,
        `sliceScoreAtRoot >= 3`), and run
-       `dart run cognitive_complexity:shallow@^0.2.4 lib/` to re-inline
-       single-caller `SAFE_INLINE` helpers.
+       `dart run cognitive_complexity:shallow lib/` to re-inline single-caller
+       `SAFE_INLINE` helpers.
      - **Load-Bearing Library Boundary Rule**: Extract a standalone `lib/src/`
        library (`Tier 1`) only when the cut requires zero `_private` visibility
        widening; use `part` / `part of` (`Tier 2`) when types share
