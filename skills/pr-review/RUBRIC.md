@@ -146,6 +146,16 @@ The subtractive lens (eliminate over-engineering):
   single-use `_Populator` / `_Runner` helper classes that mutate caller
   maps/sets in-place (prefer pure file-private functions), or speculative
   configuration knobs that nothing uses?
+- **Shallow Single-Caller Pass-Through Helpers
+  (`cognitive_complexity:shallow`)**: Does the diff extract single-caller
+  (`FanIn == 1`, `TestFanIn == 0`) helpers that are high-arity (`>= 5`
+  parameters), micro-helpers (`< 5` body lines and `CC <= 1`), signature-heavy
+  (`SignatureLines >= BodyLines`), or placed in a sibling `lib/src/` file solely
+  to serve one caller (`CROSS_FILE_SINGLE_CALLER`)? When re-inlining keeps the
+  caller `<= 15` (`SAFE_INLINE`), flag the helper for direct re-inlining; when
+  `CallerCCAfter > 15` and `HelperCC <= 4` (`FLATTEN_AND_INLINE`), recommend
+  flattening the caller in place instead of bucket-brigading local variables
+  across helper signatures.
 - Can nested conditional branches be flattened with early-return guard clauses
   or switch expressions?
 
@@ -184,9 +194,13 @@ Verify developer ergonomics and repository norms:
 Evaluate nesting and cognitive strain:
 
 - Are functions excessively long (>50 lines) or deeply indented (>3 levels)?
-- Does the function carry high Cognitive Complexity (nested loops, branching
-  ternary operators, nested lambdas)?
-- Can complex logic be decomposed into pure, testable sub-functions?
+- Does the function exceed the Cognitive Complexity ceiling (`> 15` for
+  production logic, `> 40` for tests)? Treat `8–15` as the healthy **Target
+  Zone**—never demand decomposing a cohesive function already `<= 15` into
+  single-caller micro-helpers just to chase `0`.
+- When decomposition is needed (`> 15`), can the logic be flattened in place
+  (guard clauses, switch expressions) or extracted into pure, testable
+  sub-functions with `<= 4` parameters and `sliceScoreAtRoot >= 3`?
 
 ---
 

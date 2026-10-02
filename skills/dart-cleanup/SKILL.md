@@ -73,11 +73,16 @@ output:
    - Always review `~/.agents/CODING_STANDARDS.md` before executing multi-file
      Dart refactors, complexity reductions, test updates, or package
      maintenance:
-     - **Deep Externally, Pure Internally**: Keep `lib/<pkg>.dart` exports
-       minimal (`export 'src/...' show ...;`). Never lower complexity by
-       introducing stateful single-use `_Populator` / `_Runner` helper classes
-       that mutate caller maps/sets in-place; extract file-private pure
-       functions (`_computeX(input) -> output`).
+     - **Deep Externally, Pure Internally & Shallow-Helper Guardrail**: Keep
+       `lib/<pkg>.dart` exports minimal (`export 'src/...' show ...;`). Never
+       lower complexity by introducing stateful single-use `_Populator` /
+       `_Runner` helper classes that mutate caller maps/sets in-place or
+       high-arity (`>= 5` param) pass-through micro-helpers. Stop decomposing
+       once a function reaches the **Target Zone (`8–15`, not `0`)**, cap
+       extracted pure helpers at `<= 4` parameters (`<= 3` preferred,
+       `sliceScoreAtRoot >= 3`), and run
+       `dart run cognitive_complexity:shallow@^0.2.4 lib/` to re-inline
+       single-caller `SAFE_INLINE` helpers.
      - **Load-Bearing Library Boundary Rule**: Extract a standalone `lib/src/`
        library (`Tier 1`) only when the cut requires zero `_private` visibility
        widening; use `part` / `part of` (`Tier 2`) when types share
@@ -116,17 +121,17 @@ output:
 
 | Repository | Local Directory | Synced Commit |
 | :--- | :--- | :--- |
-| [`dart-lang/skills`](https://github.com/dart-lang/skills) | `~/github/skills` | [`26b2dcc`](https://github.com/dart-lang/skills/commit/26b2dcc5654cbbc3b2ec56ea94719469bc8bae9e) |
-| [`kevmoo/analytica.dart`](https://github.com/kevmoo/analytica.dart) | `~/github/kevmoo/analytica.dart` | [`103ba83`](https://github.com/kevmoo/analytica.dart/commit/103ba839d3d8e4e53853fad600cbde341b153192) |
-| [`kevmoo/dash_skills`](https://github.com/kevmoo/dash_skills) | `~/github/kevmoo/dash_skills` | [`0b6371c`](https://github.com/kevmoo/dash_skills/commit/0b6371c26516df82443ee5491771befa70d60f0f) |
+| [`dart-lang/skills`](https://github.com/dart-lang/skills) | `~/github/skills` | [`82a4960`](https://github.com/dart-lang/skills/commit/82a49602fe18cecfe41859592af600cb9d875e40) |
+| [`kevmoo/analytica.dart`](https://github.com/kevmoo/analytica.dart) | `~/github/kevmoo/analytica.dart` | [`f13b568`](https://github.com/kevmoo/analytica.dart/commit/f13b56881a2c16518e4bf69d40b2307a10b665ea) |
+| [`kevmoo/dash_skills`](https://github.com/kevmoo/dash_skills) | `~/github/kevmoo/dash_skills` | [`387b257`](https://github.com/kevmoo/dash_skills/commit/387b2571831e34cb1d91d45d2e4b262979eb968e) |
 
 ### A. Refactoring & Code Quality
 * **`dart-build-cli-app`**: CLI entrypoint structure, argument parsing
   (`package:args`), cross-platform scripts, exit codes, and compilation.
   * *Path*: `~/github/skills/skills/dart-build-cli-app/SKILL.md`
-* **`dart-cognitive-complexity`**: Reduces cognitive complexity, nested loops,
-  and deep conditionals via pattern matching & guard clauses. Includes a gated
-  Tier 3 method-object reference for extreme cases.
+* **`dart-cognitive-complexity`**: Reduces cognitive complexity (Target Zone
+  8–15) via pattern matching, guard clauses, `data_flow`, `file_split`, and
+  `cognitive_complexity:shallow` single-caller helper re-inlining.
   * *Path*: `~/github/kevmoo/analytica.dart/skills/dart-cognitive-complexity/SKILL.md`
 * **`dart-dedupe`**: Detects, audits, and safely remediates structural code
   duplication across Dart and Flutter repositories using the standalone Dedupe
