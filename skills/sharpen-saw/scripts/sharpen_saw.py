@@ -33,7 +33,7 @@ def squash(text, head=400, tail=400):
     if len(clean) <= head + tail:
         return clean
     omitted = len(clean) - head - tail
-    return f"{clean[:head]} ... [{omitted} chars omitted] ... {clean[len(clean) - tail:]}"
+    return f"{clean[:head]} ... [{omitted} chars omitted] ... {clean[len(clean) - tail :]}"
 
 
 # --- Claude Code transcript reader -------------------------------------------
@@ -291,12 +291,12 @@ def _error_text(raw):
     """The part of a failed tool result that names the failure."""
     text = ANSI_RE.sub("", raw.strip())
     exit_header = EXIT_HEADER_RE.match(text)
-    body = TOOL_ERROR_TAG_RE.sub("", text[exit_header.end():] if exit_header else text)
+    body = TOOL_ERROR_TAG_RE.sub("", text[exit_header.end() :] if exit_header else text)
     lines = [ln.strip() for ln in body.splitlines() if ln.strip()]
     window = lines[-25:]
     hits = [i for i, ln in enumerate(window) if ERROR_LINE_RE.search(ln)]
     if hits:
-        return WS_RE.sub(" ", " ".join(window[hits[-1]:]))
+        return WS_RE.sub(" ", " ".join(window[hits[-1] :]))
     if exit_header:
         # Output that names no error is stdout; quoting or clustering it is noise.
         return exit_header.group().strip()
@@ -398,9 +398,8 @@ def _segment_key(segment):
         return exe
     second = tokens[at + 2] if at + 2 < len(tokens) else ""
     nested = exe == "gh" or (exe == "git" and first in GIT_GROUPS)
-    if nested and SUBCOMMAND_RE.match(second) and not second.startswith("-"):
-        if not DIGITS_RE.search(second):
-            return f"{exe} {first} {second}"
+    if nested and SUBCOMMAND_RE.match(second) and not DIGITS_RE.search(second):
+        return f"{exe} {first} {second}"
     return f"{exe} {first}"
 
 
@@ -618,7 +617,9 @@ def format_audit(report):
 
     out.append(f"\n4. Largest Context Hogs (> {CONTEXT_HOG_CHARS:,} chars):")
     for length, short, index, label, summary in report["hogs"][:5]:
-        out.append(f"  - {length:,} chars: step {index} in {short} ({label}) {squash(summary, 80, 40)}")
+        out.append(
+            f"  - {length:,} chars: step {index} in {short} ({label}) {squash(summary, 80, 40)}"
+        )
 
     out.append(f"\n5. File Edit Spirals (>= {EDIT_SPIRAL_MIN} edits in one session):")
     spirals = sorted(report["spirals"].items(), key=lambda kv: -max(kv[1].values()))
@@ -675,7 +676,9 @@ def budget_section():
         if lines > SKILL_LINES_CEILING:
             oversized.append((lines, skill_md))
     out.append(f"Skills over {SKILL_LINES_CEILING} lines: {len(oversized)} (largest 10 shown)")
-    out += [f"  - {lines} lines: {skill_md}" for lines, skill_md in sorted(oversized, reverse=True)[:10]]
+    out += [
+        f"  - {lines} lines: {skill_md}" for lines, skill_md in sorted(oversized, reverse=True)[:10]
+    ]
     return "\n".join(out)
 
 
@@ -734,7 +737,8 @@ def cmd_scan(args):
         print(f"  First prompt: {squash(first, 200, 100)}")
         if failures:
             sample = failures[0]
-            print(f"  Sample failure: {squash(sample.summary, 80, 40)} -> {error_example(sample.text)}")
+            command = squash(sample.summary, 80, 40)
+            print(f"  Sample failure: {command} -> {error_example(sample.text)}")
     print("\n" + format_clusters(audit([c[4] for c in candidates], prompts="none")))
     print("\n" + budget_section())
 
@@ -870,7 +874,9 @@ def main(argv=None):
     deep.set_defaults(run=cmd_audit)
 
     view = sub.add_parser("view", parents=[common], help="print steps of one session")
-    view.add_argument("target", nargs="?", default="", help="session id prefix, bookmark id or path")
+    view.add_argument(
+        "target", nargs="?", default="", help="session id prefix, bookmark id or path"
+    )
     view.add_argument("--step", help="N or A-B")
     view.add_argument(
         "--window",

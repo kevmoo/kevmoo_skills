@@ -72,7 +72,9 @@ def main(argv=None):
     with ledger.open("a", encoding="utf-8") as out:
         out.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
-    print(f"📌 Logged for /sharpen-saw ([{entry['id']}] {entry['category']}): {entry['human_note']}")
+    print(
+        f"📌 Logged for /sharpen-saw ([{entry['id']}] {entry['category']}): {entry['human_note']}"
+    )
     return 0
 
 

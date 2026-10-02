@@ -33,7 +33,13 @@ SID = "aaaaaaaa-1111-2222-3333-444444444444"
 
 
 def user(content, ts="2026-10-01T10:00:00.000Z", **extra):
-    return {"type": "user", "timestamp": ts, "cwd": "/repo", "message": {"content": content}, **extra}
+    return {
+        "type": "user",
+        "timestamp": ts,
+        "cwd": "/repo",
+        "message": {"content": content},
+        **extra,
+    }
 
 
 def tool_use(use_id, name, tool_input, ts="2026-10-01T10:00:01.000Z"):
@@ -47,7 +53,10 @@ def tool_result(use_id, content, is_error=False, **extra):
 
 
 def bash(use_id, command, output="ok", is_error=False, ts="2026-10-01T10:00:01.000Z"):
-    return [tool_use(use_id, "Bash", {"command": command}, ts), tool_result(use_id, output, is_error)]
+    return [
+        tool_use(use_id, "Bash", {"command": command}, ts),
+        tool_result(use_id, output, is_error),
+    ]
 
 
 class SharpenTestCase(unittest.TestCase):
@@ -72,7 +81,9 @@ class SharpenTestCase(unittest.TestCase):
     def run_saw(self, *argv):
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
-            saw.main([*argv, "--projects-dir", str(self.projects), "--later-file", str(self.ledger)])
+            saw.main(
+                [*argv, "--projects-dir", str(self.projects), "--later-file", str(self.ledger)]
+            )
         return out.getvalue()
 
 
@@ -88,11 +99,16 @@ class ReaderTest(SharpenTestCase):
                     "<command-message>relay</command-message>\n"
                     "<command-name>/relay</command-name>\n<command-args>check</command-args>"
                 ),
-                {"type": "assistant", "message": {"content": [{"type": "thinking", "thinking": "hm"}]}},
+                {
+                    "type": "assistant",
+                    "message": {"content": [{"type": "thinking", "thinking": "hm"}]},
+                },
                 {"type": "assistant", "message": {"content": [{"type": "text", "text": "On it."}]}},
                 *bash("t1", "dart test", "Exit code 1\nError: boom", is_error=True),
                 tool_use("t2", "Bash", {"command": "git push"}),
-                tool_result("t2", "The user doesn't want to proceed", True, toolDenialKind="user-rejected"),
+                tool_result(
+                    "t2", "The user doesn't want to proceed", True, toolDenialKind="user-rejected"
+                ),
                 tool_use("t3", "Read", {"file_path": "/repo/a.dart"}),
                 tool_result("t3", [{"type": "text", "text": "contents"}]),
                 {"type": "ai-title", "aiTitle": "Fix build"},
@@ -119,7 +135,9 @@ class ReaderTest(SharpenTestCase):
         failed, denied, read = session.steps[3:]
         self.assertTrue(failed.is_error and not failed.denied)
         self.assertTrue(denied.denied)
-        self.assertEqual((read.summary, read.text, read.is_error), ("/repo/a.dart", "contents", False))
+        self.assertEqual(
+            (read.summary, read.text, read.is_error), ("/repo/a.dart", "contents", False)
+        )
 
     def test_subagent_transcripts_are_opt_in(self):
         self.write_session([user("hi")])
@@ -149,7 +167,9 @@ class CommandKeyTest(unittest.TestCase):
             "~/.local/bin/relay-whoami --check": "relay-whoami",
             "python3 - << 'PY'\nimport json\nPY": "python3",
             "python3 tool/run.py --fast": "python3 run.py",
-            "bash << 'EOF'\nF=(a/b.dart c/d.dart)\nfor f in $F; do dart run $f; done\nEOF": "dart run",
+            "bash << 'EOF'\nF=(a/b.dart c/d.dart)\nfor f in $F; do dart run $f; done\nEOF": (
+                "dart run"
+            ),
             'F="a b c"; ls $F': "ls",
             "time dart test": "dart test",
             "bash -n script.sh": None,
@@ -192,7 +212,9 @@ class BlameTest(unittest.TestCase):
 class ErrorSignatureTest(unittest.TestCase):
     def test_masks_paths_and_numbers(self):
         raw = "Exit code 1\nrunning...\nopen /tmp/a/b.md: no such file or directory (os error 2)"
-        self.assertEqual(saw.error_signature(raw), "open PATH no such file or directory (os error N)")
+        self.assertEqual(
+            saw.error_signature(raw), "open PATH no such file or directory (os error N)"
+        )
         self.assertEqual(
             saw.error_example(raw), "open /tmp/a/b.md: no such file or directory (os error 2)"
         )
@@ -234,7 +256,12 @@ class AuditTest(SharpenTestCase):
         first = self.write_session(
             [
                 user("ship it"),
-                *bash("a1", "gh pr view 1 --json link", 'Exit code 1\nUnknown JSON field: "link"', True),
+                *bash(
+                    "a1",
+                    "gh pr view 1 --json link",
+                    'Exit code 1\nUnknown JSON field: "link"',
+                    True,
+                ),
                 *bash("a2", "gh pr view 1 --json url"),
                 *bash("a3", "PAGER=cat gh pr view 2"),
                 tool_use("s1", "Skill", {"skill": "relay"}),
@@ -288,9 +315,19 @@ class AuditTest(SharpenTestCase):
     def test_chain_failures_are_blamed_on_the_command_that_failed(self):
         path = self.write_session(
             [
-                *bash("c1", "grep -n x f && sed -n '1,+3q' f", "Exit code 1\nsed: unknown command", True),
+                *bash(
+                    "c1",
+                    "grep -n x f && sed -n '1,+3q' f",
+                    "Exit code 1\nsed: unknown command",
+                    True,
+                ),
                 *bash("c2", "sed -n 1,3p f"),
-                *bash("c3", "gh pr view 1; echo ====; ls", "Exit code 1\n(eval):1: === not found", True),
+                *bash(
+                    "c3",
+                    "gh pr view 1; echo ====; ls",
+                    "Exit code 1\n(eval):1: === not found",
+                    True,
+                ),
                 *bash("c4", "ls lib && grep -c x lib/a", "Exit code 1\n0", True),
             ]
         )
@@ -312,7 +349,9 @@ class LedgerAndCliTest(SharpenTestCase):
 
     def test_later_appends_and_resolve_closes(self):
         receipt = self.log("gh pr checks hung")
-        self.assertEqual(receipt, "📌 Logged for /sharpen-saw ([L-aaaaaaaa-1] cli-gap): gh pr checks hung\n")
+        self.assertEqual(
+            receipt, "📌 Logged for /sharpen-saw ([L-aaaaaaaa-1] cli-gap): gh pr checks hung\n"
+        )
         self.log("second", session="")
 
         entries = saw.open_entries(self.ledger)
