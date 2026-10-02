@@ -72,10 +72,13 @@ class SharpenTestCase(unittest.TestCase):
         home.start()
         self.addCleanup(home.stop)
 
-    def write_session(self, records, sid=SID):
+    def write_session(self, records, sid=SID, age=0):
+        """Writes a transcript last modified `age` seconds ago."""
         path = self.projects / "-repo" / f"{sid}.jsonl"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("".join(json.dumps(r) + "\n" for r in records), encoding="utf-8")
+        modified = path.stat().st_mtime - age
+        os.utime(path, (modified, modified))
         return path
 
     def run_saw(self, *argv):
@@ -302,6 +305,19 @@ class AuditTest(SharpenTestCase):
         self.assertIn("Succeeding Sibling: gh pr view 1 --json url", text)
         self.assertIn("[2x across 2 session(s)] Bash (gh pr view)", text)
 
+    def test_reading_an_installed_skill_file_counts_as_activation(self):
+        path = self.write_session(
+            [
+                tool_use("r1", "Read", {"file_path": "/home/u/.agents/skills/duckdb/SKILL.md"}),
+                tool_result("r1", "..."),
+                tool_use("r2", "Read", {"file_path": "/repo/skills/relay/SKILL.md"}),
+                tool_result("r2", "..."),
+            ]
+        )
+        report = saw.audit([saw.read_session(path)], skills={"relay", "duckdb"})
+        self.assertEqual(report["activated"], {"duckdb": 1})
+        self.assertEqual(report["dormant"], ["relay"])
+
     def test_interpreter_failures_get_no_sibling_contrast(self):
         path = self.write_session(
             [
@@ -428,13 +444,24 @@ class LedgerAndCliTest(SharpenTestCase):
         self.assertIn("Bash (git rebase): fatal: conflict", out)
 
     def test_audit_includes_sessions_with_open_bookmarks(self):
-        self.write_session([user("old work"), *bash("o1", "ls")])
+        self.write_session([user("old work"), *bash("o1", "ls")], age=60)
         self.write_session([user("new work")], sid="dddddddd-1111-2222-3333-444444444444")
         self.log("revisit")
 
         out = self.run_saw("audit", "--last", "1")
         self.assertIn("Audit of 2 session(s)", out)
         self.assertIn("/sharpen-later queue: 1 open", out)
+
+    def test_audit_last_counts_a_recent_bookmarked_session_once(self):
+        self.write_session([user("bookmarked and newest")])
+        self.write_session([user("older")], sid="dddddddd-1111-2222-3333-444444444444", age=60)
+        self.write_session([user("oldest")], sid="eeeeeeee-1111-2222-3333-444444444444", age=120)
+        self.log("revisit")
+
+        self.assertIn("Audit of 1 session(s)", self.run_saw("audit", "--last", "1"))
+        out = self.run_saw("audit", "--last", "2")
+        self.assertIn("Audit of 2 session(s)", out)
+        self.assertNotIn("eeeeeeee", out)
 
 
 if __name__ == "__main__":

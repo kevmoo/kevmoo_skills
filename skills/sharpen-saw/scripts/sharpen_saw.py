@@ -22,6 +22,7 @@ SKILL_LINES_CEILING = 250
 CONTEXT_HOG_CHARS = 10_000
 EDIT_SPIRAL_MIN = 4
 EDIT_TOOLS = {"Edit", "Write", "MultiEdit", "NotebookEdit"}
+INSTALLED_SKILL_RE = re.compile(r"/\.(?:claude|agents)/skills/[^/]+/SKILL\.md$")
 RULE = "=" * 72
 
 WS_RE = re.compile(r"\s+")
@@ -510,6 +511,9 @@ def audit(sessions, prompts="first", skills=frozenset()):
                 edits[path][session.sid] += 1
             if step.tool == "Skill" and step.input.get("skill"):
                 activated[step.input["skill"]] += 1
+            elif step.tool == "Read" and INSTALLED_SKILL_RE.search(str(path)):
+                # Skills are also loaded by reading their installed SKILL.md directly.
+                activated[Path(path).parent.name] += 1
 
             if step.denied:
                 denials[run_key] += 1
@@ -754,18 +758,19 @@ def cmd_audit(args):
         paths.append(path)
     sessions = {p: read_session(p) for p in dict.fromkeys(paths)}
     if args.last or not paths:
+        recent = 0
+        for path in session_files(args.projects_dir, args.include_subagents):
+            if recent >= (args.last or 1):
+                break
+            session = sessions.get(path) or read_session(path)
+            if session.steps:  # skip sessions that never got past /login or /clear
+                sessions[path] = session
+                recent += 1
+        # Bookmarked sessions ride along; one already among the recent N is not counted twice.
         for entry in ledger:
             path = find_session(args.projects_dir, entry.get("session") or "unknown")
             if path:
                 sessions.setdefault(path, read_session(path))
-        wanted = len(sessions) + (args.last or 1)
-        for path in session_files(args.projects_dir, args.include_subagents):
-            if len(sessions) >= wanted:
-                break
-            if path not in sessions:
-                session = read_session(path)
-                if session.steps:  # skip sessions that never got past /login or /clear
-                    sessions[path] = session
     sessions = list(sessions.values())
     print(format_queue(ledger), end="")
     skills = {skill_md.parent.name for skill_md in skill_files()}
