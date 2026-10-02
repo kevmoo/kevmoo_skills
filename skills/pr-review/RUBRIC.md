@@ -267,3 +267,27 @@ one severity:
   Keep only if accompanied by confirmed defects or high signal. If the PR has
   zero blocking defects and zero suggestions, suppress cosmetic nits to deliver
   a clean approval.
+
+---
+
+## ✂️ Part 4: Outbound Comment Compression ("Internal Proof vs. External Prose")
+
+The forensic detail required to pass **Part 2 (The Inquisitor Doctrine)** is for
+the local review report (`Internal Proof (Do Not Post)`), **never** for the
+outbound GitHub inline comment (`Outbound Inline Comment`).
+
+When drafting the outbound inline comment for a human PR author:
+
+1. **Hard Length Ceiling (`<= 50 words` / 2–3 sentences of prose)**:
+   - Sentence 1: State the concrete failure mode, edge case, or regression on
+     the pinned line.
+   - Sentence 2 (or a GitHub ` ```suggestion ` block): Show the exact fix or ask
+     the direct question.
+2. **Zero Call-Stack Narration**:
+   - Never narrate the PR author's own diff or call graph back to them (e.g., do
+     **not** write _"In `Foo.bar()`, you call `_helper()`, which reads `baz`
+     from `State` and passes it to..."_). The author just wrote that code and is
+     looking directly at the anchored diff line.
+3. **No Rubric Metadata or Emoji Banners**:
+   - Strip `[BLOCKING]`, `[SUGGESTION]`, `🚨`, `💡`, and angle numbers from
+     comments posted to GitHub.

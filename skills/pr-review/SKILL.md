@@ -136,15 +136,25 @@ Never review diff hunks in isolation. Inspect complete modified files
 
 ---
 
-### Step 4: Report Formatting & Artifact Persistence
+### Step 4: Two-Layer Report Formatting (`Internal Proof` vs. `Outbound Comment`)
 
 Save the report to `<appDataDir>/brain/<conversation_id>/pr_review_<PR>.md`
 using the active conversation's own `<conversation_id>` (if running inside a
 delegated subagent, return the markdown directly in your response for the parent
 agent to write `pr_review_<PR>.md`, and echo the Paranoia Header in visible
-chat):
+chat).
 
-````markdown
+> [!IMPORTANT]
+>
+> **Never Leak Internal Inquisitor Proof into Outbound GitHub Comments**: To
+> pass [`RUBRIC.md`](RUBRIC.md)'s Inquisitor filters, you must gather mechanical
+> proof. Keep that forensic trace in **`Internal Proof (Do Not Post)`** for the
+> reviewer gate, and write a separate **`Outbound Inline Comment`** capped at
+> **`<= 50 words` (2–3 sentences)** that states only **(1) what
+> breaks/regresses** and **(2) the concrete fix**—with **zero call-stack
+> narration** of code the PR author just wrote.
+
+```markdown
 # Code Review: <Repo> PR #<Number> — <PR Title>
 
 🛡️ Paranoia Tier: Ring <0..4B> (<Label>) · Confidence: <High|Low> · Door: <🚪 One-Way | 🔄 Two-Way> -> Review Mode: <Standard | Deep>
@@ -164,24 +174,25 @@ chat):
 
 ### 🚨 Blocking Issues
 - [ ] [**path/to/file.dart#L42-L48**](https://github.com/<owner>/<repo>/blob/<sha>/path/to/file.dart#L42-L48)
-  **Defect**: <Concrete runtime, spec, or architectural failure.>
-  **Suggested Fix**:
-  ```dart
-  // Exact replacement code
-  ```
+  - **Internal Proof (Do Not Post)**: <Call-site trace, invariant check, and why alternatives fail Inquisitor filters.>
+  - **Outbound Inline Comment (`<= 50 words`)**:
+    > <1 sentence stating what breaks/throws + 1 sentence or `suggestion` block with the fix. Zero call-stack narration.>
 
 ### 💡 Suggestions
 - [ ] [**path/to/file.dart#L105**](https://github.com/<owner>/<repo>/blob/<sha>/path/to/file.dart#L105)
-  **Improvement**: <Concrete simplification, test seam fix, or reuse opportunity.>
+  - **Internal Proof (Do Not Post)**: <Verification of caller fan-in, complexity delta, or test seam.>
+  - **Outbound Inline Comment (`<= 50 words`)**:
+    > <1-2 sentences stating the simplification or edge case + concrete fix.>
 
 ### 🧹 Hygiene Nits
 - [ ] [**path/to/file.dart#L12**](https://github.com/<owner>/<repo>/blob/<sha>/path/to/file.dart#L12)
-  **Nit**: <Dead import or typo.>
-````
+  - **Outbound Inline Comment (`<= 25 words`)**:
+    > <Direct 1-line nit.>
+```
 
 ---
 
-### Step 5: 2-Tier Interactive Action Gate (`ask_question`)
+### Step 5: 2-Tier Interactive Action Gate (`ask_question`) & Posting Hygiene
 
 Present the `ask_question` gate tailored to the Ownership Tier (`OQ1`) and
 `Review Mode` (`OQ3`):
@@ -198,3 +209,12 @@ Present the `ask_question` gate tailored to the Ownership Tier (`OQ1`) and
   2. `"Select findings to post inline to GitHub"`
   3. _(Include whenever `Review Mode: Standard` was used)_
      `"Escalate to Deep / Paranoid Review (--deep multi-agent pass)"`
+
+**Outbound Posting Guardrails (When Option
+`"Select findings to post inline to GitHub"` Is Chosen)**:
+
+- Post **strictly** the `Outbound Inline Comment` text (`<= 50 words` of prose);
+  never include the `Internal Proof` trace or severity emoji headers (`🚨`,
+  `💡`).
+- Leave the top-level GitHub review `body` empty (`""`) when inline comments are
+  self-contained, unless the user explicitly provides a 1–2 sentence human lead.
