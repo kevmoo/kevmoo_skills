@@ -64,11 +64,14 @@ When creating a worktree, observe strict placement and naming rules:
    Git repository status, and ensure the repo is not the Dart SDK. Do not
    require a clean working directory; worktrees allow branching safely from a
    dirty tree.
-2. **Fetch Latest Remote State & Resolve Base Branch**: Run `git fetch origin`
-   to ensure local tracking branches are up to date. Dynamically resolve the
-   remote default branch (`origin/HEAD`, `origin/main`, or `origin/master`):
+2. **Fetch Latest Remote State & Resolve Base Branch**: Prefer `upstream` over
+   `origin` when an `upstream` remote exists so fork repositories never branch
+   from a lagging `origin/main`, then dynamically resolve the remote default
+   branch (`<remote>/HEAD`, `<remote>/main`, or `<remote>/master`):
    ```bash
-   TARGET_BASE=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null || (git show-ref --verify --quiet refs/remotes/origin/main && echo "origin/main") || echo "origin/master")
+   REMOTE=$(git remote | grep -qx upstream && echo "upstream" || echo "origin")
+   git fetch "${REMOTE}"
+   TARGET_BASE=$(git symbolic-ref "refs/remotes/${REMOTE}/HEAD" 2>/dev/null || (git show-ref --verify --quiet "refs/remotes/${REMOTE}/main" && echo "${REMOTE}/main") || echo "${REMOTE}/master")
    ```
 3. **Formulate Target Names**: Determine `{branch_name}` and sibling directory
    path `{sibling_worktree_path}` based on naming rules.
