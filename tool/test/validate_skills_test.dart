@@ -23,9 +23,7 @@ void main() {
     });
 
     try {
-      final Configuration config = await ConfigParser.loadConfig(
-        path: _configFilePath,
-      );
+      final config = await ConfigParser.loadConfig(path: _configFilePath);
       final isValid = await validateSkills(config: config);
       expect(
         isValid,
@@ -40,7 +38,7 @@ void main() {
   test('Run skill/scripts/test', () async {
     final skillsDir = _requireSkillsDir();
     await _runSkillScriptTests(skillsDir);
-  }, timeout: Timeout(Duration(minutes: 3)));
+  }, timeout: const Timeout(Duration(minutes: 3)));
 
   test('Verify formatting and analysis of all skills Dart code', () async {
     final skillsDir = _requireSkillsDir();
@@ -60,7 +58,7 @@ void main() {
       ['analyze', '--fatal-infos', skillsDir.path],
     );
     await analyzeProcess.shouldExit(0);
-  }, timeout: Timeout(Duration(minutes: 3)));
+  }, timeout: const Timeout(Duration(minutes: 3)));
 }
 
 Directory _requireSkillsDir() {

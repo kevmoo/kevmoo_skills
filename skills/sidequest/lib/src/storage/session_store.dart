@@ -87,7 +87,7 @@ class SessionStore {
     final tmpFile = File(p.join(directory, 'sidequest.json.tmp'));
     final bakFile = File(p.join(directory, 'sidequest.json.bak'));
 
-    final jsonContent = data.toJsonString(pretty: true);
+    final jsonContent = data.toJsonString();
 
     // Write temp file first
     await tmpFile.writeAsString(jsonContent, flush: true);
@@ -97,14 +97,15 @@ class SessionStore {
       await file.copy(bakFile.path);
     }
 
-    // Atomic rename (on Windows, delete target first as rename does not overwrite)
+    // Atomic rename (on Windows, delete target first as rename does not
+    // overwrite)
     if (Platform.isWindows && await file.exists()) {
       await file.delete();
     }
     await tmpFile.rename(file.path);
 
     // Emit Markdown
-    final markdown = MarkdownEmitter.emit(data);
+    final markdown = emitMarkdown(data);
     await mdFile.writeAsString(markdown, flush: true);
   }
 }
