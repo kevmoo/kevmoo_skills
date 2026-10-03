@@ -20,15 +20,13 @@ class Watermark {
     if (messageId != null) 'messageId': messageId,
   };
 
-  factory Watermark.fromJson(Map<String, dynamic> json) {
-    return Watermark(
-      stepIndex: json['stepIndex'] as int? ?? 0,
-      timestamp:
-          json['timestamp'] as String? ??
-          DateTime.now().toUtc().toIso8601String(),
-      messageId: json['messageId'] as String?,
-    );
-  }
+  factory Watermark.fromJson(Map<String, dynamic> json) => Watermark(
+    stepIndex: json['stepIndex'] as int? ?? 0,
+    timestamp:
+        json['timestamp'] as String? ??
+        DateTime.now().toUtc().toIso8601String(),
+    messageId: json['messageId'] as String?,
+  );
 }
 
 class TaskItem {
@@ -57,16 +55,14 @@ class TaskItem {
     if (note != null) 'note': note,
   };
 
-  factory TaskItem.fromJson(Map<String, dynamic> json) {
-    return TaskItem(
-      id: json['id'] as String,
-      type: TaskType.fromJson(json['type'] as String? ?? 'step'),
-      title: json['title'] as String,
-      status: TaskStatus.fromJson(json['status'] as String? ?? 'pending'),
-      completionOrder: json['completionOrder'] as int?,
-      note: json['note'] as String?,
-    );
-  }
+  factory TaskItem.fromJson(Map<String, dynamic> json) => TaskItem(
+    id: json['id'] as String,
+    type: TaskType.fromJson(json['type'] as String? ?? 'step'),
+    title: json['title'] as String,
+    status: TaskStatus.fromJson(json['status'] as String? ?? 'pending'),
+    completionOrder: json['completionOrder'] as int?,
+    note: json['note'] as String?,
+  );
 }
 
 class SubQuest {
@@ -92,19 +88,17 @@ class SubQuest {
     if (items.isNotEmpty) 'items': items.map((e) => e.toJson()).toList(),
   };
 
-  factory SubQuest.fromJson(Map<String, dynamic> json) {
-    return SubQuest(
-      id: json['id'] as String,
-      title: json['title'] as String,
-      status: TaskStatus.fromJson(json['status'] as String? ?? 'pending'),
-      completionOrder: json['completionOrder'] as int?,
-      items:
-          (json['items'] as List<dynamic>?)
-              ?.map((e) => TaskItem.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          [],
-    );
-  }
+  factory SubQuest.fromJson(Map<String, dynamic> json) => SubQuest(
+    id: json['id'] as String,
+    title: json['title'] as String,
+    status: TaskStatus.fromJson(json['status'] as String? ?? 'pending'),
+    completionOrder: json['completionOrder'] as int?,
+    items:
+        (json['items'] as List<dynamic>?)
+            ?.map((e) => TaskItem.fromJson(e as Map<String, dynamic>))
+            .toList() ??
+        [],
+  );
 }
 
 class SideQuest {
@@ -133,18 +127,16 @@ class SideQuest {
     if (completionOrder != null) 'completionOrder': completionOrder,
   };
 
-  factory SideQuest.fromJson(Map<String, dynamic> json) {
-    return SideQuest(
-      id: json['id'] as String,
-      title: json['title'] as String,
-      status: SideQuestStatus.fromJson(json['status'] as String? ?? 'active'),
-      vcs: json['vcs'] != null
-          ? VcsState.fromJson(json['vcs'] as Map<String, dynamic>)
-          : null,
-      note: json['note'] as String?,
-      completionOrder: json['completionOrder'] as int?,
-    );
-  }
+  factory SideQuest.fromJson(Map<String, dynamic> json) => SideQuest(
+    id: json['id'] as String,
+    title: json['title'] as String,
+    status: SideQuestStatus.fromJson(json['status'] as String? ?? 'active'),
+    vcs: json['vcs'] != null
+        ? VcsState.fromJson(json['vcs'] as Map<String, dynamic>)
+        : null,
+    note: json['note'] as String?,
+    completionOrder: json['completionOrder'] as int?,
+  );
 }
 
 class MainQuest {
@@ -179,23 +171,21 @@ class MainQuest {
       'sideQuests': sideQuests.map((e) => e.toJson()).toList(),
   };
 
-  factory MainQuest.fromJson(Map<String, dynamic> json) {
-    return MainQuest(
-      id: json['id'] as String,
-      title: json['title'] as String,
-      status: QuestStatus.fromJson(json['status'] as String? ?? 'active'),
-      statusNote: json['statusNote'] as String?,
-      vcs: json['vcs'] != null
-          ? VcsState.fromJson(json['vcs'] as Map<String, dynamic>)
-          : null,
-      subQuests:
-          (json['subQuests'] as List<dynamic>?)
-              ?.map((e) => SubQuest.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          [],
-      sideQuests: _parseSideQuests(json['sideQuests']),
-    );
-  }
+  factory MainQuest.fromJson(Map<String, dynamic> json) => MainQuest(
+    id: json['id'] as String,
+    title: json['title'] as String,
+    status: QuestStatus.fromJson(json['status'] as String? ?? 'active'),
+    statusNote: json['statusNote'] as String?,
+    vcs: json['vcs'] != null
+        ? VcsState.fromJson(json['vcs'] as Map<String, dynamic>)
+        : null,
+    subQuests:
+        (json['subQuests'] as List<dynamic>?)
+            ?.map((e) => SubQuest.fromJson(e as Map<String, dynamic>))
+            .toList() ??
+        [],
+    sideQuests: _parseSideQuests(json['sideQuests']),
+  );
 }
 
 class SidequestData {
@@ -214,24 +204,14 @@ class SidequestData {
   }) : globalSideQuests = globalSideQuests ?? [],
        quests = quests ?? [];
 
-  factory SidequestData.initial({required String firstQuestTitle}) {
-    return SidequestData(
-      version: 1,
-      watermark: Watermark(
-        stepIndex: 0,
-        timestamp: DateTime.now().toUtc().toIso8601String(),
-      ),
-      lastCompletionOrder: 0,
-      quests: [
-        MainQuest(
-          id: '1',
-          title: firstQuestTitle,
-          status: QuestStatus.active,
-          vcs: null,
+  factory SidequestData.initial({required String firstQuestTitle}) =>
+      SidequestData(
+        watermark: Watermark(
+          stepIndex: 0,
+          timestamp: DateTime.now().toUtc().toIso8601String(),
         ),
-      ],
-    );
-  }
+        quests: [MainQuest(id: '1', title: firstQuestTitle)],
+      );
 
   Map<String, dynamic> toJson() => {
     'version': version,
@@ -242,27 +222,23 @@ class SidequestData {
     'quests': quests.map((e) => e.toJson()).toList(),
   };
 
-  factory SidequestData.fromJson(Map<String, dynamic> json) {
-    return SidequestData(
-      version: json['version'] as int? ?? 1,
-      watermark: json['watermark'] != null
-          ? Watermark.fromJson(json['watermark'] as Map<String, dynamic>)
-          : null,
-      lastCompletionOrder: json['lastCompletionOrder'] as int? ?? 0,
-      globalSideQuests: _parseSideQuests(json['globalSideQuests']),
-      quests:
-          (json['quests'] as List<dynamic>?)
-              ?.map((e) => MainQuest.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          [],
-    );
-  }
+  factory SidequestData.fromJson(Map<String, dynamic> json) => SidequestData(
+    version: json['version'] as int? ?? 1,
+    watermark: json['watermark'] != null
+        ? Watermark.fromJson(json['watermark'] as Map<String, dynamic>)
+        : null,
+    lastCompletionOrder: json['lastCompletionOrder'] as int? ?? 0,
+    globalSideQuests: _parseSideQuests(json['globalSideQuests']),
+    quests:
+        (json['quests'] as List<dynamic>?)
+            ?.map((e) => MainQuest.fromJson(e as Map<String, dynamic>))
+            .toList() ??
+        [],
+  );
 
-  String toJsonString({bool pretty = true}) {
-    return pretty
-        ? const JsonEncoder.withIndent('  ').convert(toJson())
-        : jsonEncode(toJson());
-  }
+  String toJsonString({bool pretty = true}) => pretty
+      ? const JsonEncoder.withIndent('  ').convert(toJson())
+      : jsonEncode(toJson());
 
   String generateNextGlobalSideQuestId() =>
       'G${_nextPrefixedIdNumber(globalSideQuests, 'G')}';

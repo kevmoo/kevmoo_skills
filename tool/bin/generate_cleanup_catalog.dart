@@ -140,10 +140,9 @@ int _run(List<String> arguments) {
 
 void _printEnvIssues(List<EnvIssue> envIssues) {
   if (envIssues.isEmpty) return;
-  stderr.writeln(
-    '------------------------------------------------------------',
-  );
-  stderr.writeln('🔍 Local System Environment Audit:');
+  stderr
+    ..writeln('------------------------------------------------------------')
+    ..writeln('🔍 Local System Environment Audit:');
   for (final issue in envIssues) {
     stderr.writeln(issue);
   }
@@ -175,7 +174,8 @@ int _applySkillCatalogUpdate(
   if (startIndex == -1 || endIndex == -1) {
     stderr
       ..writeln(
-        'Error: Could not find markers $startTag and $endTag in ${targetSkillFile.path}',
+        'Error: Could not find markers $startTag and $endTag in '
+        '${targetSkillFile.path}',
       )
       ..writeln(
         'Please add the markers around the catalog section in SKILL.md.',
@@ -186,7 +186,8 @@ int _applySkillCatalogUpdate(
   final updatedContent = skillContent.replaceRange(
     startIndex,
     endIndex + endTag.length,
-    '$startTag\n\n<!-- prettier-ignore-start -->\n\n$generatedMarkdown\n\n<!-- prettier-ignore-end -->\n\n$endTag',
+    '$startTag\n\n<!-- prettier-ignore-start -->\n\n'
+    '$generatedMarkdown\n\n<!-- prettier-ignore-end -->\n\n$endTag',
   );
 
   if (validateMode) {
@@ -429,7 +430,8 @@ List<EnvIssue> _auditRepositorySkills(
       issues.add(
         EnvIssue(
           EnvIssueType.missingSkill,
-          'Skill "$skillName" configured for "$repoKey" was not found on disk at ${p.join(skillsDir.path, skillName, 'SKILL.md')}',
+          'Skill "$skillName" configured for "$repoKey" was not found on '
+          "disk at ${p.join(skillsDir.path, skillName, 'SKILL.md')}",
           fix:
               'Verify the skill exists in the repo or remove it from tool/data/dart_cleanup_catalog.json.',
         ),
@@ -509,7 +511,8 @@ List<String> _validateCategory(
     }
     if (!repositories.containsKey(repo)) {
       errors.add(
-        'Skill "$name" references unknown repository key "$repo" in category "$catName".',
+        'Skill "$name" references unknown repository key "$repo" in '
+        'category "$catName".',
       );
     }
     if (!seenSkills.add(name)) {
@@ -517,7 +520,8 @@ List<String> _validateCategory(
     }
     if (prevSkillName != null && name.compareTo(prevSkillName) < 0) {
       errors.add(
-        'Skills in category "$catName" must be sorted alphabetically: "$name" should appear before "$prevSkillName".',
+        'Skills in category "$catName" must be sorted alphabetically: '
+        '"$name" should appear before "$prevSkillName".',
       );
     }
     prevSkillName = name;
@@ -529,22 +533,21 @@ String generateCatalogMarkdown(
   List<dynamic> categories,
   Map<String, dynamic> repositories,
 ) {
-  final buffer = StringBuffer();
-
   // 1. Required Local Repositories table
-  buffer.writeln('### Required Local Repositories');
-  buffer.writeln();
-  buffer.writeln('| Repository | Local Directory | Synced Commit |');
-  buffer.writeln('| :--- | :--- | :--- |');
+  final buffer = StringBuffer()
+    ..writeln('### Required Local Repositories')
+    ..writeln()
+    ..writeln('| Repository | Local Directory | Synced Commit |')
+    ..writeln('| :--- | :--- | :--- |');
+
+  String slugOf(MapEntry<String, dynamic> entry) {
+    final config = entry.value as Map<String, dynamic>;
+    return parseRepoSlugFromUrl(config['cloneUrl'] as String? ?? '') ??
+        entry.key;
+  }
 
   final sortedEntries = repositories.entries.toList()
-    ..sort((a, b) {
-      final slugA =
-          parseRepoSlugFromUrl(a.value['cloneUrl'] as String? ?? '') ?? a.key;
-      final slugB =
-          parseRepoSlugFromUrl(b.value['cloneUrl'] as String? ?? '') ?? b.key;
-      return slugA.compareTo(slugB);
-    });
+    ..sort((a, b) => slugOf(a).compareTo(slugOf(b)));
 
   for (final entry in sortedEntries) {
     final config = entry.value as Map<String, dynamic>;
@@ -608,9 +611,10 @@ String _formatSkillEntry({
 }) {
   final buffer = StringBuffer();
   final lead = '* **`$name`**: ';
-  final wrappedSummary = _wrapProse(lead, summary, indent: '  ', maxWidth: 80);
-  buffer.writeln(wrappedSummary);
-  buffer.writeln('  * *Path*: `$path`');
+  final wrappedSummary = _wrapProse(lead, summary, indent: '  ');
+  buffer
+    ..writeln(wrappedSummary)
+    ..writeln('  * *Path*: `$path`');
   return buffer.toString();
 }
 

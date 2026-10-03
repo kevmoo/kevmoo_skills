@@ -1,9 +1,11 @@
+import 'dart:io';
+import 'dart:math';
+
 import 'package:meta/meta.dart';
+
 import '../models/enums.dart';
 import '../models/sidequest_data.dart';
 import '../models/vcs_state.dart';
-import 'dart:io';
-import 'dart:math';
 
 @internal
 enum ItemCompleteResult {
@@ -83,7 +85,8 @@ void _printTaskItem(TaskItem item, int lastCompletionOrder) {
     TaskStatus.pending || TaskStatus.completed => '',
   };
   stdout.writeln(
-    '        [$itemDone] $orderStr$icon ${item.id}: "${item.title}"$statusSuffix',
+    '        [$itemDone] $orderStr$icon ${item.id}: "${item.title}"'
+    '$statusSuffix',
   );
 }
 
@@ -156,8 +159,9 @@ ItemCompleteResult _completeSubQuest(SubQuest sq, String id, int nextOrder) {
     if (sq.status == TaskStatus.completed) {
       return ItemCompleteResult.alreadyCompleted;
     }
-    sq.status = TaskStatus.completed;
-    sq.completionOrder = nextOrder;
+    sq
+      ..status = TaskStatus.completed
+      ..completionOrder = nextOrder;
     return ItemCompleteResult.completedWithOrder;
   }
 
@@ -166,8 +170,9 @@ ItemCompleteResult _completeSubQuest(SubQuest sq, String id, int nextOrder) {
       if (item.status == TaskStatus.completed) {
         return ItemCompleteResult.alreadyCompleted;
       }
-      item.status = TaskStatus.completed;
-      item.completionOrder = nextOrder;
+      item
+        ..status = TaskStatus.completed
+        ..completionOrder = nextOrder;
       return ItemCompleteResult.completedWithOrder;
     }
   }
@@ -180,8 +185,9 @@ ItemCompleteResult _completeSideQuest(SideQuest sq, String id, int nextOrder) {
   if (sq.status == SideQuestStatus.completed) {
     return ItemCompleteResult.alreadyCompleted;
   }
-  sq.status = SideQuestStatus.completed;
-  sq.completionOrder = nextOrder;
+  sq
+    ..status = SideQuestStatus.completed
+    ..completionOrder = nextOrder;
   return ItemCompleteResult.completedWithOrder;
 }
 
@@ -198,8 +204,9 @@ void syncParentOnChildStatusChange(
     }
     if (sub.status != TaskStatus.inProgress) {
       final hadOrder = sub.completionOrder != null;
-      sub.status = TaskStatus.inProgress;
-      sub.completionOrder = null;
+      sub
+        ..status = TaskStatus.inProgress
+        ..completionOrder = null;
       if (hadOrder) recalculateMaxCompletionOrder(data);
     }
     return;
@@ -226,8 +233,9 @@ bool startSingleItem(SidequestData data, String id) {
 
   for (final sq in data.globalSideQuests) {
     if (sq.id == id) {
-      sq.status = SideQuestStatus.active;
-      sq.completionOrder = null;
+      sq
+        ..status = SideQuestStatus.active
+        ..completionOrder = null;
       return true;
     }
   }
@@ -245,8 +253,9 @@ bool _startQuest(SidequestData data, MainQuest q, String id) {
   }
   for (final sq in q.sideQuests) {
     if (sq.id == id) {
-      sq.status = SideQuestStatus.active;
-      sq.completionOrder = null;
+      sq
+        ..status = SideQuestStatus.active
+        ..completionOrder = null;
       return true;
     }
   }
@@ -258,14 +267,16 @@ bool _startSubQuest(SidequestData data, MainQuest q, SubQuest sq, String id) {
     if (q.status == QuestStatus.completed) {
       q.status = QuestStatus.active;
     }
-    sq.status = TaskStatus.inProgress;
-    sq.completionOrder = null;
+    sq
+      ..status = TaskStatus.inProgress
+      ..completionOrder = null;
     return true;
   }
   for (final item in sq.items) {
     if (item.id == id) {
-      item.status = TaskStatus.inProgress;
-      item.completionOrder = null;
+      item
+        ..status = TaskStatus.inProgress
+        ..completionOrder = null;
       syncParentOnChildStatusChange(
         data,
         q,
@@ -285,8 +296,9 @@ bool reopenSingleItem(SidequestData data, String id) {
 
   for (final sq in data.globalSideQuests) {
     if (sq.id == id) {
-      sq.status = SideQuestStatus.active;
-      sq.completionOrder = null;
+      sq
+        ..status = SideQuestStatus.active
+        ..completionOrder = null;
       return true;
     }
   }
@@ -304,8 +316,9 @@ bool _reopenQuest(SidequestData data, MainQuest q, String id) {
   }
   for (final sq in q.sideQuests) {
     if (sq.id == id) {
-      sq.status = SideQuestStatus.active;
-      sq.completionOrder = null;
+      sq
+        ..status = SideQuestStatus.active
+        ..completionOrder = null;
       return true;
     }
   }
@@ -317,8 +330,9 @@ bool _reopenSubQuest(SidequestData data, MainQuest q, SubQuest sq, String id) {
     if (q.status == QuestStatus.completed) {
       q.status = QuestStatus.active;
     }
-    sq.status = TaskStatus.pending;
-    sq.completionOrder = null;
+    sq
+      ..status = TaskStatus.pending
+      ..completionOrder = null;
     for (final item in sq.items) {
       if (item.status == TaskStatus.inProgress) {
         item.status = TaskStatus.pending;
@@ -328,8 +342,9 @@ bool _reopenSubQuest(SidequestData data, MainQuest q, SubQuest sq, String id) {
   }
   for (final item in sq.items) {
     if (item.id == id) {
-      item.status = TaskStatus.pending;
-      item.completionOrder = null;
+      item
+        ..status = TaskStatus.pending
+        ..completionOrder = null;
       syncParentOnChildStatusChange(
         data,
         q,
@@ -343,7 +358,7 @@ bool _reopenSubQuest(SidequestData data, MainQuest q, SubQuest sq, String id) {
 }
 
 bool removeSingleItem(SidequestData data, String id) {
-  bool found = false;
+  var found = false;
   if (data.quests.any((q) => q.id == id)) {
     data.quests.removeWhere((q) => q.id == id);
     return true;
@@ -388,7 +403,7 @@ bool removeSingleItem(SidequestData data, String id) {
 }
 
 int applyBatchList(SidequestData data, List<dynamic> list) {
-  int count = 0;
+  var count = 0;
   for (final op in list) {
     if (op is Map<String, dynamic>) {
       _applyBatchOp(data, op);
@@ -487,8 +502,7 @@ enum BatchOp {
 
 void _applyBatchOp(SidequestData data, Map<String, dynamic> op) {
   final type = (op[_kType]?.toString() ?? '').trim().toLowerCase();
-  final batchOp = BatchOp.fromTypeName(type);
-  batchOp.validateKeys(op);
+  final batchOp = BatchOp.fromTypeName(type)..validateKeys(op);
 
   final handler = _batchOpHandlers[batchOp]!;
   handler(data, op);
@@ -522,9 +536,7 @@ void _applyBatchQuestAdd(SidequestData data, Map<String, dynamic> op) {
   final title = op[_kTitle]?.toString() ?? 'New Main Quest';
   final nextQuestNumber =
       data.quests.map((q) => int.tryParse(q.id) ?? 0).fold(0, max) + 1;
-  data.quests.add(
-    MainQuest(id: '$nextQuestNumber', title: title, status: QuestStatus.active),
-  );
+  data.quests.add(MainQuest(id: '$nextQuestNumber', title: title));
 }
 
 List<String> _extractBatchIds(
@@ -534,7 +546,8 @@ List<String> _extractBatchIds(
   final rawIds = op[_kIds];
   if (rawIds is! List) {
     throw FormatException(
-      'Key "$_kIds" for "$action" operation must be a JSON array of ID strings.',
+      'Key "$_kIds" for "$action" operation must be a JSON array of '
+      'ID strings.',
     );
   }
   final validIds = rawIds
@@ -712,8 +725,9 @@ void _applyBatchVcs(SidequestData data, Map<String, dynamic> op) {
 
 MainQuest? findQuest(SidequestData data, String id, {bool silent = false}) {
   final q = data.quests.where((e) => e.id == id).firstOrNull;
-  if (!silent && q == null)
+  if (!silent && q == null) {
     stderr.writeln('Error: Main Quest "$id" not found.');
+  }
   return q;
 }
 
@@ -745,7 +759,7 @@ int nextSuffixNumber(Iterable<String> ids) =>
 
 @internal
 void recalculateMaxCompletionOrder(SidequestData data) {
-  int maxOrder = 0;
+  var maxOrder = 0;
   void updateMax(int? order) {
     if (order != null) maxOrder = max(maxOrder, order);
   }

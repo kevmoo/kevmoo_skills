@@ -104,12 +104,12 @@ String? _formatSkillRow(Directory dir) {
 
   final cleanDescription = LineSplitter.split(
     description.trim(),
-  ).map((line) => line.trim()).join(' ').replaceAll('|', '\\|');
+  ).map((line) => line.trim()).join(' ').replaceAll('|', r'\|');
 
   final cleanFeatures = keyFeatures
       .map((f) => LineSplitter.split(f.trim()).map((l) => l.trim()).join(' '))
       .join(', ')
-      .replaceAll('|', '\\|');
+      .replaceAll('|', r'\|');
 
   return '| **[$title](skills/$skillName/SKILL.md)** | $cleanDescription | $cleanFeatures |';
 }
@@ -131,7 +131,8 @@ void _applyOrValidateReadme(
 
   if (startIndex == -1 || endIndex == -1) {
     print(
-      'Error: Could not find comments <!-- SKILLS_LIST_START --> and <!-- SKILLS_LIST_END --> in correct order in README.md',
+      'Error: Could not find comments <!-- SKILLS_LIST_START --> and '
+      '<!-- SKILLS_LIST_END --> in correct order in README.md',
     );
     exit(1);
   }

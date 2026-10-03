@@ -1,4 +1,3 @@
-import 'command_runner_helpers.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
@@ -9,14 +8,14 @@ import '../models/enums.dart';
 import '../models/sidequest_data.dart';
 import '../models/vcs_state.dart';
 import '../storage/session_store.dart';
+import 'command_runner_helpers.dart';
 
 /// Standard [CommandRunner] for the `sidequest` CLI tool.
 class SidequestCliRunner extends CommandRunner<int> {
   SessionStore? _store;
 
-  SidequestCliRunner({SessionStore? store})
-    : _store = store,
-      super('sidequest', 'Deterministic session map manager') {
+  SidequestCliRunner({this._store})
+    : super('sidequest', 'Deterministic session map manager') {
     argParser.addOption(
       'dir',
       help: 'Path to session artifact directory containing sidequest.json',
@@ -62,9 +61,10 @@ class SidequestCliRunner extends CommandRunner<int> {
       final exitCode = await runCommand(results);
       return exitCode ?? 0;
     } on UsageException catch (e) {
-      stderr.writeln(e.message);
-      stderr.writeln();
-      stderr.writeln(e.usage);
+      stderr
+        ..writeln(e.message)
+        ..writeln()
+        ..writeln(e.usage);
       return 1;
     } catch (e) {
       stderr.writeln('Error: $e');
@@ -75,6 +75,7 @@ class SidequestCliRunner extends CommandRunner<int> {
 
 /// Abstract base class for all `sidequest` commands.
 abstract class SidequestCommand extends Command<int> {
+  @override
   final SidequestCliRunner runner;
 
   SidequestCommand(this.runner);
@@ -197,12 +198,11 @@ class StatusCommand extends SidequestCommand {
   Future<int> run() async {
     final data = await store.load();
     if (data == null || data.quests.isEmpty) {
-      stdout.writeln(
-        'No active sidequest session map found in ${store.directory}.',
-      );
-      stdout.writeln(
-        'Run "sidequest init <title>" to initialize a session map.',
-      );
+      stdout
+        ..writeln(
+          'No active sidequest session map found in ${store.directory}.',
+        )
+        ..writeln('Run "sidequest init <title>" to initialize a session map.');
       return 0;
     }
 
@@ -210,10 +210,13 @@ class StatusCommand extends SidequestCommand {
         data.quests.where((q) => q.status == QuestStatus.active).firstOrNull ??
         data.quests.first;
 
-    stdout.writeln('🧭 Sidequest Status (${store.directory}):');
-    stdout.writeln(
-      '⚔️  Main Quest ${activeQuest.id}: "${activeQuest.title}" [${activeQuest.status.toJson().toUpperCase()}]',
-    );
+    final activeStatus = activeQuest.status.toJson().toUpperCase();
+    stdout
+      ..writeln('🧭 Sidequest Status (${store.directory}):')
+      ..writeln(
+        '⚔️  Main Quest ${activeQuest.id}: "${activeQuest.title}" '
+        '[$activeStatus]',
+      );
 
     if (activeQuest.vcs != null) {
       printVcsStatus(activeQuest.vcs!);
@@ -281,9 +284,7 @@ class QuestAddCommand extends SidequestCommand {
     final nextQuestNumber =
         data.quests.map((q) => int.tryParse(q.id) ?? 0).fold(0, max) + 1;
     final newId = '$nextQuestNumber';
-    data.quests.add(
-      MainQuest(id: newId, title: title, status: QuestStatus.active, vcs: null),
-    );
+    data.quests.add(MainQuest(id: newId, title: title));
     await store.save(data);
     stdout.writeln('✔ Added Main Quest $newId: "$title"');
     return 0;
@@ -356,7 +357,6 @@ class SubQuestAddCommand extends SidequestCommand {
   SubQuestAddCommand(super.runner) {
     argParser.addFlag(
       'start',
-      defaultsTo: false,
       help: 'Start immediately in in_progress status.',
     );
   }
@@ -411,7 +411,6 @@ class StepAddCommand extends SidequestCommand {
   StepAddCommand(super.runner) {
     argParser.addFlag(
       'start',
-      defaultsTo: false,
       help: 'Start immediately in in_progress status.',
     );
   }
@@ -490,8 +489,8 @@ class SideQuestAddCommand extends SidequestCommand {
   SideQuestAddCommand(super.runner) {
     argParser
       ..addOption('quest', help: 'Scope to a specific main quest ID.')
-      ..addFlag('global', defaultsTo: false, help: 'Scope globally.')
-      ..addFlag('parked', defaultsTo: false, help: 'Start in parked status.')
+      ..addFlag('global', help: 'Scope globally.')
+      ..addFlag('parked', help: 'Start in parked status.')
       ..addOption('note', help: 'Optional tracking note.');
   }
 
