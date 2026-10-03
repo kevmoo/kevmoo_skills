@@ -217,10 +217,11 @@ void syncParentOnChildStatusChange(
     if (quest.status == QuestStatus.completed) {
       quest.status = QuestStatus.active;
     }
-    sub.completionOrder = null;
-    sub.status = sub.items.any((i) => i.status == TaskStatus.inProgress)
-        ? TaskStatus.inProgress
-        : TaskStatus.pending;
+    sub
+      ..completionOrder = null
+      ..status = sub.items.any((i) => i.status == TaskStatus.inProgress)
+          ? TaskStatus.inProgress
+          : TaskStatus.pending;
     recalculateMaxCompletionOrder(data);
   }
 }
