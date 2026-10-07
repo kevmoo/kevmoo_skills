@@ -117,14 +117,14 @@ Copy this checklist to track progress across the session:
    the session's artifact directory (or `/tmp/<topic>_learning_graph.md` in
    standalone CLI sessions—never create untracked files in the repository
    worktree).
-   - **Keep Turn 1 Lightweight & Spoiler-Free (`<= 60` lines):** On Turn 1,
-     populate **Part 1** with only the live Mermaid diagram, a compact
-     1-line-per-node Concept Index table, and the active `Scenario Checks`.
-     **Never** print `Common Misconceptions` or `One-Line Definition`
-     explanations above an unmastered scenario check (which hands the user the
-     answer), and **never** pre-write multi-line textbook sections for
-     `🔒 Locked` concepts on Turn 1 (which wastes tokens if calibration
-     fast-forwards).
+   - **Keep Turn 1 Lightweight & Spoiler-Free (`<= 80` lines including the
+     Mermaid diagram):** On Turn 1, populate **Part 1** with only the live
+     Mermaid diagram, the full 1-row-per-node Concept Index table, and the
+     active `Scenario Checks`. **Never** print `Common Misconceptions` or
+     `One-Line Definition` explanations above an unmastered scenario check
+     (which hands the user the answer), and **never** pre-write multi-line
+     textbook sections for `🔒 Locked` concepts on Turn 1 (which wastes tokens
+     if calibration fast-forwards).
    - **Record Mastery Notes Lazily in Part 2:** Append `Key Mental Shift`
      summaries, misconception notes, and code/spec mappings into **Part 2
      (Mastered Notes & Reference Appendix)** _as_ concepts are taught or
@@ -179,7 +179,10 @@ flowchart TD
 | `N2` | Asymmetric Identity Binding | _(None — Root)_ | ✅ Mastered |
 | `N3` | Untrusted Registry Threat Model `★` | `N1`, `N2` | 🎯 Ready Next |
 | `N4` | Ephemeral Workload Certificates | `N2` | 🎯 Ready Next |
-| `N5`–`N8` | Downstream Freshness, Rotation, Policy & Pinning | `N3`–`N7` | 🔒 Locked |
+| `N5` | Transparency Logs vs. Active Freshness `★` | `N3` | 🔒 Locked |
+| `N6` | Root Rotation & Revocation Chains | `N4`, `N5` | 🔒 Locked |
+| `N7` | Self-Referential Policy Trap `★` | `N3` | 🔒 Locked |
+| `N8` | Stateful Anti-Downgrade Pinning (Goal) | `N6`, `N7` | 🔒 Locked |
 
 ### Active Gate `N3`: Untrusted Registry Threat Model `★ Key Mental Shift`
 1. A client downloads `pkg-1.0.tar.gz` and verifies a valid signature over its `SHA-256` digest and source repository URL, but the signed payload omits the package name `pkg`. How can a malicious mirror exploit this without breaking the signature?
@@ -198,10 +201,12 @@ flowchart TD
 ### Phase 2: Diagnostic Calibration
 
 Keep the Turn 1 chat response concise (`<= 25` lines): link to
-`<topic>_learning_graph.md` (where the full Mermaid diagram lives—do not paste a
-duplicate Mermaid code block into chat when the artifact is saved), show the
-compact concept index table, avoid raw LaTeX math (`$...$`) in prose, and
-calibrate the starting `🎯 Ready Next` concepts:
+`<topic>_learning_graph.md` (where the full Mermaid diagram and 1-row-per-node
+Concept Index table live—do not paste a duplicate Mermaid code block into chat
+when the artifact is saved), show a compact summary table (collapsing
+`🔒 Locked` range rows such as `N5–N8` when needed to stay `<= 25` lines), avoid
+raw LaTeX math (`$...$`) in prose, and calibrate the starting `🎯 Ready Next`
+concepts:
 
 1. **Path A — Leaf-First Calibration (Default when prior knowledge is partial or
    unknown):**
