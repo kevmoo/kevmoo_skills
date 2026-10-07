@@ -7,7 +7,7 @@ description: >-
   and dynamic plan updates. Use when reviewing, co-editing, or learning from a
   dense document, RFC, plan, or audit section-by-section without cognitive
   overload, or when invoked via /slice-and-dice, /slice-n-dice, /snd, "slice
-  and dice", "slice-n-dice", or "snd". Don't use for single-turn answers (use
+  and dice", or "slice-n-dice". Don't use for single-turn answers (use
   quick-question), prerequisite-graph domain mastery from first principles (use
   graph-learn), pre-drafting Socratic quizzes (use
   distilling-strategies-interactively), or one-shot automated PR diff reports
@@ -272,7 +272,8 @@ constraint that changes a recommendation, or noticing that remaining slices
   `[SND K/N]` to `☑️` (**Locked**) and presenting `[SND K+1/N]`.
 - **Closing `[SND N/N]`**: When the final slice locks, reconcile any remaining
   `*(1 Open Question)*` callouts with the user and remove any temporary scratch
-  tracker file (such as `/tmp/snd_plan.md`) so the repository stays clean.
+  tracker file (such as `/tmp/snd_plan_<slug>.md`) so the repository stays
+  clean.
 
 ---
 
