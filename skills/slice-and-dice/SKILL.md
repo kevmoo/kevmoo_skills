@@ -12,11 +12,11 @@ description: >-
   distilling-strategies-interactively), or one-shot automated PR diff reports
   (use pr-review).
 key_features:
-  - Sequential ~60-second slices ([SND 1/N]) with persistent progress tracking
-  - Zero blocking choice modals (freeform chat, inline quotes, and quick steering)
+  - Sequential ~60-second slices ([SND 1/N]) with persistent artifact state tracking
+  - Pre-flight scope gate when natural slicing exceeds 10 slices
+  - Zero blocking choice modals during active slice review
   - Before/After + What Changed edit deltas and split-anchor review comments
   - Dynamic plan evolution with explicit upfront realization callouts
-  - Primary-source verification and explicit "No comment needed" slices
 ---
 
 # Slice-and-Dice (`SND`)
@@ -26,8 +26,8 @@ codebases one bite-sized slice at a time (`[SND 1/N]` .. `[SND N/N]`).
 
 Instead of dumping an entire 10-section critique, rewrite, or architectural tour
 into a single wall of text—which causes cognitive overload and stalls completion
-—partition the work into **5–6 sequential `~60-second` slices** and lock each
-slice interactively before advancing.
+—partition the work into **sequential `~60-second` slices optimized for
+reasonable completeness** and lock each slice interactively before advancing.
 
 ---
 
@@ -36,10 +36,10 @@ slice interactively before advancing.
 - **Eliminates Wall-of-Text Paralysis**: Reading and reacting to one focused
   `~60-second` slice at a time turns a daunting review or co-authoring task into
   a fast, high-momentum loop.
-- **Preserves Conversational Nuance**: Yielding in plain chat (with zero
-  blocking multiple-choice modals) lets the user ask follow-up questions, quote
-  specific lines, request partial edits, or steer with a single word (`"next"`,
-  `"done"`, `"skip"`).
+- **Preserves Conversational Nuance**: Yielding in plain chat during the active
+  slice loop (with zero blocking multiple-choice modals) lets the user ask
+  follow-up questions, quote specific lines, request partial edits, or steer
+  with a single word (`"next"`, `"done"`, `"skip"`).
 - **Improves Accuracy Over Time**: Grounding each slice in primary source code
   as you go—and explicitly updating the plan when you discover something new—
   catches false assumptions before they propagate into later sections.
@@ -50,15 +50,18 @@ slice interactively before advancing.
 
 Copy this checklist to track the lifecycle of an `SND` walkthrough:
 
-- [ ] **Phase 1: Partition & Stage** → Group the target into 5–6 sequential
-      slices (`[SND 1/N]` .. `[SND N/N]`), stage a working artifact (if
-      applicable), and present **only `[SND 1/N]`**.
+- [ ] **Phase 1: Partition, Scope Gate (if `N > 10`), & Stage** → Partition the
+      target into coherent `~60-second` slices (`[SND 1/N]` .. `[SND N/N]`) for
+      reasonable completeness. If `N > 10`, halt at the Pre-Flight Scope Gate to
+      calibrate scope; otherwise stage the persistent working artifact and
+      present **only `[SND 1/N]`**.
 - [ ] **Phase 2: Single-Slice Review Loop** → Present the active slice with
       exact deep-links, primary-source verification, and properly formatted
       deltas or comments; yield in plain chat.
-- [ ] **Phase 3: Dynamic Plan Evolution** → Adapt slices on the fly as the user
-      steers or as you independently discover new facts (stating any independent
-      realizations or plan updates **explicitly upfront**).
+- [ ] **Phase 3: Dynamic Plan Evolution** → Adapt slices on the fly in the
+      working artifact's Progress Tracker as the user steers or as you
+      independently discover new facts (stating any independent realizations or
+      plan updates **explicitly upfront**).
 - [ ] **Phase 4: Lock & Wrap-Up** → Flip each confirmed slice to `☑️`
       (**Locked**), advance to `[SND K+1/N]`, and reconcile any deferred open
       questions when `[SND N/N]` locks.
@@ -79,33 +82,68 @@ Adapt the slice payload to what the user is trying to accomplish:
 
 ## Core Protocol & Invariants
 
-### 1. Partition into 5–6 Sequential `~60-Second` Slices
+### 1. Completeness-Driven `~60-Second` Slices & The `N > 10` Scope Gate
 
-- Partition the document, proposal list, or audit top-to-bottom into **5–6
-  bite-sized slices** (`[SND 1/N]` .. `[SND N/N]`), each sized to take roughly
-  **60 seconds** for the user to read and react to.
-  - If the source material has 15+ small items, group related items into 5–6
-    coherent thematic or chronological slices rather than creating a 15-slice
-    march.
-- Maintain a persistent **Slice-and-Dice (`SND`) Progress Tracker** at the top
-  of the working artifact (when using an artifact) and render it at the top of
-  **every** chat turn:
+- **Size by Cognitive Unit, Not Arbitrary Quota**:
+  - Partition the target top-to-bottom so each slice (`[SND 1/N]` ..
+    `[SND N/N]`) covers **one coherent topic or decision** sized to roughly **60
+    seconds** of reading and reaction, optimizing for **reasonable
+    completeness** across the requested scope.
+  - Never force a large document into an arbitrary fixed slice count: neither
+    over-stuff 3–4 orthogonal debates into a single bloated slice nor silently
+    drop sections just to keep `N` small. Conversely, fold trivial 1-line fixes
+    that share a single theme into one `~60-second` slice rather than inflating
+    `N`.
+- **Mandatory Pre-Flight Scope Gate When `N > 10`**:
+  - Linear walkthroughs beyond ~10 turns hit human review fatigue and context
+    degradation.
+  - If natural `~60-second` slicing yields **`N <= 10`**, stage the working
+    artifact and present `[SND 1/N]` immediately.
+  - If natural `~60-second` slicing yields **`N > 10`**, **halt before starting
+    `[SND 1/N]`**. Present the grouped slice outline in chat so the user can see
+    the full landscape, and prompt the user (using an interactive choice modal
+    such as `ask_question` / `AskUserQuestion` if available, or a numbered list
+    in chat) with three options:
+    1. `(Recommended) Focus on {Proposed High-Priority Sub-Area / Chapter 1} first ({K} slices)`
+       — slices the highest-leverage part at full fidelity now, leaving
+       remaining chapters as clean follow-up `SND` passes.
+    2. `Run a high-level Macro-SND across the whole target (~6–8 architectural slices)`
+       — one slice per major section or theme, zooming into fine-grained slicing
+       only where needed.
+    3. `Proceed with all {N} slices in one pass` — explicit escape hatch when
+       exhaustive linear coverage is genuinely wanted.
+
+### 2. Persistent Working Artifact as State of Truth
+
+- Pin the canonical **Slice-and-Dice (`SND`) Progress Tracker** (including
+  locked states, cross-slice ripple reminders, and deferred open questions) at
+  the top of a persistent working Markdown artifact (e.g., `snd_plan.md` or the
+  top of the review/draft artifact in the session artifact directory).
+- **Why**: Chat-only trackers drift over multi-turn sessions or across context
+  compaction, whereas a CLI/JSON state wrapper adds per-turn subprocess latency
+  and rigid schema friction during dynamic re-slicing. Updating the top ~15
+  lines of the working `.md` artifact via standard file-edit tools gives
+  compaction-proof state with zero CLI overhead.
+- Update the working artifact's Progress Tracker before each response and echo
+  the current tracker block at the top of every chat turn:
   - `☑️ [SND 1/N] {Title}` — **Locked**
   - **`[-] [SND 2/N] {Title}`** 👈 _Reviewing now_
   - `[ ] [SND 3/N] {Title}`
 
-### 2. Zero Blocking Choice Modals
+### 3. Zero Blocking Choice Modals During the Active Slice Loop
 
-- Never block an `SND` turn with an interactive multiple-choice modal tool
+- Once `[SND 1/N]` begins (after any `N > 10` pre-flight scope gate), **never**
+  block an active `SND` turn with an interactive multiple-choice modal tool
   (`ask_question`, `AskUserQuestion`).
 - **Why**: Blocking modals force rigid radio-button selection and prevent the
   user from quoting inline lines, asking "why" questions, proposing hybrid
   wording, or replying with quick freeform shorthands (`"next"`, `"done"`,
   `"skip"`, `"remove A, keep B"`).
-- Always end the turn in plain chat with a lightweight one-line prompt (e.g.,
+- Always end active slice turns in plain chat with a lightweight one-line prompt
+  (e.g.,
   _`How does [SND 2/5] look? Reply with tweaks, questions, "skip", or "next".`_).
 
-### 3. Single-Slice Focus & Deep-Link Anchoring
+### 4. Single-Slice Focus & Deep-Link Anchoring
 
 - Present **only the active `[-] [SND K/N]` slice** in chat per turn. Never dump
   the full content of upcoming slices (`[SND K+1..N]`) into the chat message.
@@ -117,7 +155,7 @@ Adapt the slice payload to what the user is trying to accomplish:
     heading URL (`#heading=...`) plus a verbatim **📌 Exact Text to Anchor On**
     quote so comments can be anchored or located without searching.
 
-### 4. Primary-Source Grounding & Explicit `"No Comment Needed"` Slices
+### 5. Primary-Source Grounding & Explicit `"No Comment Needed"` Slices
 
 - Before presenting a slice's critique, proposed edit, or technical explanation,
   verify every technical claim directly against the primary source code—never
@@ -127,7 +165,7 @@ Adapt the slice payload to what the user is trying to accomplish:
   mark the slice **`✅ Verdict: No comment needed (holds up in source)`**,
   briefly cite the verifying code, and let the user lock and advance cleanly.
 
-### 5. Formatting Candidate Edits & Review Comments
+### 6. Formatting Candidate Edits & Review Comments
 
 - **Candidate Text Replacements (`Before` → `After` + `What Changed`)**:
   - Whenever an `SND` slice proposes editing or replacing existing text in a
@@ -154,8 +192,9 @@ Adapt the slice payload to what the user is trying to accomplish:
 
 ## Dynamic Plan Evolution (User-Driven & Agent-Driven)
 
-An `SND` plan is a living map, not a rigid railroad track. Both the user and the
-agent can—and should—adapt the plan mid-walkthrough as understanding deepens.
+An `SND` plan is a living map in the working `.md` artifact, not a rigid
+railroad track. Both the user and the agent can—and should—adapt the plan
+mid-walkthrough as understanding deepens.
 
 ### User-Driven Steering Mid-Walkthrough
 
