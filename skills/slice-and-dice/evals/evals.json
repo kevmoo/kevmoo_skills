@@ -1,0 +1,47 @@
+{
+  "repo_criteria": ["evals/code_quality_rubric.json"],
+  "evals": [
+    {
+      "id": "snd_task_1",
+      "prompt": "Use /slice-and-dice to walk through co-editing a 4-section rollout document (Executive Summary, Opt-In Guidance, Default-On Checklist, and Non-Goals), proposing concrete text improvements section by section.",
+      "expected_chat_output": [
+        "Echoes the Slice-and-Dice (SND) Progress Tracker at the top of the reply showing [SND 1/4] active ([-]) and remaining slices queued ([ ]).",
+        "Presents ONLY [SND 1/4] in chat without dumping the full content of slices 2-4.",
+        "Formats the candidate edit using Current Text (Before), Proposed Text (After), and What Changed (Added / Changed / Removed).",
+        "Yields in plain chat without invoking an interactive multiple-choice modal tool (ask_question / AskUserQuestion) during the active slice turn."
+      ],
+      "expected_repo_state": [
+        "Stages the canonical Progress Tracker in the session artifact directory or /tmp/snd_plan_<slug>.md without creating untracked files in the repository worktree or injecting tracker lines into tracked repository files.",
+        "Uses lazy slice drafting in the working tracker (Progress Tracker + 1-line slice titles/notes) without pre-baking full Before/After diffs for queued slices 2-4.",
+        "Does not overwrite the target rollout document before the user confirms [SND 1/4]."
+      ],
+      "agent_config": "bare-agent"
+    },
+    {
+      "id": "snd_task_2",
+      "prompt": "Run /snd on an 18-section cross-package architecture RFC where each section introduces a distinct ~60-second design decision.",
+      "expected_chat_output": [
+        "Recognizes that natural ~60-second completeness-driven slicing yields N > 10 slices and halts before starting [SND 1/N].",
+        "Presents the grouped slice outline in chat so the user can see the full landscape.",
+        "Prompts the user with the 3 Pre-Flight Scope Gate options: (1) Focus on a high-priority sub-area first (Recommended), (2) Run a high-level Macro-SND (~6-8 slices), or (3) Proceed with all N slices."
+      ],
+      "expected_repo_state": [
+        "No target repository files are modified before the user selects a scope option."
+      ],
+      "agent_config": "bare-agent"
+    },
+    {
+      "id": "snd_task_3",
+      "prompt": "Continue a /slice-and-dice document review at [SND 2/5] (Client Constructors), where inspecting lib/src/client.dart reveals that an earlier draft critique against the 3-parameter constructor was wrong because clientFactory grants lifecycle ownership while client disables internal closure.",
+      "expected_chat_output": [
+        "Places an explicit Realization / Plan Update callout right below the Progress Tracker stating what primary-source check changed the agent's mind and how the plan or critique was updated.",
+        "Does not silently drop or swap the draft critique without explaining the realization upfront, and does not invent nitpicks if the section holds up in source.",
+        "If two distinct review comments remain for [SND 2/5], splits them into Comment 2A and Comment 2B with separate verbatim anchor quotes inside copy-pasteable text code fences."
+      ],
+      "expected_repo_state": [
+        "Updates the persistent working artifact's Progress Tracker for [SND 2/5] while keeping base slice numbers 1..5 stable."
+      ],
+      "agent_config": "bare-agent"
+    }
+  ]
+}
