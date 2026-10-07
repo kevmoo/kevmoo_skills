@@ -119,14 +119,19 @@ Adapt the slice payload to what the user is trying to accomplish:
 - Pin the canonical **Slice-and-Dice (`SND`) Progress Tracker** (including
   locked states, cross-slice ripple reminders, and deferred open questions) at
   the top of a persistent working Markdown artifact (in the session artifact
-  directory if available, or a scratch/gitignored file such as
-  `/tmp/snd_plan.md` in standalone CLI sessions—never inject the tracker into a
-  tracked repository file).
+  directory if available, or `/tmp/snd_plan_<slug>.md` in standalone CLI
+  sessions—never create untracked files in the repository worktree or inject the
+  tracker into a tracked repository file).
 - **Why**: Chat-only trackers drift over multi-turn sessions or across context
   compaction, whereas a CLI/JSON state wrapper adds per-turn subprocess latency
   and rigid schema friction during dynamic re-slicing. Updating the top ~15
   lines of the working `.md` artifact via standard file-edit tools gives
   compaction-proof state with zero CLI overhead.
+- **Lazy Slice Drafting (Keep Turn 1 Fast)**: Keep the working artifact
+  lightweight on Turn 1—record only the Progress Tracker and 1-line slice
+  titles/notes. Draft each slice's full `Before`/`After` delta or review
+  comments lazily when `[SND K/N]` becomes active so Turn 1 stays fast and
+  earlier pivots never waste pre-drafted work.
 - Update the working artifact's Progress Tracker before each response and echo
   the current tracker block at the top of every chat turn:
   - `☑️ [SND 1/N] {slice_title}` — **Locked**
