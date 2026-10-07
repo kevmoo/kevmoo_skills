@@ -5,13 +5,13 @@
       "id": "graph_learn_task_1",
       "prompt": "Use /graph-learn to help me build a deep mental model of supply-chain package attestation and untrusted-registry verification (covering content digests, asymmetric identity binding, ephemeral workload certificates, transparency logs vs. active freshness, root rotation, self-referential policy traps, and anti-downgrade pinning).",
       "expected_chat_output": [
-        "Uses plain engineering terminology (Prerequisite Graph, Atomic Concept, Mastered, Ready Next, Locked, Key Mental Shift) with zero academic KST or graph-theory jargon (no 'Hasse diagram', 'Knowledge Space Theory', 'Outer Fringe', 'surmise', or '$F^+(K)$').",
-        "Presents a compact concept index table and issues a concise Turn 1 diagnostic calibration check (1-2 scenario questions) without lecturing on Locked concepts.",
+        "Uses plain engineering terminology (Prerequisite Graph, Atomic Concept, Mastered, Ready Next, Locked, Key Mental Shift) with zero academic KST or graph-theory jargon (no 'Hasse diagram', 'Knowledge Space Theory', 'Outer Fringe', 'surmise', or '$F^+(K)$') and no raw LaTeX math ($...$) in prose.",
+        "Keeps the Turn 1 chat response concise (<= 25 lines): links to <topic>_learning_graph.md without pasting a duplicate Mermaid diagram into chat, shows the compact concept index table, and issues 1-2 short calibration probes.",
         "Stops calling tools and waits for the user's response without simulating user answers."
       ],
       "expected_repo_state": [
-        "Creates a persistent <topic>_learning_graph.md artifact with a live Mermaid flowchart TD diagram using classDef mastered, ready, and locked (no residual :::fringe or :::passed classes).",
-        "Keeps Part 1 (Concept Map & Scenario Gates) strictly separate from Part 2 (Reference Appendix) so scenario questions do not leak spoilers."
+        "Creates a persistent <topic>_learning_graph.md artifact in the session artifact directory or /tmp/<topic>_learning_graph.md (without dirtying the repository worktree) using classDef mastered, ready, and locked.",
+        "Keeps Turn 1 <topic>_learning_graph.md lightweight (<= 60 lines) and spoiler-free: does NOT print Common Misconceptions or One-Line Definition explanations above unmastered scenario checks, and does NOT pre-author multi-line textbook sections for Locked concepts before calibration."
       ],
       "agent_config": "bare-agent"
     },

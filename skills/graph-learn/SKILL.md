@@ -112,11 +112,23 @@ Copy this checklist to track progress across the session:
           reviewing a specific PR, debugging a specific flow) the user wants to
           reach, and keep only the prerequisite chain required for that goal.
        3. `Proceed with all {n} concepts in one graph` — explicit escape hatch.
-3. **Construct the Persistent Graph Document (`5–15` Concepts):** Once scope is
-   confirmed, save `<topic>_learning_graph.md` in the session's artifact or
-   scratch directory. Keep **Part 1 (Concept Map & Scenario Gates)** strictly
-   separate from **Part 2 (Reference Appendix)** so scenario questions never
-   leak hints or spoilers.
+3. **Construct the Persistent Graph Document (`5–15` Concepts, Zero-Spoiler &
+   Lazy Notes):** Once scope is confirmed, save `<topic>_learning_graph.md` in
+   the session's artifact directory (or `/tmp/<topic>_learning_graph.md` in
+   standalone CLI sessions—never create untracked files in the repository
+   worktree).
+   - **Keep Turn 1 Lightweight & Spoiler-Free (`<= 60` lines):** On Turn 1,
+     populate **Part 1** with only the live Mermaid diagram, a compact
+     1-line-per-node Concept Index table, and the active `Scenario Checks`.
+     **Never** print `Common Misconceptions` or `One-Line Definition`
+     explanations above an unmastered scenario check (which hands the user the
+     answer), and **never** pre-write multi-line textbook sections for
+     `🔒 Locked` concepts on Turn 1 (which wastes tokens if calibration
+     fast-forwards).
+   - **Record Mastery Notes Lazily in Part 2:** Append `Key Mental Shift`
+     summaries, misconception notes, and code/spec mappings into **Part 2
+     (Mastered Notes & Reference Appendix)** _as_ concepts are taught or
+     mastered.
 4. **Render the Live Color-Coded Mermaid Diagram:** Initialize the diagram with
    explicit visual state classes from Turn 1 and update it after every gate:
    - `mastered` (`✅`): Mastered.
@@ -132,6 +144,8 @@ Copy this checklist to track progress across the session:
 # Prerequisite Graph: {topic_title}
 
 - **Progress:** 🟢 **Mastered:** `N1`, `N2` · 🟠 **Ready Next:** `N3`, `N4` · ⚪ **Locked:** `N5`–`N8`
+
+## Part 1: Live Prerequisite Graph & Active Scenario Gates
 
 ```mermaid
 flowchart TD
@@ -159,36 +173,35 @@ flowchart TD
     N7 --> N8
 ```
 
----
+| Node | Concept | Direct Prerequisites | Status |
+| :--- | :--- | :--- | :--- |
+| `N1` | Deterministic Content Digests | _(None — Root)_ | ✅ Mastered |
+| `N2` | Asymmetric Identity Binding | _(None — Root)_ | ✅ Mastered |
+| `N3` | Untrusted Registry Threat Model `★` | `N1`, `N2` | 🎯 Ready Next |
+| `N4` | Ephemeral Workload Certificates | `N2` | 🎯 Ready Next |
+| `N5`–`N8` | Downstream Freshness, Rotation, Policy & Pinning | `N3`–`N7` | 🔒 Locked |
 
-## Part 1: Concept Map & Scenario Gates
-
-### `N3`: Untrusted Registry Threat Model `★ Key Mental Shift`
-- **Direct Prerequisites:** `N1`, `N2`
-- **Key Mental Shift:** Shifts from transport trust ("connected over HTTPS to the official server") to treating the registry or mirror as an untrusted cache whose responses must be cryptographically self-verifying.
-- **One-Line Definition:** Modeling the package index, database, or mirror as a potentially compromised intermediary that can swap, omit, or replay unauthenticated metadata and blobs.
-- **Mastery Criterion:** Can inspect an install flow and identify every server-supplied field (version lists, status codes, unsigned JSON flags) an attacker could forge or strip.
-- **Common Misconceptions:**
-  - Assuming HTTPS to the registry protects against a compromised backend bucket or mirror.
-  - Trusting an unsigned `404 Not Found` or `"signed": false` response to skip signature verification.
-- **Scenario Checks (Gate `N3`):**
-  1. A client downloads `pkg-1.0.tar.gz` and verifies a valid signature over its `SHA-256` digest and source repository URL, but the signed payload omits the package name `pkg`. How can a malicious mirror exploit this without breaking the signature?
-  2. Why can't a client safely skip verification when `GET /packages/pkg/attestation` returns `404 Not Found` under an untrusted-registry threat model?
+### Active Gate `N3`: Untrusted Registry Threat Model `★ Key Mental Shift`
+1. A client downloads `pkg-1.0.tar.gz` and verifies a valid signature over its `SHA-256` digest and source repository URL, but the signed payload omits the package name `pkg`. How can a malicious mirror exploit this without breaking the signature?
+2. Why can't a client safely skip verification when `GET /packages/pkg/attestation` returns `404 Not Found` under an untrusted-registry threat model?
 
 ---
 
-## Part 2: Reference Appendix (Separate from Scenario Gates)
+## Part 2: Mastered Notes & Reference Appendix (Populated as Concepts Unlock)
 
-- Cross-reference table mapping each concept (`N1`..`Nk`) to concrete files, functions, or protocol sections in the target codebase/spec.
-- Suggested topological learning order (`Foundations -> Mid-Tier -> Goal`).
+- **`N1` (Deterministic Content Digests) — Mastered:** Binds verification to canonical byte digests (`SHA-256`) rather than mutable version tags (`lib/digest.dart`).
+- **`N2` (Asymmetric Identity Binding) — Mastered:** Signs structured `(subject, digest)` envelopes so verifiers authenticate both artifact and publisher (`lib/envelope.dart`).
 ````
 
 ---
 
 ### Phase 2: Diagnostic Calibration
 
-Present a compact concept index table in chat and calibrate the starting
-`🎯 Ready Next` concepts based on the user's background:
+Keep the Turn 1 chat response concise (`<= 25` lines): link to
+`<topic>_learning_graph.md` (where the full Mermaid diagram lives—do not paste a
+duplicate Mermaid code block into chat when the artifact is saved), show the
+compact concept index table, avoid raw LaTeX math (`$...$`) in prose, and
+calibrate the starting `🎯 Ready Next` concepts:
 
 1. **Path A — Leaf-First Calibration (Default when prior knowledge is partial or
    unknown):**
