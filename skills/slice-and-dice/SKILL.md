@@ -8,7 +8,8 @@ description: >-
   dense document, RFC, plan, or audit section-by-section without cognitive
   overload, or when invoked via /slice-and-dice, /slice-n-dice, /snd, "slice
   and dice", "slice-n-dice", or "snd". Don't use for single-turn answers (use
-  quick-question), pre-drafting Socratic quizzes (use
+  quick-question), prerequisite-graph domain mastery from first principles (use
+  graph-learn), pre-drafting Socratic quizzes (use
   distilling-strategies-interactively), or one-shot automated PR diff reports
   (use pr-review).
 key_features:
@@ -104,21 +105,23 @@ Adapt the slice payload to what the user is trying to accomplish:
     the full landscape, and prompt the user (using an interactive choice modal
     such as `ask_question` / `AskUserQuestion` if available, or a numbered list
     in chat) with three options:
-    1. `(Recommended) Focus on {Proposed High-Priority Sub-Area / Chapter 1} first ({K} slices)`
-       — slices the highest-leverage part at full fidelity now, leaving
-       remaining chapters as clean follow-up `SND` passes.
+    1. `(Recommended) Focus on {sub_area} first ({k} slices)` — slices the
+       highest-leverage part at full fidelity now, leaving remaining chapters as
+       clean follow-up `SND` passes.
     2. `Run a high-level Macro-SND across the whole target (~6–8 architectural slices)`
        — one slice per major section or theme, zooming into fine-grained slicing
        only where needed.
-    3. `Proceed with all {N} slices in one pass` — explicit escape hatch when
+    3. `Proceed with all {n} slices in one pass` — explicit escape hatch when
        exhaustive linear coverage is genuinely wanted.
 
 ### 2. Persistent Working Artifact as State of Truth
 
 - Pin the canonical **Slice-and-Dice (`SND`) Progress Tracker** (including
   locked states, cross-slice ripple reminders, and deferred open questions) at
-  the top of a persistent working Markdown artifact (e.g., `snd_plan.md` or the
-  top of the review/draft artifact in the session artifact directory).
+  the top of a persistent working Markdown artifact (in the session artifact
+  directory if available, or a scratch/gitignored file such as
+  `/tmp/snd_plan.md` in standalone CLI sessions—never inject the tracker into a
+  tracked repository file).
 - **Why**: Chat-only trackers drift over multi-turn sessions or across context
   compaction, whereas a CLI/JSON state wrapper adds per-turn subprocess latency
   and rigid schema friction during dynamic re-slicing. Updating the top ~15
@@ -126,9 +129,9 @@ Adapt the slice payload to what the user is trying to accomplish:
   compaction-proof state with zero CLI overhead.
 - Update the working artifact's Progress Tracker before each response and echo
   the current tracker block at the top of every chat turn:
-  - `☑️ [SND 1/N] {Title}` — **Locked**
-  - **`[-] [SND 2/N] {Title}`** 👈 _Reviewing now_
-  - `[ ] [SND 3/N] {Title}`
+  - `☑️ [SND 1/N] {slice_title}` — **Locked**
+  - **`[-] [SND 2/N] {slice_title}`** 👈 _Reviewing now_
+  - `[ ] [SND 3/N] {slice_title}`
 
 ### 3. Zero Blocking Choice Modals During the Active Slice Loop
 
@@ -204,13 +207,16 @@ mid-walkthrough as understanding deepens.
      (`"let's stay in SND 1/6 — go deeper into #1"`), keep `[SND K/N]` marked as
      `[-] Reviewing now`, unpack the requested detail or source code, and wait
      to advance until the user signals `"next"` or `"done"`.
-2. **Splitting, Merging, or Re-Slicing**:
-   - If a slice turns out to contain two orthogonal debates, split it on the fly
-     (e.g., `[SND 2A/5]` and `[SND 2B/5]`, or increment total `N`) and update
-     the Progress Tracker.
+2. **Splitting, Merging, or Re-Slicing (Keeping `1..N` Stable)**:
+   - Keep base slice numbers `1..N` stable once `[SND 1/N]` begins so
+     cross-slice ripple reminders (`[ ] [SND 4/5] ...`) never point to shifted
+     indices.
+   - If a slice turns out to contain two orthogonal debates, split it using
+     letter suffixes (`[SND 2A/5]` and `[SND 2B/5]`) rather than incrementing
+     `N`.
    - If a decision in `[SND K/N]` renders a later queued slice moot, mark that
-     later slice as merged/resolved in the tracker so you don't waste a turn on
-     it later.
+     later slice inline as `*(Merged into [SND K/N])*` in the tracker so you
+     don't waste a turn on it later.
 3. **Cross-Slice Ripple Notes & Loud Open Questions**:
    - **Ripple Reminders**: When an edit in `[SND K/N]` requires a follow-up
      adjustment in a later section (`"remind me to update Section 4 for this"`),
@@ -244,8 +250,24 @@ constraint that changes a recommendation, or noticing that remaining slices
 >
 > 1. **What you realized / where you changed your mind** (citing the exact
 >    primary-source code or locked decision that triggered the realization).
-> 2. **How you updated the plan or recommendation** (which slice was revised,
->    split, merged, added, or dropped).
+> 2. **How you updated the plan or recommendation** (which queued slice was
+>    revised, split, merged, added, or dropped).
+> 3. **Confirm Before Reopening Locked Slices (`☑️`)**: If a new finding
+>    contradicts an earlier slice that is already **Locked** (`☑️`), flag the
+>    contradiction in the callout and ask the user whether to reopen that slice
+>    —never overwrite a locked decision silently.
+
+---
+
+## Lock & Wrap-Up
+
+- **Applying Confirmed Edits (Mode 2)**: As soon as the user confirms
+  `[SND K/N]` (e.g., `"next"`, `"apply"`, or `"looks good"`), write the approved
+  `After` text to the target document or draft artifact before flipping
+  `[SND K/N]` to `☑️` (**Locked**) and presenting `[SND K+1/N]`.
+- **Closing `[SND N/N]`**: When the final slice locks, reconcile any remaining
+  `*(1 Open Question)*` callouts with the user and remove any temporary scratch
+  tracker file (such as `/tmp/snd_plan.md`) so the repository stays clean.
 
 ---
 
