@@ -1,14 +1,16 @@
 ---
 name: graph-learn
-description: |-
+description: >-
   Builds a live prerequisite graph of atomic concepts and guides the user
   through unfamiliar technical domains, specifications, or codebases via
   diagnostic calibration, Socratic scenario checks, and visual state tracking.
   Use when invoking /graph-learn, learning a complex domain or architecture
   from first principles, mapping prerequisite concepts and key mental shifts,
   or verifying deep mental models before reviewing or writing code. Don't use
-  for quick factual lookups (use quick-question), flat or purely sequential
-  document reviews (use slice-and-dice), or passive text summarization.
+  for quick factual lookups (use quick-question), resolving open design
+  trade-offs (use distilling-strategies-interactively), flat or purely
+  sequential document reviews (use slice-and-dice), or passive text
+  summarization.
 key_features:
   - Live prerequisite graph with Mastered, Ready Next, and Locked state tracking
   - Pre-flight scope & topology gates (< 5 flat topics vs. > 15 large domains)
@@ -38,8 +40,8 @@ relation"_, _"Outer Fringe"_, or `$F^+(K)$`) to the user:
 | **Hard Prerequisite (`A -> B`)** | Draw `A -> B` **only** when concept `B` cannot be genuinely understood or applied without `A`. Omit loose "related-to" associations.                                                                                            | `Prerequisite`              |
 | **Direct Prerequisites Only**    | Never draw redundant shortcut arrows (`A -> C` when `A -> B -> C` already exists). Keep only direct prerequisite edges so the visual graph stays clean.                                                                         | _(Visual arrow in diagram)_ |
 | **Mastered State**               | Concepts the user has empirically verified through a scenario check or calibration fast-forward.                                                                                                                                | `✅ Mastered` (Green)       |
-| **Ready Next (Unlocked)**        | Unmastered concepts whose direct prerequisites are **all** `✅ Mastered`. These are the **only** concepts eligible for teaching and probing on the current turn.                                                                | `🎯 Ready Next` (Amber)     |
-| **Locked State**                 | Concepts still waiting on one or more unmastered prerequisites. Never quiz or lecture on these prematurely.                                                                                                                     | `🔒 Locked` (Slate)         |
+| **Ready Next (Unlocked)**        | Unmastered concepts whose direct prerequisites are **all** `✅ Mastered`. These are the **only** concepts eligible for teaching and probing on the current turn (except a one-time Turn 1 diagnostic calibration check).        | `🎯 Ready Next` (Amber)     |
+| **Locked State**                 | Concepts still waiting on one or more unmastered prerequisites. Never quiz or lecture on these prematurely once calibration resolves.                                                                                           | `🔒 Locked` (Slate)         |
 | **Key Mental Shift**             | The 2–4 transformative ideas in the graph that permanently change how you reason about the whole system (e.g., shifting from perimeter/HTTPS trust to an untrusted-intermediary model).                                         | `★ Key Mental Shift`        |
 
 ---
@@ -53,8 +55,8 @@ Copy this checklist to track progress across the session:
       with the user if `< 5` / flat or `> 15`, then save
       `<topic>_learning_graph.md` with a live color-coded Mermaid diagram.
 - [ ] **Phase 2: Diagnostic Calibration** → Calibrate starting state
-      (`✅     Mastered` vs. `🎯 Ready Next`) via leaf-first probes or a
-      root-first walk (Execution Halted for User Input).
+      (`✅ Mastered` vs. `🎯 Ready Next`) via leaf-first probes or a root-first
+      walk (Execution Halted for User Input).
 - [ ] **Phase 3: Ready-Next Teaching & Verification Loop** → Run iterative
       scenario checks, targeted teaching, fresh transfer questions, and live
       diagram updates on `🎯 Ready Next` concepts.
@@ -103,13 +105,13 @@ Copy this checklist to track progress across the session:
        breakdown in chat (showing how the `N` concepts group into sub-areas) and
        prompt the user (via an interactive choice modal such as `ask_question` /
        `AskUserQuestion` if available, or numbered options in chat):
-       1. `(Recommended) Start with {Foundational Sub-Area 1} first ({K} concepts)`
-          — master the foundational sub-graph first before expanding into
-          downstream sub-graphs.
+       1. `(Recommended) Start with {sub_area} first ({k} concepts)` — master
+          the foundational sub-graph first before expanding into downstream
+          sub-graphs.
        2. `Prune to a specific target goal` — ask what concrete task (e.g.,
           reviewing a specific PR, debugging a specific flow) the user wants to
           reach, and keep only the prerequisite chain required for that goal.
-       3. `Proceed with all {N} concepts in one graph` — explicit escape hatch.
+       3. `Proceed with all {n} concepts in one graph` — explicit escape hatch.
 3. **Construct the Persistent Graph Document (`5–15` Concepts):** Once scope is
    confirmed, save `<topic>_learning_graph.md` in the session's artifact or
    scratch directory. Keep **Part 1 (Concept Map & Scenario Gates)** strictly
@@ -117,8 +119,8 @@ Copy this checklist to track progress across the session:
    leak hints or spoilers.
 4. **Render the Live Color-Coded Mermaid Diagram:** Initialize the diagram with
    explicit visual state classes from Turn 1 and update it after every gate:
-   - `passed` (`✅`): Mastered.
-   - `fringe` (`🎯`): Ready Next (all direct prerequisites mastered). Include
+   - `mastered` (`✅`): Mastered.
+   - `ready` (`🎯`): Ready Next (all direct prerequisites mastered). Include
      partial progress badges such as `(1/2)` when a two-part concept is half
      complete.
    - `locked` (`🔒`): Locked (waiting on upstream prerequisites).
@@ -127,20 +129,20 @@ Copy this checklist to track progress across the session:
 #### Persistent Graph Document Template (`<topic>_learning_graph.md`)
 
 ````markdown
-# Prerequisite Graph: {Topic Title}
+# Prerequisite Graph: {topic_title}
 
 - **Progress:** 🟢 **Mastered:** `N1`, `N2` · 🟠 **Ready Next:** `N3`, `N4` · ⚪ **Locked:** `N5`–`N8`
 
 ```mermaid
 flowchart TD
-    classDef passed fill:#1b5e20,stroke:#66bb6a,stroke-width:2px,color:#ffffff
-    classDef fringe fill:#e65100,stroke:#ffa726,stroke-width:2px,color:#ffffff
+    classDef mastered fill:#1b5e20,stroke:#66bb6a,stroke-width:2px,color:#ffffff
+    classDef ready fill:#e65100,stroke:#ffa726,stroke-width:2px,color:#ffffff
     classDef locked fill:#263238,stroke:#78909c,stroke-width:1px,color:#cfd8dc
 
-    N1["✅ N1: Deterministic Content Digests"]:::passed
-    N2["✅ N2: Asymmetric Identity Binding"]:::passed
-    N3["🎯 N3: Untrusted Registry Threat Model ★"]:::fringe
-    N4["🎯 N4: Ephemeral Workload Certificates"]:::fringe
+    N1["✅ N1: Deterministic Content Digests"]:::mastered
+    N2["✅ N2: Asymmetric Identity Binding"]:::mastered
+    N3["🎯 N3: Untrusted Registry Threat Model ★"]:::ready
+    N4["🎯 N4: Ephemeral Workload Certificates"]:::ready
     N5["🔒 N5: Transparency Logs vs. Active Freshness ★"]:::locked
     N6["🔒 N6: Root Rotation & Revocation Chains"]:::locked
     N7["🔒 N7: Self-Referential Policy Trap ★"]:::locked
@@ -190,15 +192,19 @@ Present a compact concept index table in chat and calibrate the starting
 
 1. **Path A — Leaf-First Calibration (Default when prior knowledge is partial or
    unknown):**
-   - Probe 1–2 mid-tier or near-goal concepts using short scenario questions
-     (1–3 sentence answers).
+   - Initialize the Turn 1 Mermaid diagram with foundational root concepts
+     marked `🎯 Ready Next` and downstream nodes `🔒 Locked`, then issue a
+     **one-time diagnostic calibration probe** on 1–2 mid-tier or near-goal
+     concepts using short scenario questions (1–3 sentence answers).
    - **Automatic Prerequisite Credit (Fast-Forward):** When the user passes an
-     advanced scenario check, automatically mark all of its upstream
-     prerequisites `✅ Mastered` so experienced users skip fundamentals they
-     already know.
-   - **Walk Backward on Misses:** When a probe misses (or the user replies
-     `"I don't know"`), trace backward along incoming prerequisite arrows to
-     locate the earliest unmastered prerequisite and mark it `🎯 Ready Next`.
+     advanced scenario check, automatically mark both that concept and all of
+     its upstream prerequisites `✅ Mastered` so experienced users skip
+     fundamentals they already know.
+   - **Walk Backward on Misses:** When a calibration probe misses (or the user
+     replies `"I don't know"`), **do not teach the advanced node yet**—leave it
+     `🔒 Locked`, trace backward along incoming prerequisite arrows to locate
+     the earliest unmastered prerequisite (`N1`, `N2`, ...), and teach/verify
+     that `🎯 Ready Next` prerequisite first.
 2. **Path B — Root-First Foundation Walk (When the user is new to the topic or
    says `"Start at the roots"`):**
    - Start with 0 `✅ Mastered` nodes.
@@ -240,7 +246,7 @@ On each turn, focus strictly on the active **`🎯 Ready Next`** concepts:
 3. **Track Partial Concept Progress (`(1/2)`):**
    - If a concept check has two load-bearing sub-questions (`a` and `b`) and the
      user passes `a` while missing `b`:
-     - Mark `a` passed immediately.
+     - Mark `a` mastered immediately.
      - Provide a crisp micro-correction + fresh transfer question for `b` only.
      - Label the node `(1/2)` on `🎯 Ready Next` in the Mermaid diagram until
        `b` passes.
@@ -280,7 +286,7 @@ Once every goal/leaf concept is `✅ Mastered`:
 1. **Finalize the Graph Artifact:** Mark all concepts `✅ Mastered`
    (`100% Complete`) in `<topic>_learning_graph.md`.
 2. **Emit a Final Summary:**
-   - **Starting Baseline $\to$ All Concepts Mastered**.
+   - **Starting Baseline → All Concepts Mastered**.
    - **Load-Bearing Takeaways:** 3–5 bullet points distilling the
      `★ Key Mental Shifts` and system invariants the user now owns.
 3. **Pivot to Practical Action:** Immediately offer (or transition into)
@@ -292,11 +298,10 @@ Once every goal/leaf concept is `✅ Mastered`:
 
 ## Anti-Patterns & Guardrails
 
-- **No Academic Jargon in User Output:** Never use academic terms like _"Hasse
-  diagram"_, _"Knowledge Space Theory"_, _"Outer Fringe"_, _"surmise"_, or
-  set-notation symbols (`$Q$`, `$K$`, `$F^+(K)$`) in chat or in the learning
-  artifact. Use **Prerequisite Graph**, **Mastered**, **Ready Next**, and
-  **Locked**.
+- **No Academic Jargon in User Output:** Keep every Mermaid class, node label,
+  and chat message strictly within the plain-language vocabulary defined in
+  **Core Graph Rules & Plain-Language Vocabulary** (`Prerequisite Graph`,
+  `Mastered`, `Ready Next`, `Locked`).
 - **No Passive Walls of Text Before Probing:** During calibration or when a new
   `🎯 Ready Next` concept unlocks, ask the scenario check first (unless the user
   explicitly asked you to teach the concept upfront). Let the user's attempt
