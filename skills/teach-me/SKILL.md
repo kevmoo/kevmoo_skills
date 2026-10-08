@@ -88,8 +88,15 @@ Copy this checklist to track progress across the session:
      comes from model priors rather than primary sources, every downstream check
      tests the wrong mental model.
    - Assign every concept an explicit **`Source` entry** in the Concept Index
-     table (e.g., `lib/src/verifier.dart#L42-L78`, `RFC 9110 §9.3`, or
-     `_(Domain invariant — no local file)_` for pure conceptual topics).
+     table using the highest-specificity tier available:
+     1. **Local codebase or doc**: clickable file/line range (e.g.,
+        `lib/src/verifier.dart#L42-L78`).
+     2. **External specification, standard, or CLI**: concise spec or command
+        anchor (e.g., `RFC 9110 §9.3`, `TUF v1.0 §5.3`, `dart pub publish`)—do
+        **not** append `"— no local file"` when an external spec or CLI anchor
+        exists.
+     3. **Pure abstract / first-principles concept**:
+        `_(First-principles invariant)_`.
 2. **Draft Atomic Concepts & Enforce Pre-Flight Topology / Scope Gates:**
    Identify the atomic concepts and their direct hard prerequisites without
    artificially compressing or dropping topics. Before writing the full learning
@@ -307,10 +314,15 @@ On each turn, focus strictly on the active **`🎯 Ready Next`** concepts:
 
 ### Phase 4: Five-Way Miss Diagnosis & Dynamic Graph Updates
 
-When a user's answer misses a `Scenario Check` or `Transfer Question`, **do not
-reflexively insert a new node into the graph**. Consult
-[references/miss-diagnosis-examples.md](references/miss-diagnosis-examples.md)
-and evaluate these five causes in order:
+When a user's answer misses a `Scenario Check` or `Transfer Question` (or the
+user asks `"Teach me"`), **do not reflexively insert a new node into the
+graph**. Consult
+[references/miss-diagnosis-examples.md](references/miss-diagnosis-examples.md),
+evaluate these five causes in order, and surface a concise 1-line
+`- **Diagnosis:** ...` bullet in the chat status header stating which cause
+applies and whether the graph changed (e.g.,
+`- **Diagnosis:** Active Concept Gap on N2 (prerequisites solid; graph unchanged)`
+or `- **Diagnosis:** Missing Upstream Prerequisite (inserted N0 -> N2)`):
 
 1. **Ambiguous Scenario Question (Agent Fault — Zero Graph Mutation, No
    Lecture):** If the user's answer holds up under a reasonable interpretation

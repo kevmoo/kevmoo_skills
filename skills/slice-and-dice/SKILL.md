@@ -186,7 +186,11 @@ educational domain mastery or Socratic verification, use `/teach-me` instead):
 
 - Before presenting a slice's critique, proposed edit, or technical explanation,
   verify every technical claim directly against the primary source code—never
-  guess or extrapolate from earlier summary notes.
+  guess or extrapolate from earlier summary notes. When the target document is
+  self-contained (such as a standalone rollout plan or prose draft that makes no
+  claims about external codebase files), read the named document directly via
+  file-reading tools without running speculative `ls` or `git log` shell
+  commands.
 - If primary-source inspection confirms the target document's claim holds up (or
   overturns an earlier draft concern), **do not invent nitpicks**. Explicitly
   mark the slice **`✅ Verdict: No comment needed (holds up in source)`**,
