@@ -2,19 +2,14 @@
 
 Reference templates for the persistent `<topic>_learning_graph.md` artifact,
 Mermaid visual state classes, and Teaching Block + Fresh Transfer Question
-(`N_x-T1`) turns.
+(`N_x-T1`) chat turns.
 
 ## 1. Persistent Graph Document Template (`<topic>_learning_graph.md`)
-
-Keep Turn 1 lightweight and spoiler-free (`<= 80` lines including the Mermaid
-diagram): populate **Part 1** with only the live Mermaid diagram, the full
-1-row-per-node Concept Index table, and the active `Scenario Checks`. Populate
-**Part 2 (Mastered Notes & Reference Appendix)** lazily as concepts unlock.
 
 ````markdown
 # Prerequisite Graph: {topic_title}
 
-- **Progress:** 🟢 **Mastered:** `N1`, `N2` · 🟠 **Ready Next:** `N3`, `N4` · ⚪ **Locked:** `N5`–`N8`
+- **Progress:** 🟢 **Mastered:** `N1`, `N2` · 🟠 **Ready Next:** `N3`, `N4` · ⚪ **Locked:** `N5-N8`
 
 ## Part 1: Live Prerequisite Graph & Active Scenario Gates
 
@@ -46,8 +41,8 @@ flowchart TD
 
 | Node | Concept | Direct Prerequisites | Status |
 | :--- | :--- | :--- | :--- |
-| `N1` | Deterministic Content Digests | _(None — Root)_ | ✅ Mastered |
-| `N2` | Asymmetric Identity Binding | _(None — Root)_ | ✅ Mastered |
+| `N1` | Deterministic Content Digests | _(None - Root)_ | ✅ Mastered |
+| `N2` | Asymmetric Identity Binding | _(None - Root)_ | ✅ Mastered |
 | `N3` | Untrusted Registry Threat Model `★` | `N1`, `N2` | 🎯 Ready Next |
 | `N4` | Ephemeral Workload Certificates | `N2` | 🎯 Ready Next |
 | `N5` | Transparency Logs vs. Active Freshness `★` | `N3` | 🔒 Locked |
@@ -63,21 +58,19 @@ flowchart TD
 
 ## Part 2: Mastered Notes & Reference Appendix (Populated as Concepts Unlock)
 
-- **`N1` (Deterministic Content Digests) — Mastered:** Binds verification to canonical byte digests (`SHA-256`) rather than mutable version tags (`lib/digest.dart`).
-- **`N2` (Asymmetric Identity Binding) — Mastered:** Signs structured `(subject, digest)` envelopes so verifiers authenticate both artifact and publisher (`lib/envelope.dart`).
+- **`N1` (Deterministic Content Digests) - Mastered:** Binds verification to canonical byte digests (`SHA-256`) rather than mutable version tags (`lib/digest.dart`).
+- **`N2` (Asymmetric Identity Binding) - Mastered:** Signs structured `(subject, digest)` envelopes so verifiers authenticate both artifact and publisher (`lib/envelope.dart`).
 ````
 
-## 2. Teaching Block & Fresh Transfer Question (`N_x-T1`) Pattern
+## 2. Chat Turn Skeleton: Teaching Block & Fresh Transfer Question (`N_x-T1`)
 
-When the user asks `"I don't know — teach me!"` or reveals a misconception on
-concept `N_x`:
+```markdown
+**Progress:** 🟢 **Mastered:** `N1`, `N2` · 🟠 **Ready Next:** `N3 (1/2)`, `N4` · ⚪ **Locked:** `N5-N8`
 
-1. **Pinpoint the Exact Conceptual Gap**: State what was right and what
-   invariant was missed (e.g., _"You noted the git tag matches, but the catch is
-   that the client never queries git history at install time..."_).
-2. **Concrete Mechanism + Structural Analogy**: Pair the exact code/protocol
-   mechanic (`lib/verifier.dart#L84`) with a crisp structural analogy (e.g.,
-   _"passive security camera vs. active door lock"_).
-3. **Fresh Transfer Question (`N_x-T1`)**: Pose a **new scenario** testing the
-   same invariant from a fresh angle (never re-asking the original question or
-   marking `✅ Mastered` on a passive `"Does that make sense?"`).
+### Teaching `N3`: Untrusted Registry Threat Model ★
+- **Conceptual Gap:** {Acknowledge what held up, then pinpoint the missed invariant -- e.g., git tags are never queried by the client at install time.}
+- **Mechanism & Source Anchor:** {Cite concrete code/spec behavior, e.g., `lib/verifier.dart#L84`, paired with a 1-sentence structural analogy.}
+
+### Transfer Check `N3-T1` (Unlocks `✅ Mastered` for `N3`)
+{New scenario testing the same invariant from a fresh failure angle -- 1-3 sentence reply.}
+```

@@ -56,7 +56,7 @@ relation"_, _"Outer Fringe"_, or `$F^+(K)$`) to the user:
 ## The Workflow at a Glance
 
 - [ ] **Phase 1: Map Concepts & Run Pre-Flight Scope/Topology Gates** → Verify
-      the topic forms a real prerequisite graph (`5–15` atomic concepts), gating
+      the topic forms a real prerequisite graph (`5-15` atomic concepts), gating
       with the user if `< 5` / flat or `> 15`, then save
       `<topic>_learning_graph.md` with a live color-coded Mermaid diagram.
 - [ ] **Phase 2: Diagnostic Calibration** → Calibrate starting state
@@ -101,32 +101,27 @@ relation"_, _"Outer Fringe"_, or `$F^+(K)$`) to the user:
      2. `Prune to a specific target goal` — keep only the prerequisite chain
         required for a concrete task.
      3. `Proceed with all {n} concepts in one graph` — explicit escape hatch.
-3. **Construct the Persistent Graph Document (`5–15` Concepts, Zero-Spoiler &
-   Lazy Notes):** Using
-   [`references/graph_schemas.md`](references/graph_schemas.md), save
-   `<topic>_learning_graph.md` in the session's artifact directory (or
-   `/tmp/<topic>_learning_graph.md` in standalone CLI sessions—never create
-   untracked files in the repository worktree).
-   - **Keep Turn 1 Lightweight & Spoiler-Free (`<= 80` lines including
-     Mermaid):** Populate **Part 1** with only the live Mermaid diagram
-     (`mastered` ✅, `ready` 🎯, `locked` 🔒, and `★` for key mental shifts),
-     the 1-row-per-node Concept Index table, and the active `Scenario Checks`.
-     Never print `Common Misconceptions` or `One-Line Definition` answers above
-     an unmastered scenario check, and never pre-write textbook prose for
-     `🔒 Locked` concepts on Turn 1.
-   - **Record Mastery Notes Lazily in Part 2:** Append `Key Mental Shift`
-     summaries, misconception notes, and code/spec mappings into **Part 2** _as_
-     concepts are taught or mastered.
+3. **Construct the Persistent Graph Document (`5-15` Concepts, Zero-Spoiler &
+   Lazy Notes):** Save `<topic>_learning_graph.md` in the session's artifact
+   directory (or `/tmp/<topic>_learning_graph.md` in standalone CLI
+   sessions—never create untracked files in the repository worktree) using the
+   Part 1 / Part 2 template in
+   [`references/graph_schemas.md`](references/graph_schemas.md).
+   - **Zero-Spoiler Turn 1 (`<= 80` lines):** Omit definitions, misconception
+     callouts, and `🔒 Locked` prose from **Part 1**—printing answers above an
+     active scenario check spoils diagnostic calibration, and pre-writing locked
+     nodes bloats Turn 1 latency. Append mastery notes into **Part 2** lazily as
+     concepts unlock.
 
 ---
 
 ### Phase 2: Diagnostic Calibration
 
 Keep the Turn 1 chat response concise (`<= 25` lines): link to
-`<topic>_learning_graph.md` (do not paste a duplicate Mermaid block in chat),
-show a compact summary table (collapsing `🔒 Locked` range rows like `N5–N8` as
-needed), avoid raw LaTeX math (`$...$`), and calibrate starting `🎯 Ready Next`
-concepts:
+`<topic>_learning_graph.md` (omitting duplicate Mermaid blocks in chat), show a
+compact summary table (collapsing `🔒 Locked` range rows like `N5-N8` as
+needed), use plain Unicode/code instead of `$...$` LaTeX (which renders as raw
+text in many Markdown viewers), and calibrate starting `🎯 Ready Next` concepts:
 
 1. **Path A — Leaf-First Calibration (Default when prior knowledge is partial or
    unknown):**
@@ -161,10 +156,11 @@ concepts:
    concept (1–3 sentence user replies).
 2. **Treat `"I Don't Know — Teach Me!"` as First-Class Signal:** When the user
    asks to be taught or reveals a misconception, deliver a focused **Teaching
-   Block** (see [`references/graph_schemas.md`](references/graph_schemas.md)):
-   address the exact conceptual gap first, explain the mechanism with concrete
-   code/protocol details + a structural analogy, and **issue a Fresh Transfer
-   Question (`N_x-T1`)** testing the same invariant from a new angle.
+   Block** using the turn skeleton in
+   [`references/graph_schemas.md`](references/graph_schemas.md): address the
+   exact conceptual gap first, explain the mechanism with concrete code/protocol
+   details + a structural analogy, and **issue a Fresh Transfer Question
+   (`N_x-T1`)** testing the same invariant from a new angle.
 3. **Track Partial Concept Progress (`(1/2)`):** When a two-part check passes
    `a` but misses `b`, mark `a` mastered, micro-correct + transfer-test `b`
    only, and badge the node `(1/2)` on `🎯 Ready Next` until `b` passes.
@@ -196,12 +192,11 @@ concepts:
 
 ## Anti-Patterns & Guardrails
 
-- **No Academic Jargon in User Output:** Stick strictly to `Prerequisite Graph`,
-  `Mastered`, `Ready Next`, and `Locked`.
 - **No Passive Walls of Text Before Probing:** Ask the scenario check first on
-  newly unlocked `🎯 Ready Next` nodes unless the user asks to be taught
-  upfront.
+  newly unlocked `🎯 Ready Next` nodes (unless the user asks to be taught
+  upfront) so you never lecture on concepts the user can already derive.
 - **No Trivia or Self-Grading:** Ask causal/failure-mode questions (_"Why does X
-  fail when Y happens?"_), never acronym trivia or _"Does that make sense?"_.
-- **Analogy Is Pedagogy, Not Proof:** Always verify conclusions against the
-  actual source code or specification.
+  fail when Y happens?"_), never acronym trivia or _"Does that make sense?"_
+  (which measures confidence rather than comprehension).
+- **Analogy Is Pedagogy, Not Proof:** Ground every analogy in a concrete
+  source-code or specification citation so metaphors never mask edge-case bugs.

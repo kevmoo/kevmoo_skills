@@ -30,10 +30,10 @@ before advancing.
 
 > [!IMPORTANT]
 >
-> **Turn Templates**: Read
+> **Turn Templates**: Before presenting `[SND 1/N]` in Phase 2, read
 > [`references/slice_templates.md`](references/slice_templates.md) for the exact
-> Mode 2 (`Before` → `After` + `What Changed`) and Mode 1 (Document Review with
-> Upfront Realization & Split Anchors) turn skeletons.
+> Mode 1 (Document Review with Upfront Realization & Split Anchors) and Mode 2
+> (`Before` → `After` + `What Changed`) turn skeletons.
 
 ---
 
@@ -52,9 +52,9 @@ before advancing.
       independently discover new facts (stating any independent realizations or
       plan updates **explicitly upfront**).
 - [ ] **Phase 4: Lock, Defer (`"skip"`), & Wrap-Up** → Flip confirmed slices to
-      `☑️` (**Locked**), mark `"skip"` slices `⏭️` (**Deferred — revisit
-      later**), advance to `[SND K+1/N]`, and cycle back through any `⏭️`
-      deferred slices or open questions when `[SND N/N]` locks.
+      `☑️`, mark deferred (`"skip"`) slices `⏭️` and discarded (`"drop"`) slices
+      `🗑️`, advance to `[SND K+1/N]`, and cycle back through any `⏭️` deferred
+      slices or open questions when `[SND N/N]` locks.
 
 ---
 
@@ -86,7 +86,7 @@ before advancing.
     slice outline, and prompt with three options:
     1. `(Recommended) Focus on {sub_area} first ({k} slices)` — full fidelity on
        the highest-leverage area first.
-    2. `Run a high-level Macro-SND across the whole target (~6–8 architectural slices)`.
+    2. `Run a high-level Macro-SND across the whole target (~6-8 architectural slices)`.
     3. `Proceed with all {n} slices in one pass` — explicit escape hatch.
 
 ### 2. Persistent Working Artifact as State of Truth
@@ -96,14 +96,16 @@ before advancing.
   `/tmp/snd_plan_<slug>.md` in standalone CLI sessions—never create untracked
   files in the repository worktree).
 - **Lazy Slice Drafting**: Record only the Progress Tracker and 1-line slice
-  titles on Turn 1. Draft each slice's full `Before`/`After` delta or review
-  comments lazily when `[SND K/N]` becomes active.
+  titles on Turn 1, and draft each slice's full `Before`/`After` delta or review
+  comments lazily when `[SND K/N]` becomes active—early user steering and source
+  checks frequently reshape later slices, making upfront full drafts go stale.
 - Update the working artifact's Progress Tracker before each response and echo
   it at the top of every chat turn:
   - `☑️ [SND 1/N] {slice_title}` — **Locked**
   - `⏭️ [SND 2/N] {slice_title}` — **Skipped (Deferred — revisit later)**
-  - **`[-] [SND 3/N] {slice_title}`** 👈 _Reviewing now_
-  - `[ ] [SND 4/N] {slice_title}`
+  - `🗑️ [SND 3/N] {slice_title}` — **Dropped (Discarded)**
+  - **`[-] [SND 4/N] {slice_title}`** 👈 _Reviewing now_
+  - `[ ] [SND 5/N] {slice_title}`
 
 ### 3. Zero Blocking Choice Modals During the Active Slice Loop
 
@@ -135,9 +137,10 @@ before advancing.
 ### 6. Formatting Candidate Edits & Review Comments
 
 - **Candidate Text Replacements (`Before` → `After` + `What Changed`)**:
-  - Never show `After` in isolation. Always present: (1) **Current Text
-    (`Before`)**, (2) **Proposed Text (`After`)**, and (3) **What Changed
-    (`Added` / `Changed` / `Removed`)**.
+  - Present (1) **Current Text (`Before`)**, (2) **Proposed Text (`After`)**,
+    and (3) **What Changed (`Added` / `Changed` / `Removed`)** together so the
+    user can verify the exact delta in chat without mentally diffing against the
+    source file.
 - **Candidate Review Comments (`text` Fence & Split Anchors)**:
   - Format candidate review comments inside a copy-pasteable `text` code fence
     with **blank lines between paragraphs or numbered points**.
@@ -181,12 +184,13 @@ before advancing.
   (`"next"`, `"apply"`, `"looks good"`), flip `[SND K/N]` to `☑️` (**Locked**)
   and advance to `[SND K+1/N]` (writing approved edits per slice or in a single
   verified batch at the end of the walkthrough).
-- **Skipping = Defer to Revisit Later (Never Delete)**: When the user replies
-  `"skip"` on `[SND K/N]`, mark it
-  `⏭️ [SND K/N] {slice_title} — **Skipped (Deferred — revisit later)**` in the
-  Progress Tracker and advance immediately to `[SND K+1/N]`. Skipping never
-  deletes or discards a topic—only an explicit `"drop"` / `"discard"` drops a
-  proposed change.
+- **Skipping (`"skip"`) vs. Dropping (`"drop"`)**:
+  - On `"skip"`, mark the slice `⏭️ [SND K/N] {slice_title}` — **Skipped
+    (Deferred — revisit later)** and advance immediately to `[SND K+1/N]` (never
+    deleting the topic).
+  - On `"drop"` / `"discard"`, mark the slice `🗑️ [SND K/N] {slice_title}` —
+    **Dropped (Discarded)** (keeping `1..N` numbering stable) and advance to
+    `[SND K+1/N]`.
 - **Closing `[SND N/N]`**: After `[SND N/N]` locks, cycle back through any `⏭️`
   deferred slices and `*(1 Open Question)*` callouts, and remove any temporary
   `/tmp/snd_plan_<slug>.md` scratch file.
