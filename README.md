@@ -35,16 +35,3 @@ npx skills add kevmoo/kevmoo_skills --skill <skill-name>
 | **[teach-me](skills/teach-me/SKILL.md)** | Builds a primary-source-grounded prerequisite graph (or linear mastery track) of atomic concepts and guides the user through unfamiliar technical domains, specifications, or codebases via diagnostic calibration, Socratic scenario checks, targeted teaching blocks, and fresh transfer questions. Use when invoking /teach-me, "teach me", learning a complex domain or architecture from first principles, mapping prerequisite concepts and key mental shifts, or verifying deep mental models before reviewing or writing code. Don't use for single-turn factual lookups (use quick-question), resolving open design trade-offs (use distilling-strategies-interactively), non-educational document/code review, co-editing, or issue triage (use slice-and-dice), or passive text summarization. | Auditable primary-source grounding with a mandatory Source column per concept, Pre-flight convergence-node topology gate and > 15 concept scope gate, Explicit Assessment (Scenario Check, Transfer Question) vs. Pedagogy (Teaching Block) layers, Leaf-first diagnostic calibration with automatic upstream prerequisite credit, Five-way miss diagnosis rubric and failure-mode transfer checks (N_x-T1) |
 
 <!-- SKILLS_LIST_END -->
-
-## Claude Code (plugin marketplace)
-
-This repo is also a [Claude Code plugin marketplace][marketplace].
-
-[marketplace]: https://code.claude.com/docs/en/plugin-marketplaces
-
-Add the marketplace and install the plugin to get every skill at once:
-
-```bash
-/plugin marketplace add kevmoo/kevmoo_skills
-/plugin install kevmoo-skills@kevmoo
-```

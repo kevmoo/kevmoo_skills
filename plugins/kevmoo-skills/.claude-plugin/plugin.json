@@ -1,9 +1,0 @@
-{
-  "name": "kevmoo-skills",
-  "description": "Personal workflow, code review, domain modeling, and interactive teaching skills.",
-  "author": { "name": "kevmoo" },
-  "homepage": "https://github.com/kevmoo/kevmoo_skills",
-  "repository": "https://github.com/kevmoo/kevmoo_skills",
-  "license": "Apache-2.0",
-  "keywords": ["agent-skills", "skills", "workflow", "code-review"]
-}
