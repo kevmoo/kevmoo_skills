@@ -1,19 +1,19 @@
 ---
 name: slice-and-dice
 description: >-
-  Walks through multi-part documents, proposals, technical audits, or code
-  architectures sequentially in bite-sized (~60-second) slices ([SND 1/N] ..
-  [SND N/N]) with a persistent progress tracker, primary-source verification,
-  and dynamic plan updates. Use when reviewing, co-editing, or learning from a
-  dense document, RFC, plan, or audit section-by-section without cognitive
-  overload, or when invoked via /slice-and-dice, /slice-n-dice, /snd, "slice
-  and dice", or "slice-n-dice". Don't use for single-turn answers (use
-  quick-question), prerequisite-graph domain mastery from first principles (use
-  graph-learn), pre-drafting Socratic quizzes (use
+  Walks through multi-part documents, proposals, technical audits, issue
+  backlogs, or code refactors in bite-sized (~60-second) slices ([SND 1/N] ..
+  [SND N/N]) with topology-aware ordering, a persistent progress tracker,
+  auditable Source anchors, and dynamic plan updates. Use when reviewing,
+  co-editing, or triaging a dense document, RFC, plan, or audit slice-by-slice
+  without cognitive overload, or when invoked via /slice-and-dice,
+  /slice-n-dice, /snd, "slice and dice", or "slice-n-dice". Don't use for
+  single-turn answers (use quick-question), learning a domain or verifying deep
+  mental models (use teach-me), pre-drafting Socratic quizzes (use
   distilling-strategies-interactively), or one-shot automated PR diff reports
   (use pr-review).
 key_features:
-  - Sequential ~60-second slices ([SND 1/N]) with persistent artifact state tracking
+  - Topology-aware ~60-second slices ([SND 1/N]) with auditable Source anchors
   - Pre-flight scope gate when natural slicing exceeds 10 slices
   - Zero blocking choice modals during active slice review
   - Before/After + What Changed edit deltas and split-anchor review comments
@@ -22,13 +22,14 @@ key_features:
 
 # Slice-and-Dice (`SND`)
 
-Walk through dense documents, multi-part proposals, technical audits, or complex
-codebases one bite-sized slice at a time (`[SND 1/N]` .. `[SND N/N]`).
+Walk through dense documents, multi-part proposals, technical audits, or
+multi-item triage lists one bite-sized slice at a time (`[SND 1/N]` ..
+`[SND N/N]`).
 
-Instead of dumping an entire 10-section critique, rewrite, or architectural tour
-into a single wall of text—which causes cognitive overload and stalls completion
-—partition the work into **sequential `~60-second` slices optimized for
-reasonable completeness** and lock each slice interactively before advancing.
+Instead of dumping an entire 10-section critique, rewrite, or audit backlog into
+a single wall of text—which causes cognitive overload and stalls completion—
+partition the work into **focused `~60-second` slices ordered by the content's
+natural topology** and lock each slice interactively before advancing.
 
 ---
 
@@ -42,8 +43,9 @@ reasonable completeness** and lock each slice interactively before advancing.
   follow-up questions, quote specific lines, request partial edits, or steer
   with a single word (`"next"`, `"done"`, `"skip"`).
 - **Improves Accuracy Over Time**: Grounding each slice in primary source code
-  as you go—and explicitly updating the plan when you discover something new—
-  catches false assumptions before they propagate into later sections.
+  with an auditable `Source` anchor—and explicitly updating the plan when you
+  discover something new—catches false assumptions before they propagate into
+  later slices.
 
 ---
 
@@ -51,11 +53,12 @@ reasonable completeness** and lock each slice interactively before advancing.
 
 Copy this checklist to track the lifecycle of an `SND` walkthrough:
 
-- [ ] **Phase 1: Partition, Scope Gate (if `N > 10`), & Stage** → Partition the
-      target into coherent `~60-second` slices (`[SND 1/N]` .. `[SND N/N]`) for
-      reasonable completeness. If `N > 10`, halt at the Pre-Flight Scope Gate to
-      calibrate scope; otherwise stage the persistent working artifact and
-      present **only `[SND 1/N]`**.
+- [ ] **Phase 1: Ground in Primary Sources, Choose Topology Order, & Scope Gate
+      (if `N > 10`)** → Partition the target into coherent `~60-second` slices
+      (`[SND 1/N]` .. `[SND N/N]`) with explicit `Source` anchors, ordered by
+      **Document Order**, **Thematic Clusters**, or **Dependency Gates**. If
+      `N > 10`, halt at the Pre-Flight Scope Gate; otherwise stage the
+      persistent working artifact and present **only `[SND 1/N]`**.
 - [ ] **Phase 2: Single-Slice Review Loop** → Present the active slice with
       exact deep-links, primary-source verification, and properly formatted
       deltas or comments; yield in plain chat.
@@ -71,30 +74,45 @@ Copy this checklist to track the lifecycle of an `SND` walkthrough:
 
 ## Choosing the Right `SND` Mode
 
-Adapt the slice payload to what the user is trying to accomplish:
+Adapt the slice payload to what the user is trying to accomplish (for
+educational domain mastery or Socratic verification, use `/teach-me` instead):
 
-| Mode                                      | Typical User Prompt                                          | What Each `[SND K/N]` Slice Contains                                                                       |
-| :---------------------------------------- | :----------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------- |
-| **1. Document / Proposal Review**         | _"Walk me through this RFC / API doc with SND"_              | Exact anchor quote + primary-source check + copy-pasteable `text` comment(s) (or **"No comment needed"**). |
-| **2. Co-Authoring & Iterative Editing**   | _"Break these edits / proposals into an SND"_                | Target section link + **`Before` → `After` + `What Changed`** (`Added` / `Changed` / `Removed`) delta.     |
-| **3. Technical Walkthrough ("Teach Me")** | _"Do a slice-n-dice over these issues teaching me as we go"_ | Focused explanation + primary-source code snippets + space for deep-dive Q&A before locking.               |
+| Mode                                    | Typical User Prompt                                      | What Each `[SND K/N]` Slice Contains                                                                       |
+| :-------------------------------------- | :------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------- |
+| **1. Document / Proposal Review**       | _"Walk me through this RFC / API doc with SND"_          | Exact anchor quote + primary-source check + copy-pasteable `text` comment(s) (or **"No comment needed"**). |
+| **2. Co-Authoring & Iterative Editing** | _"Break these edits / proposals into an SND"_            | Target `Source` link + **`Before` → `After` + `What Changed`** (`Added` / `Changed` / `Removed`) delta.    |
+| **3. Multi-Item Audit / Issue Triage**  | _"Do a slice-n-dice over these audit findings / issues"_ | Thematic or dependency-ordered item + primary `Source` proof + concrete action/decision to lock.           |
 
 ---
 
 ## Core Protocol & Invariants
 
-### 1. Completeness-Driven `~60-Second` Slices & The `N > 10` Scope Gate
+### 1. Completeness-Driven `~60-Second` Slices, Topology Ordering & The `N > 10` Scope Gate
 
 - **Size by Cognitive Unit, Not Arbitrary Quota**:
-  - Partition the target top-to-bottom so each slice (`[SND 1/N]` ..
-    `[SND N/N]`) covers **one coherent topic or decision** sized to roughly **60
-    seconds** of reading and reaction, optimizing for **reasonable
-    completeness** across the requested scope.
+  - Partition the target so each slice (`[SND 1/N]` .. `[SND N/N]`) covers **one
+    coherent topic or decision** sized to roughly **60 seconds** of reading and
+    reaction, optimizing for **reasonable completeness** across the requested
+    scope.
   - Never force a large document into an arbitrary fixed slice count: neither
     over-stuff 3–4 orthogonal debates into a single bloated slice nor silently
     drop sections just to keep `N` small. Conversely, fold trivial 1-line fixes
     that share a single theme into one `~60-second` slice rather than inflating
     `N`.
+- **Choose the Ordering Topology That Fits the Content**:
+  - Human review always steps through one slice at a time (`[SND 1/N]` ..
+    `[SND N/N]`), but the _order_ of slices should match the underlying
+    structure rather than blindly following file/list order:
+    1. **Document Order (Top-to-Bottom)**: Use for cohesive narrative RFCs or
+       prose documents where sections build linearly.
+    2. **Thematic Clusters (Unordered Sets)**: When reviewing scattered audit
+       findings, issue backlogs, or multi-file refactors, group items by subject
+       area or blast radius rather than arbitrary list order.
+    3. **Dependency / Gate Order (Convergent DAGs)**: When a downstream slice
+       depends on locking `>= 2` foundational upstream slices first (a
+       convergence node), order the slices topologically (foundations first) and
+       optionally include a compact Mermaid dependency diagram at the top of the
+       working artifact.
 - **Mandatory Pre-Flight Scope Gate When `N > 10`**:
   - Linear walkthroughs beyond ~10 turns hit human review fatigue and context
     degradation.
@@ -114,29 +132,30 @@ Adapt the slice payload to what the user is trying to accomplish:
     3. `Proceed with all {n} slices in one pass` — explicit escape hatch when
        exhaustive linear coverage is genuinely wanted.
 
-### 2. Persistent Working Artifact as State of Truth
+### 2. Persistent Working Artifact & Auditable `Source` Anchors
 
-- Pin the canonical **Slice-and-Dice (`SND`) Progress Tracker** (including
-  locked states, cross-slice ripple reminders, and deferred open questions) at
-  the top of a persistent working Markdown artifact (in the session artifact
-  directory if available, or `/tmp/snd_plan_<slug>.md` in standalone CLI
-  sessions—never create untracked files in the repository worktree or inject the
-  tracker into a tracked repository file).
+- Pin the canonical **Slice-and-Dice (`SND`) Progress Tracker** (including each
+  slice's **auditable `Source` anchor**—such as `path/to/file.ext#L18-L45` or
+  `Doc §2.1`—plus locked states, cross-slice ripple reminders, and deferred open
+  questions) at the top of a persistent working Markdown artifact (in the
+  session artifact directory if available, or `/tmp/snd_plan_<slug>.md` in
+  standalone CLI sessions—never create untracked files in the repository
+  worktree or inject the tracker into a tracked repository file).
 - **Why**: Chat-only trackers drift over multi-turn sessions or across context
-  compaction, whereas a CLI/JSON state wrapper adds per-turn subprocess latency
-  and rigid schema friction during dynamic re-slicing. Updating the top ~15
-  lines of the working `.md` artifact via standard file-edit tools gives
-  compaction-proof state with zero CLI overhead.
+  compaction, and unanchored slice lists drift from the actual codebase.
+  Recording each slice's `Source` in the top ~15 lines of the working `.md`
+  artifact gives compaction-proof, verifiable state with zero CLI overhead.
 - **Lazy Slice Drafting (Keep Turn 1 Fast)**: Keep the working artifact
-  lightweight on Turn 1—record only the Progress Tracker and 1-line slice
-  titles/notes. Draft each slice's full `Before`/`After` delta or review
-  comments lazily when `[SND K/N]` becomes active so Turn 1 stays fast and
-  earlier pivots never waste pre-drafted work.
+  lightweight on Turn 1—record only the Progress Tracker (with `Source` anchors)
+  and 1-line slice notes. Draft each slice's full `Before`/`After` delta or
+  review comments lazily when `[SND K/N]` becomes active so Turn 1 stays fast
+  and earlier pivots never waste pre-drafted work.
 - Update the working artifact's Progress Tracker before each response and echo
   the current tracker block at the top of every chat turn:
-  - `☑️ [SND 1/N] {slice_title}` — **Locked**
-  - **`[-] [SND 2/N] {slice_title}`** 👈 _Reviewing now_
-  - `[ ] [SND 3/N] {slice_title}`
+  - `☑️ [SND 1/N] {slice_title} (Source: {file_or_section})` — **Locked**
+  - **`[-] [SND 2/N] {slice_title} (Source: {file_or_section})`** 👈 _Reviewing
+    now_
+  - `[ ] [SND 3/N] {slice_title} (Source: {file_or_section})`
 
 ### 3. Zero Blocking Choice Modals During the Active Slice Loop
 

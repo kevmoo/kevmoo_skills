@@ -12,7 +12,7 @@
       ],
       "expected_repo_state": [
         "Stages the canonical Progress Tracker in the session artifact directory or /tmp/snd_plan_<slug>.md without creating untracked files in the repository worktree or injecting tracker lines into tracked repository files.",
-        "Uses lazy slice drafting in the working tracker (Progress Tracker + 1-line slice titles/notes) without pre-baking full Before/After diffs for queued slices 2-4.",
+        "Uses lazy slice drafting in the working tracker (Progress Tracker + 1-line slice titles/notes with Source file/line anchors) without pre-baking full Before/After diffs for queued slices 2-4.",
         "Does not overwrite the target rollout document before the user confirms [SND 1/4]."
       ],
       "agent_config": "bare-agent"

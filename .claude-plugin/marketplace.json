@@ -1,0 +1,13 @@
+{
+  "name": "kevmoo",
+  "owner": { "name": "kevmoo" },
+  "description": "Personal agent skills created by kevmoo.",
+  "plugins": [
+    {
+      "name": "kevmoo-skills",
+      "source": "./plugins/kevmoo-skills",
+      "description": "Personal workflow, code review, domain modeling, and interactive teaching skills.",
+      "category": "development"
+    }
+  ]
+}
