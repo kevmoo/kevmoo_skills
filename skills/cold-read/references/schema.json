@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Cold read verdict",
+  "type": "object",
+  "required": [
+    "decision",
+    "decision_line",
+    "words_above_fold",
+    "known_to_reader",
+    "missing",
+    "cut_list",
+    "verdict"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "decision": {
+      "type": "string",
+      "description": "The next decision the reader would make, in one sentence."
+    },
+    "decision_line": {
+      "type": "integer",
+      "description": "First 1-based line at which the decision became makeable; -1 if never."
+    },
+    "words_above_fold": {
+      "type": "integer",
+      "description": "Words on lines 1..decision_line, or in the whole file when decision_line is -1."
+    },
+    "known_to_reader": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Sentences that restate what the reader already knows, or narrate the author's process."
+    },
+    "missing": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Facts the decision needed and did not get."
+    },
+    "cut_list": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Lines whose removal would not change the decision."
+    },
+    "verdict": {
+      "type": "string",
+      "enum": ["decide_in_n", "decide_later", "cannot_decide"]
+    }
+  }
+}

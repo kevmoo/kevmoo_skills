@@ -1,0 +1,38 @@
+{
+  "repo_criteria": [
+    "evals/code_quality_rubric.json"
+  ],
+  "evals": [
+    {
+      "id": "cold_read_buried_lead",
+      "prompt": "/cold-read skills/cold-read/evals/fixtures/buried_lead_issue.md --role triager",
+      "expected_chat_output": [
+        "Reports verdict decide_later or cannot_decide.",
+        "Reports a decision_line greater than 3 and the words above the fold.",
+        "Lists at least one cut_list entry naming the process narration or the code tour.",
+        "Does NOT list the steps to reproduce or the stack trace in cut_list.",
+        "Does NOT restate the fixture's content back to the user."
+      ],
+      "expected_repo_state": [
+        "No files are modified.",
+        "No artifact files are written to disk."
+      ],
+      "agent_config": "bare-agent"
+    },
+    {
+      "id": "cold_read_decision_first",
+      "prompt": "/cold-read skills/cold-read/evals/fixtures/decision_first_issue.md --role triager",
+      "expected_chat_output": [
+        "Reports verdict decide_in_n.",
+        "Reports a decision_line of 3 or less.",
+        "Does NOT list the opening paragraph, the steps to reproduce, or the stack trace in cut_list.",
+        "Reports one summary line, not a paragraph."
+      ],
+      "expected_repo_state": [
+        "No files are modified.",
+        "No artifact files are written to disk."
+      ],
+      "agent_config": "bare-agent"
+    }
+  ]
+}
