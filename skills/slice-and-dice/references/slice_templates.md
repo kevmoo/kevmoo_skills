@@ -10,11 +10,11 @@ Proposal Review) and Mode 2 (Co-Authoring & Iterative Editing).
 
 *(`"skip"` = `⏭️` Deferred to revisit later, never delete; `"drop"` = `🗑️` Dropped)*
 
-- `☑️ [SND 1/5] Summary & Phases Overview` -- **Locked**
-- **`[-] [SND 2/5] Client Constructors & Credential Wiring`** 👈 *Reviewing now*
-- `[ ] [SND 3/5] Shared Type Inventory` *(Updated: verified Row 4 in source)*
-- `[ ] [SND 4/5] Cross-Platform Implications`
-- `[ ] [SND 5/5] Release & Versioning`
+- `☑️ [SND 1/5] Summary & Phases Overview (Source: Proposal §1)` -- **Locked**
+- **`[-] [SND 2/5] Client Constructors & Credential Wiring (Source: Proposal §2, lib/src/client.dart#L140-L152)`** 👈 *Reviewing now*
+- `[ ] [SND 3/5] Shared Type Inventory (Source: Proposal §3, lib/src/types.dart#L1-L60)` *(Updated: verified Row 4 in source)*
+- `[ ] [SND 4/5] Cross-Platform Implications (Source: Proposal §4)`
+- `[ ] [SND 5/5] Release & Versioning (Source: Proposal §5)`
 
 > [!NOTE]
 >
@@ -65,11 +65,11 @@ defer for later, `"drop"` to omit, or `"next"` to lock `[SND 2/5]` and move to
 
 *(`"skip"` = `⏭️` Deferred to revisit later, never delete; `"drop"` = `🗑️` Dropped)*
 
-- `☑️ [SND 1/5] Executive Summary & Goals` -- **Locked**
-- **`[-] [SND 2/5] Rollout Criteria & Confidence Gates`** 👈 *Reviewing now*
-- `[ ] [SND 3/5] Cross-Package API Boundaries`
-- `[ ] [SND 4/5] Testing & Corpus Verification Strategy`
-- `[ ] [SND 5/5] 2027 Horizon & Non-Goals`
+- `☑️ [SND 1/5] Executive Summary & Goals (Source: docs/rollout_plan.md#L1-L40)` -- **Locked**
+- **`[-] [SND 2/5] Rollout Criteria & Confidence Gates (Source: docs/rollout_plan.md#L42-L50)`** 👈 *Reviewing now*
+- `[ ] [SND 3/5] Cross-Package API Boundaries (Source: docs/rollout_plan.md#L52-L88)`
+- `[ ] [SND 4/5] Testing & Corpus Verification Strategy (Source: docs/rollout_plan.md#L90-L120)`
+- `[ ] [SND 5/5] 2027 Horizon & Non-Goals (Source: docs/rollout_plan.md#L122-L150)`
 
 ---
 

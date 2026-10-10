@@ -1,0 +1,58 @@
+{
+  "repo_criteria": ["evals/code_quality_rubric.json"],
+  "evals": [
+    {
+      "id": "teach_me_task_1",
+      "prompt": "Use /teach-me to help me build a deep mental model of supply-chain package attestation and untrusted-registry verification (covering content digests, asymmetric identity binding, ephemeral workload certificates, transparency logs vs. active freshness, root rotation, self-referential policy traps, and anti-downgrade pinning).",
+      "expected_chat_output": [
+        "Uses plain engineering terminology (Prerequisite Graph, Concept, Mastered, Ready Next, Locked, Key Mental Shift, Scenario Check, Teaching Block, Transfer Question) with zero academic KST or graph-theory jargon (no 'Hasse diagram', 'Knowledge Space Theory', 'Outer Fringe', 'surmise', or '$F^+(K)$') and no raw LaTeX math ($...$) in prose.",
+        "Keeps the Turn 1 chat response concise (<= 25 lines): links to <topic>_learning_graph.md without pasting a duplicate Mermaid diagram into chat, shows a compact concept summary table (collapsing Locked range rows when needed), starts at a single foundational root concept (N1) with 1 concise causal Scenario Check (1 concept per turn), and invites the user to skip ahead conversationally (e.g., 'I already know N1/N2, skip to N3') if they already know the fundamentals.",
+        "Stops calling tools and waits for the user's response without simulating user answers."
+      ],
+      "expected_repo_state": [
+        "Creates a persistent <topic>_learning_graph.md artifact in the session artifact directory or /tmp/<topic>_learning_graph.md (without dirtying the repository worktree) using classDef mastered, ready, and locked, with at least one convergence node (>= 2 direct prerequisites feeding one concept).",
+        "Includes a concise Source column in the 1-row-per-node Concept Index table and keeps Turn 1 <topic>_learning_graph.md lightweight (<= 80 lines including the Mermaid diagram) and spoiler-free: does NOT print Common Misconceptions or One-Line Definition explanations above unmastered Scenario Checks, and does NOT pre-author multi-line textbook sections for Locked concepts on Turn 1."
+      ],
+      "agent_config": "bare-agent"
+    },
+    {
+      "id": "teach_me_task_2",
+      "prompt": "Run /teach-me on this 6-step straight linear release pipeline where each step only depends on the single step immediately before it: (1) bump version in pubspec.yaml, (2) update CHANGELOG.md, (3) run dart analyze, (4) run dart test, (5) push git tag, (6) publish to pub.dev.",
+      "expected_chat_output": [
+        "Triggers the Pre-Flight Convergence Topology Gate (recognizing that the 6 steps form a straight linear chain with 0 convergence nodes rather than a convergent prerequisite graph) and halts before creating a Mermaid learning graph.",
+        "Clearly states why a prerequisite graph adds no value for a straight sequential chain with zero convergence nodes.",
+        "Offers the 3 pre-flight options: (1) Run linear/thematic mastery checks in teach-me (Recommended), (2) Take an unquizzed guided tour (or switch to /slice-and-dice for doc review), or (3) Broaden scope into a convergent system graph."
+      ],
+      "expected_repo_state": [
+        "Does NOT create a <topic>_learning_graph.md artifact before the user responds."
+      ],
+      "agent_config": "bare-agent"
+    },
+    {
+      "id": "teach_me_task_3",
+      "prompt": "Use /teach-me to teach me the entire browser rendering, networking, JavaScript engine, WebAssembly compiler, garbage collector, and compositor architecture end-to-end (covering 22 distinct atomic mechanisms across networking, DOM/CSS layout, JIT tiers, WasmGC, and GPU compositing).",
+      "expected_chat_output": [
+        "Maps atomic concepts honestly without compressing distinct mechanisms into muddy umbrella nodes just to fit under 15 nodes.",
+        "Triggers the Pre-Flight Upper-Bound Gate (> 15 atomic concepts) and halts before starting calibration.",
+        "Presents a high-level cluster breakdown in chat and prompts the user with the 3 scoping options: (1) Start with a foundational sub-area first (Recommended), (2) Prune to a specific target goal, or (3) Proceed with all N concepts."
+      ],
+      "expected_repo_state": [
+        "Does NOT start diagnostic calibration until the user chooses a scope option."
+      ],
+      "agent_config": "bare-agent"
+    },
+    {
+      "id": "teach_me_task_4",
+      "prompt": "Continue a /teach-me session at active concept N2 (Asymmetric Identity Binding, Source: docs/attestation.md#L26-L48) after the user replies to N2-Q1 ('Why does bundling META-INF/signer.pub inside the tarball break publisher authentication?'): 'I think verification fails because Ed25519 signatures only verify the raw bytes and don't hash the filename—Wait, actually I'm not sure why bundling META-INF/signer.pub inside the tarball breaks identity verification if the Ed25519 math passes. Teach me!'",
+      "expected_chat_output": [
+        "Generously acknowledges what held up in the user's intuition first (that Ed25519 verifies the raw bytes) and teaches N2 immediately without requiring a robotic '- **Diagnosis:** ...' header line.",
+        "Delivers a focused Teaching Block (Pedagogy) anchored in docs/attestation.md#L26-L48 explaining why an in-band public key bundled inside the untrusted tarball cannot establish trusted publisher identity (paired with a concrete structural analogy).",
+        "Poses 1 fresh Transfer Question (N2-T1) (Assessment) that changes the failure mode or scenario mechanics (e.g., unbound package/version metadata replay under a pinned out-of-band key) rather than merely swapping surface nouns."
+      ],
+      "expected_repo_state": [
+        "Keeps N2 in 🎯 Ready Next state without inserting a spurious new prerequisite node into <topic>_learning_graph.md."
+      ],
+      "agent_config": "bare-agent"
+    }
+  ]
+}
