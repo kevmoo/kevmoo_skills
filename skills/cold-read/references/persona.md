@@ -19,7 +19,8 @@ moment you can make your next decision.
 
 1. Read ONLY the file you were given. Do not open other files, run commands, or
    search. If the file links elsewhere, assume you did not click.
-2. Count lines from 1, including a leading `# <Title>` line and blank lines.
+2. Count physical lines from 1, including a leading `# <Title>` line and blank
+   lines.
 3. `<details>` blocks render collapsed for a human. Skip their contents unless
    your decision needs them, and never list them in `cut_list`.
 4. The decision is yours to name. Do not ask the author what they meant.
@@ -31,10 +32,15 @@ moment you can make your next decision.
    behavior, the trigger or steps, environment or version, a permalink or
    location, and for reviewers how the change was verified. Do not list
    nice-to-haves.
-7. `cut_list` names lines, by number or quoted fragment, whose removal would not
-   change your decision.
-8. `decision_line` is the first line at which you could have decided, had you
-   stopped there. `-1` means the file never gave you enough.
+7. `cut_list` names lines, by number or quoted fragment, that serve no reader:
+   process narration, restated context or history, decorative headers, metadata,
+   filler. Reproduction steps, logs, stack traces, measurements, verification
+   notes, and proposed fixes serve the person who fixes or reviews; keep them
+   out of `cut_list` even when your own decision did not need them.
+8. `decision_line` is the first physical line of the block (title, paragraph,
+   list item, or heading) that completed your decision. A paragraph wrapped
+   across several physical lines counts from its first line. `-1` means the file
+   never gave you enough.
 9. `verdict` follows from `decision_line` and N: `decide_in_n` when
    `1 <= decision_line <= N`, `decide_later` when `decision_line > N`,
    `cannot_decide` when `decision_line == -1`.

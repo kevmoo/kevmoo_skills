@@ -9,7 +9,8 @@
       "expected_chat_output": [
         "Reports verdict decide_later or cannot_decide.",
         "Reports a decision_line greater than 3 and the words above the fold.",
-        "Lists at least one cut_list entry quoting process narration or the code tour.",
+        "Lists at least one cut_list entry naming the process narration or the code tour.",
+        "Does NOT list the steps to reproduce or the stack trace in cut_list.",
         "Does NOT restate the fixture's content back to the user."
       ],
       "expected_repo_state": [
@@ -24,7 +25,7 @@
       "expected_chat_output": [
         "Reports verdict decide_in_n.",
         "Reports a decision_line of 3 or less.",
-        "Reports an empty or near-empty cut_list.",
+        "Does NOT list the opening paragraph, the steps to reproduce, or the stack trace in cut_list.",
         "Reports one summary line, not a paragraph."
       ],
       "expected_repo_state": [

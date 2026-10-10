@@ -60,10 +60,12 @@ artifacts as process narration and as background the reader already has.
 
 ## Model choice
 
-A light model is enough for a pass/fail gate, because the verdict is derived
-mechanically from `decision_line`. For measurement runs where the exact
-`decision_line` and `cut_list` matter, use your default model; light models
-place the decision line less consistently.
+A fast model (`flash`) is sufficient for single-draft gating once
+[references/persona.md](references/persona.md) anchors `decision_line` to the
+first line of the block; both `flash` and the default model score the regression
+fixtures identically. For batch baselines over multi-section artifacts, prefer
+the default model when quota allows: in a 10-artifact calibration sample,
+`flash` placed `decision_line` earlier on 2 of 10 drafts.
 
 ## Batch mode
 
