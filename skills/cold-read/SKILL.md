@@ -40,21 +40,21 @@ artifacts as process narration and as background the reader already has.
 
 ## Steps
 
-1. **Resolve the role.** Without `--role`, infer it: `owner` when recent
-   commits on the paths the draft references come from one or two active
-   maintainers; otherwise `triager`. Pull request bodies default to `reviewer`.
+1. **Resolve the role.** Without `--role`, infer it: `owner` when recent commits
+   on the paths the draft references come from one or two active maintainers;
+   otherwise `triager`. Pull request bodies default to `reviewer`.
 2. **Spawn a fresh-context, read-only reader.** Give it exactly three things:
    the contents of [references/persona.md](references/persona.md), the role and
    N, and the draft file path. Nothing else from the current conversation.
-3. **Require the JSON shape** in [references/schema.json](references/schema.json).
-   Re-run once if the reply is prose. Recompute `verdict` from `decision_line`
-   and N yourself; the model's `decision_line` is the signal, its `verdict` is
-   a convenience.
+3. **Require the JSON shape** in
+   [references/schema.json](references/schema.json). Re-run once if the reply is
+   prose. Recompute `verdict` from `decision_line` and N yourself; the model's
+   `decision_line` is the signal, its `verdict` is a convenience.
 4. **Act on the verdict.**
    - `decide_in_n`: proceed.
    - `decide_later` or `cannot_decide`: move the sentence that carries the
-     decision to the first body line, apply `cut_list`, add any `missing`
-     facts, then re-run once.
+     decision to the first body line, apply `cut_list`, add any `missing` facts,
+     then re-run once.
 5. **Report one line in chat**: verdict, decision line, words above the fold,
    and the number of cut lines. Do not restate the draft.
 
@@ -67,11 +67,10 @@ place the decision line less consistently.
 
 ## Batch mode
 
-For baselines over many past artifacts, run one reader per artifact in
-parallel, each in its own fresh context, and tabulate `verdict`,
-`decision_line`, `words_above_fold`, the `known_to_reader` count, and
-`missing`. Never give one reader two artifacts; the second read is primed by
-the first.
+For baselines over many past artifacts, run one reader per artifact in parallel,
+each in its own fresh context, and tabulate `verdict`, `decision_line`,
+`words_above_fold`, the `known_to_reader` count, and `missing`. Never give one
+reader two artifacts; the second read is primed by the first.
 
 ## What the reader is for
 

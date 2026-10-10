@@ -2,7 +2,8 @@
 
 `dart bin/main.dart` with an empty `config.yaml` exits with an unhandled
 `NoSuchMethodError` from `Config.fromYaml` (`lib/src/config.dart:22`). Expected:
-a `config.yaml is empty` error or the documented defaults. Dart 3.5.0, macOS 14.6.
+a `config.yaml is empty` error or the documented defaults. Dart 3.5.0, macOS
+14.6.
 
 ## Steps to reproduce
 

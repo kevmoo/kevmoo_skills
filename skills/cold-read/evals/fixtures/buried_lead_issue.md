@@ -11,8 +11,8 @@ Commit `a1b2c3d` and PR #41 introduced `Config.fromYaml()` to replace the
 earlier JSON-based loader, and PR #58 later added the `verbose` flag.
 
 After tracing all of this, I noticed that when `config.yaml` is empty, the
-process exits with an unhandled `NoSuchMethodError` on `null` instead of a
-clear error message or defaults.
+process exits with an unhandled `NoSuchMethodError` on `null` instead of a clear
+error message or defaults.
 
 ## Steps to reproduce
 
