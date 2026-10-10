@@ -1,28 +1,34 @@
-# Miss Diagnosis & Transfer Question Examples (`teach-me`)
+# Miss Diagnosis, Plain-English Grading & Transfer Question Examples (`teach-me`)
 
-Use this guide during **Phase 3 (Teaching & Verification Loop)** and **Phase 4
-(Miss Diagnosis & Dynamic Graph Updates)** whenever a user misses a
-`Scenario Check` or `Transfer Question`.
+Use this guide during **Phase 3 (One-Concept-at-a-Time Assessment & Teaching
+Loop)** when evaluating user responses or designing a follow-up
+`Transfer Question (N_x-T1)`.
 
-Agents default to mutating the prerequisite graph (inserting a new prerequisite
-node) whenever a check fails. **Resist that reflex**: most misses are caused by
-an ambiguous question or a normal gap on the active concept itself, neither of
-which changes the graph topology.
+- **Credit Plain-English Intuition First**: Before diagnosing a miss, check
+  whether the user's everyday phrasing already captures the causal mechanism
+  (for example, saying _"it's making a change w/out a difference"_ when asked
+  why a noun-swapped transfer question fails). When the intuition holds, mark
+  the concept `✅ Mastered` immediately—never withhold credit for missing
+  textbook or rubric buzzwords.
+- **Resist Reflexive Graph Mutation**: Most genuine misses come from an
+  ambiguous scenario prompt or a normal gap on the active concept itself,
+  neither of which changes the prerequisite graph. Diagnose silently—do **not**
+  print a robotic `- **Diagnosis:** ...` header in chat.
 
 ---
 
-## 1. Five-Way Miss Diagnosis Procedure (Evaluate in Order)
+## 1. Five-Way Miss Diagnosis Procedure (Evaluate Silently in Order)
 
-When a user's answer misses the target invariant, classify the cause by walking
-this decision list top-to-bottom:
+When a user's answer misses the target invariant (or the user says
+`"teach me"`), walk this decision list top-to-bottom before touching the graph:
 
-| Order | Diagnosis                                             | Diagnostic Signal                                                                                                                                                                     | Required Action                                                                                                   | Mutates Graph?   |
-| :---- | :---------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | :---------------------------------------------------------------------------------------------------------------- | :--------------- |
-| **1** | **Ambiguous Scenario Question** _(Agent fault)_       | The user's answer is valid under a reasonable interpretation because your scenario omitted a key boundary condition (e.g., threat capability, concurrency model, or caller contract). | State the missing constraint in 1 sentence and re-ask the tightened check. Do **not** lecture on the concept yet. | **No**           |
-| **2** | **Active Concept Gap / `"Teach Me"`** _(Normal path)_ | Prerequisites are solid and the prompt was clear, but the user hasn't yet grasped the active `🎯 Ready Next` invariant (or said `"I don't know"`).                                    | Deliver a **Teaching Block** (Pedagogy) followed by a **Fresh Transfer Question (`N_x-T1`)** (Assessment).        | **No**           |
-| **3** | **Curiosity Tangent**                                 | The user asks about a `🔒 Locked` downstream node or an orthogonal code detail instead of answering the scenario.                                                                     | Answer in 1–2 sentences, name the node that owns that invariant, and re-surface the active `🎯 Ready Next` check. | **No**           |
-| **4** | **Overloaded Concept**                                | The node bundles two distinct mechanisms that can fail independently; the user proves one and misses the other.                                                                       | Split `N_x` into `N_xa` (`✅ Mastered`) and `N_xb` (`🎯 Ready Next`) with separate `Source` anchors.              | **Yes (Split)**  |
-| **5** | **Missing Upstream Prerequisite**                     | The user fails because they lack a foundational mechanism _external_ to `N_x` that was never mapped in the index.                                                                     | Insert `N_new -> N_x`, move `N_x` back to `🔒 Locked`, and make `N_new` `🎯 Ready Next`.                          | **Yes (Insert)** |
+| Order | Diagnosis                                             | Diagnostic Signal                                                                                                                                                                     | Required Action                                                                                                                                                                             | Mutates Graph?   |
+| :---- | :---------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | :--------------- |
+| **1** | **Ambiguous Scenario Question** _(Agent fault)_       | The user's answer is valid under a reasonable interpretation because your scenario omitted a key boundary condition (e.g., threat capability, concurrency model, or caller contract). | State the missing constraint in 1 sentence and re-ask the tightened check (or grant `✅ Mastered` if their answer already proved the invariant). Do **not** lecture.                        | **No**           |
+| **2** | **Active Concept Gap / `"Teach Me"`** _(Normal path)_ | Prerequisites are solid and the prompt was clear, but the user hasn't yet grasped the active `🎯 Ready Next` invariant (or said `"I don't know / teach me"`).                         | Teach the concept **immediately**: deliver a **Teaching Block** (Pedagogy) followed by 1 **Fresh Transfer Question (`N_x-T1`)** (Assessment). Never refuse to explain a question you asked. | **No**           |
+| **3** | **Curiosity Tangent**                                 | The user asks about a `🔒 Locked` downstream node or an orthogonal code detail instead of answering the scenario.                                                                     | Answer in 1–2 sentences, name the node that owns that invariant, and re-surface the active `🎯 Ready Next` check.                                                                           | **No**           |
+| **4** | **Overloaded Concept**                                | The node bundles two distinct mechanisms that can fail independently; the user proves one and misses the other.                                                                       | Split `N_x` into `N_xa` (`✅ Mastered`) and `N_xb` (`🎯 Ready Next`) with separate `Source` anchors.                                                                                        | **Yes (Split)**  |
+| **5** | **Missing Upstream Prerequisite**                     | The user fails because they lack a foundational mechanism _external_ to `N_x` that was never mapped in the index.                                                                     | Explain the immediate catch briefly, insert `N_new -> N_x`, move `N_x` back to `🔒 Locked`, and make `N_new` `🎯 Ready Next`.                                                               | **Yes (Insert)** |
 
 ---
 
@@ -42,7 +48,7 @@ this decision list top-to-bottom:
 - **Why Inserting a Node Is Wrong**: The agent intended to test standard
   `SendPort.send(uint8List)` deep-copy semantics, but forgot to specify which
   send API was called. The user's reasoning is sound.
-- **Proper Diagnosis & Response (Outcome 1 — Ambiguous Scenario)**:
+- **Proper Response (Outcome 1 — Ambiguous Scenario)**:
   > _"Good catch on the API boundary—my scenario didn't specify that Worker A
   > called plain `sendPort.send(buffer)` while staying alive (without
   > `TransferableTypedData`). Since you already named both the zero-copy
@@ -51,7 +57,7 @@ this decision list top-to-bottom:
 
 ---
 
-### Worked Example B: Missing Prerequisite vs. Active Concept Gap
+### Worked Example B: Active Concept Gap vs. Missing Prerequisite
 
 - **Active Concept (`N5`)**: `Transparency Log Inclusion vs. Active Key Pinning`
   (`Source: docs/attestation_spec.md#section-4.2`)
@@ -65,36 +71,34 @@ this decision list top-to-bottom:
 - **Case 1 — Active Concept Gap (Outcome 2, No Graph Mutation)**:
   - _User Reply_: _"Doesn't the transparency log reject signatures if the build
     didn't come from the official branch?"_
-  - _Diagnosis_: The user understands `N3` (untrusted registry) and knows what
-    an append-only log is, but confuses **auditability** (recording every valid
-    signature) with **policy enforcement** (blocking unauthorized branches at
-    install time).
+  - _Internal Check_: The user understands `N3` (untrusted registry) and knows
+    what an append-only log is, but confuses **auditability** (recording every
+    valid signature) with **policy enforcement** (blocking unauthorized branches
+    at install time).
   - _Action_: Keep the graph unchanged. Deliver a **Teaching Block** contrasting
     append-only recording (passive security camera) vs. branch/identity policy
     verification (active door lock), then pose `N5-T1`.
 - **Case 2 — Missing Upstream Prerequisite (Outcome 5, Insert Node)**:
   - _User Reply_: _"Wait—what is an OIDC workload token, and how can a build
     sign anything without a long-lived private key stored in CI secrets?"_
-  - _Diagnosis_: The graph jumped straight from `N2: Asymmetric Signatures` to
-    `N5: Transparency Logs` without mapping **keyless ephemeral workload
+  - _Internal Check_: The graph jumped straight from `N2: Asymmetric Signatures`
+    to `N5: Transparency Logs` without mapping **keyless ephemeral workload
     certificates**. The user cannot reason about a 5-minute OIDC compromise
     until keyless signing is understood.
   - _Action_: Insert `N4: Ephemeral Workload Certificates` (`N2 -> N4 -> N5`),
-    move `N5` back to `🔒 Locked`, and probe/teach `N4` as `🎯 Ready Next`.
+    move `N5` back to `🔒 Locked`, and teach/probe `N4` as `🎯 Ready Next`.
 
 ---
 
-## 3. Designing Fresh Transfer Questions (`N_x-T1`)
+## 3. Question Design Guardrails & Fresh Transfer Questions (`N_x-T1`)
 
-After delivering a **Teaching Block**, never re-ask the original question with
-different variable or service names.
+Every `Scenario Check` and `Transfer Question (N_x-T1)` must test a
+**first-principles causal invariant** (_"why / what breaks if..."_), never
+memorization trivia. After a `Teaching Block`, change the **failure mode or
+scenario mechanics**, not the surface nouns.
 
-> **The Fresh Transfer Rule**: Change the **failure mode or scenario
-> mechanics**, not the surface nouns. A valid `N_x-T1` question must **fail for
-> a different operational reason** than the original check if the user memorized
-> your words without understanding the underlying invariant.
-
-| Quality                       | Original Check (`N3`: Untrusted Registry Threat Model)                                                                                                        | Candidate Transfer Question (`N3-T1`)                                                                                                                                                                                                                                                                                                   | Why It Fails or Succeeds                                                                                                                                               |
-| :---------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------ | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Weak (Noun Swap Only)**     | _"A mirror serves a valid signature for `pkg-a` when the client requested `pkg-b`, and the signed payload omits the package name. How does the attack work?"_ | _"A CDN serves a valid signature for `image-x` when Docker requested `image-y`, and the payload omits the image name. What happens?"_                                                                                                                                                                                                   | **Invalid**: Identical cross-package substitution mechanics with `"pkg"` replaced by `"image"`.                                                                        |
-| **Strong (New Failure Mode)** | _(Same cross-package substitution check above)_                                                                                                               | _"Now suppose the signed payload includes the exact package name `pkg-b` and `SHA-256` digest, but the registry strips the `attestations` field from the JSON metadata response and serves an older unattested `pkg-b@1.0.0` tarball. If the client only verifies attestations when the field is present, what invariant is violated?"_ | **Valid**: Tests the same `N3` untrusted-intermediary invariant via a **downgrade / omission failure mode** rather than a **cross-package substitution** failure mode. |
+| Quality                                                  | Example Question                                                                                                                                                                                                                                                                                                                               | Why It Fails or Succeeds                                                                                                                                                                             |
+| :------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Invalid (Trivial / Bureaucratic Convention Question)** | _"What exact string suffix does `teach-me` forbid in the `Source` column, and what exact badge text does `slice-and-dice` print when code holds up?"_                                                                                                                                                                                          | **Invalid**: Quizzes arbitrary string literals and formatting conventions that cannot be deduced from first principles. State conventions directly; only ask causal _"what breaks if..."_ questions. |
+| **Weak `N3-T1` (Noun Swap Only)**                        | _Original (`N3`)*: _"A mirror serves a valid signature for `pkg-a` when the client requested `pkg-b`, and the signed payload omits the package name. How does the attack work?"_ -> _Candidate `N3-T1`_: _"A CDN serves a valid signature for `image-x` when Docker requested `image-y`, and the payload omits the image name. What happens?"_ | **Invalid**: Identical cross-package substitution mechanics with `"pkg"` replaced by `"image"` (a change without a difference).                                                                      |
+| **Strong `N3-T1` (New Failure Mode)**                    | _"Now suppose the signed payload includes the exact package name `pkg-b` and `SHA-256` digest, but the registry strips the `attestations` field from the JSON metadata response and serves an older unattested `pkg-b@1.0.0` tarball. If the client only verifies attestations when the field is present, what invariant is violated?"_        | **Valid**: Tests the same `N3` untrusted-intermediary invariant via a **downgrade / stripping failure mode** rather than a **cross-package substitution** failure mode.                              |

@@ -5,13 +5,13 @@
       "id": "teach_me_task_1",
       "prompt": "Use /teach-me to help me build a deep mental model of supply-chain package attestation and untrusted-registry verification (covering content digests, asymmetric identity binding, ephemeral workload certificates, transparency logs vs. active freshness, root rotation, self-referential policy traps, and anti-downgrade pinning).",
       "expected_chat_output": [
-        "Uses plain engineering terminology (Prerequisite Graph, Atomic Concept, Mastered, Ready Next, Locked, Key Mental Shift, Scenario Check, Teaching Block, Transfer Question) with zero academic KST or graph-theory jargon (no 'Hasse diagram', 'Knowledge Space Theory', 'Outer Fringe', 'surmise', or '$F^+(K)$') and no raw LaTeX math ($...$) in prose.",
-        "Keeps the Turn 1 chat response concise (<= 25 lines): links to <topic>_learning_graph.md without pasting a duplicate Mermaid diagram into chat, shows a compact concept summary table (collapsing Locked range rows when needed), and issues 1-2 short calibration Scenario Checks.",
+        "Uses plain engineering terminology (Prerequisite Graph, Concept, Mastered, Ready Next, Locked, Key Mental Shift, Scenario Check, Teaching Block, Transfer Question) with zero academic KST or graph-theory jargon (no 'Hasse diagram', 'Knowledge Space Theory', 'Outer Fringe', 'surmise', or '$F^+(K)$') and no raw LaTeX math ($...$) in prose.",
+        "Keeps the Turn 1 chat response concise (<= 25 lines): links to <topic>_learning_graph.md without pasting a duplicate Mermaid diagram into chat, shows a compact concept summary table (collapsing Locked range rows when needed), starts at a single foundational root concept (N1) with 1 concise causal Scenario Check (1 concept per turn), and invites the user to skip ahead conversationally (e.g., 'I already know N1/N2, skip to N3') if they already know the fundamentals.",
         "Stops calling tools and waits for the user's response without simulating user answers."
       ],
       "expected_repo_state": [
         "Creates a persistent <topic>_learning_graph.md artifact in the session artifact directory or /tmp/<topic>_learning_graph.md (without dirtying the repository worktree) using classDef mastered, ready, and locked, with at least one convergence node (>= 2 direct prerequisites feeding one concept).",
-        "Includes a mandatory Source column in the 1-row-per-node Concept Index table (using concise spec/standard anchors without appending '— no local file' onto external specifications) and keeps Turn 1 <topic>_learning_graph.md lightweight (<= 80 lines including the Mermaid diagram) and spoiler-free: does NOT print Common Misconceptions or One-Line Definition explanations above unmastered Scenario Checks, and does NOT pre-author multi-line textbook sections for Locked concepts before calibration."
+        "Includes a concise Source column in the 1-row-per-node Concept Index table and keeps Turn 1 <topic>_learning_graph.md lightweight (<= 80 lines including the Mermaid diagram) and spoiler-free: does NOT print Common Misconceptions or One-Line Definition explanations above unmastered Scenario Checks, and does NOT pre-author multi-line textbook sections for Locked concepts on Turn 1."
       ],
       "agent_config": "bare-agent"
     },
@@ -45,9 +45,9 @@
       "id": "teach_me_task_4",
       "prompt": "Continue a /teach-me session at active concept N2 (Asymmetric Identity Binding, Source: docs/attestation.md#L26-L48) after the user replies to N2-Q1 ('Why does bundling META-INF/signer.pub inside the tarball break publisher authentication?'): 'I think verification fails because Ed25519 signatures only verify the raw bytes and don't hash the filename—Wait, actually I'm not sure why bundling META-INF/signer.pub inside the tarball breaks identity verification if the Ed25519 math passes. Teach me!'",
       "expected_chat_output": [
-        "Includes a concise 1-line '- **Diagnosis:** ...' bullet in the status header classifying the response via the 5-way miss rubric (Active Concept Gap / 'Teach Me', zero graph mutation).",
-        "Delivers a focused Teaching Block (Pedagogy) anchored in docs/attestation.md#L26-L48 that addresses the user's partial guess first before explaining why an in-band public key cannot establish trusted identity.",
-        "Poses a fresh Transfer Question (N2-T1) (Assessment) that changes the failure mode or scenario mechanics (e.g., unbound package/version metadata replay under a pinned out-of-band key) rather than merely swapping surface nouns."
+        "Generously acknowledges what held up in the user's intuition first (that Ed25519 verifies the raw bytes) and teaches N2 immediately without requiring a robotic '- **Diagnosis:** ...' header line.",
+        "Delivers a focused Teaching Block (Pedagogy) anchored in docs/attestation.md#L26-L48 explaining why an in-band public key bundled inside the untrusted tarball cannot establish trusted publisher identity (paired with a concrete structural analogy).",
+        "Poses 1 fresh Transfer Question (N2-T1) (Assessment) that changes the failure mode or scenario mechanics (e.g., unbound package/version metadata replay under a pinned out-of-band key) rather than merely swapping surface nouns."
       ],
       "expected_repo_state": [
         "Keeps N2 in 🎯 Ready Next state without inserting a spurious new prerequisite node into <topic>_learning_graph.md."
