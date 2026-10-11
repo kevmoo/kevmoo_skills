@@ -1,44 +1,46 @@
 ---
-name: teach-me
+name: quiz-me
 description: >-
   Builds a primary-source-grounded prerequisite graph (or linear mastery track)
-  of atomic concepts and guides the user through unfamiliar technical domains,
-  specifications, or codebases one concept at a time via Socratic scenario
-  checks, targeted teaching blocks, and fresh transfer questions. Use when
-  invoking /teach-me, "teach me", learning a complex domain or architecture
-  from first principles, mapping prerequisite concepts and key mental shifts,
-  or verifying deep mental models before reviewing or writing code. Don't use
-  for single-turn factual lookups (use quick-question), resolving open design
-  trade-offs (use distilling-strategies-interactively), non-educational
-  document/code review, co-editing, or issue triage (use slice-and-dice), or
-  passive text summarization.
+  of atomic concepts and tests the user across unfamiliar technical domains,
+  specifications, or codebases one concept at a time with hard comprehension
+  gates, targeted teaching blocks, and fresh transfer questions. Use when
+  invoking /quiz-me, "quiz me", verifying that you truly know and have
+  internalized a complex domain or architecture from first principles, or
+  mapping prerequisite concepts and key mental shifts with active comprehension
+  checks. Don't use for single-turn factual lookups (use quick-question),
+  unquizzed learning walkthroughs, document/code review, co-editing, or issue
+  triage (use slice-and-dice), branching design decision trees (use grilling or
+  clarify-confirm-continue), or passive text summarization.
 key_features:
-  - Shared 2x3 Goal-vs-Topology routing across sequential, thematic, and convergent DAG structures
-  - Root-first default with conversational skip-ahead and immediate teaching on any missed check
-  - Strictly 1 active concept per turn with first-principles causal probes (zero syntax/convention trivia)
-  - Generous plain-English grading without robotic diagnosis headers
+  - Hard comprehension gates ("SND + retrieval practice") across a prerequisite DAG or linear checklist
+  - Open-ended or inline "Pick + Explain Why" scenario checks with anti-guessing calibration prompts
+  - Root-first default with conversational skip-ahead and immediate teaching on "teach me" or any miss
+  - Strictly 1 active concept per turn with generous plain-English grading and zero robotic headers
   - Progressive disclosure via references/graph_schemas.md and references/miss-diagnosis-examples.md
 ---
 
-# Teach Me (`/teach-me`)
+# Quiz Me (`/quiz-me`)
 
-Help the user build and verify a load-bearing, first-principles mental model of
-a technical domain, specification, or codebase. Ground every concept in primary
-sources, separate **Assessment** (`Scenario Check`, `Transfer Question`) from
-**Pedagogy** (`Teaching Block`, analogies), and advance **one concept at a
-time** so each foundational invariant clicks before dependent concepts unlock.
+Help the user verify and internalize a load-bearing, first-principles mental
+model of a technical domain, specification, or codebase through **hard
+comprehension gates** (`Scenario Check`, `Transfer Question`) paired with
+on-demand **Pedagogy** (`Teaching Block`, analogies). Advance **one concept at a
+time** so you cannot `"next, next, next"` past a concept without proving (or
+explicitly testing out of) the causal `"why"`.
 
-## Goal vs. Content Topology: `/teach-me` vs. `/slice-and-dice`
+## Relationship to `/slice-and-dice` (`SND` + Hard Comprehension Gates)
 
-Human conversation is linear—you can only cover **1 item per turn**—regardless
-of how the underlying material is structured. **User Goal** selects the skill;
-**Content Topology** selects how items are organized:
+Human conversation is linear—you can only cover **1 item per turn**—so
+`/slice-and-dice` and `/quiz-me` share the same 1-item-per-turn pacing and
+persistent Markdown tracker, differing on **Hard Comprehension Gates**:
 
-| Content Topology                                          | `/teach-me` (Goal: Build & Verify a First-Principles Mental Model)                                                                           | `/slice-and-dice` (Goal: Review, Co-Edit, or Triage to Lock Concrete Decisions — Zero Socratic Quizzing)                             |
-| :-------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------- |
-| **1. Sequential / Document Order (`A -> B -> C`)**        | Linear mastery track (`[1/N]`) with 1 `Scenario Check` -> `Teaching Block` -> `Transfer Question` per step when `0` convergence nodes exist. | Top-to-bottom walkthrough (`[SND 1/N]` .. `[SND N/N]`) to critique, edit, and lock document sections in order.                       |
-| **2. Thematic Clusters (`{A, B}, {C, D}`)**               | Groups concepts by subsystem (or scopes `> 12` concepts to one foundational cluster first) and verifies mastery 1 concept at a time.         | Groups an unordered backlog of issues or audit findings by theme/subsystem to lock triage decisions slice by slice.                  |
-| **3. Convergent Prerequisite Graph / DAG (`A & B -> C`)** | Live color-coded Mermaid prerequisite graph (`✅ Mastered`, `🎯 Ready Next`, `🔒 Locked`) where mastering `A` and `B` unlocks `C`.           | Dependency-ordered slices (`A`, `B` before `C`) with a Mermaid dependency diagram to lock foundational architecture decisions first. |
+| Dimension                                         | `/slice-and-dice` (`SND` — Unquizzed Walkthrough, Review, & Co-Edit)                                          | `/quiz-me` (`SND` + Hard Comprehension Gates)                                                                                        |
+| :------------------------------------------------ | :------------------------------------------------------------------------------------------------------------ | :----------------------------------------------------------------------------------------------------------------------------------- |
+| **User Goal**                                     | Learn/understand without being quizzed, review/critique, or co-edit and lock concrete changes slice-by-slice. | _"I NEED to know this—make sure I've internalized it"_ via active retrieval checks before each node unlocks.                         |
+| **1. Sequential / Linear (`A -> B -> C`)**        | Walks top-to-bottom through a narrative RFC, slide deck, or document (`[SND 1/N]` .. `[SND N/N]`).            | Linear mastery track (`[1/N]`) with 1 `Scenario Check` -> `Teaching Block` -> `Transfer Question` per step (`0` convergence nodes).  |
+| **2. Thematic Clusters (`{A, B}, {C, D}`)**       | Groups scattered audit findings, issue backlogs, or multi-file changes by theme or blast radius.              | Groups concepts by subsystem (or scopes `> 12` concepts to one foundational cluster first) and verifies mastery 1 concept at a time. |
+| **3. Convergent Prerequisite DAG (`A & B -> C`)** | Out of scope for branching decisions (route decision trees to `grilling`).                                    | Live color-coded Mermaid prerequisite graph (`✅ Mastered`, `🎯 Ready Next`, `🔒 Locked`) where mastering `A` and `B` unlocks `C`.   |
 
 ## Core Vocabulary & Layers
 
@@ -52,9 +54,9 @@ engineering language—never use academic KST/graph jargon
 | **Structure**  | `Concept` (`N1`, `N2`, ...)                     | **One load-bearing causal mechanism or invariant** anchored to a concise primary `Source` (`path/to/file#L10-L20` or spec section). Never merge distinct mechanisms into a muddy umbrella node.                                                                          |
 | **Structure**  | `Prerequisite` (`A -> B`)                       | Draw `A -> B` **only** when `B` cannot be understood or reasoned about without `A`. Omit loose associations and redundant shortcut arrows (`A -> C` when `A -> B -> C` exists).                                                                                          |
 | **Structure**  | `Convergence Node`                              | A concept with **`>= 2` direct prerequisites** (`N1 -> N3` and `N2 -> N3`). Mermaid graph mode requires at least one convergence node.                                                                                                                                   |
-| **State**      | `✅ Mastered` / `🎯 Ready Next` / `🔒 Locked`   | `✅ Mastered`: verified via check or user skip-ahead. `🎯 Ready Next`: all direct prerequisites `✅ Mastered` (eligible for the current turn). `🔒 Locked`: waiting on prerequisites (never quiz or lecture early). Flag transformative ideas with `★ Key Mental Shift`. |
-| **Assessment** | `Scenario Check` / `Transfer Question (N_x-T1)` | **1 concrete causal _"why / what breaks if..."_ question** testing whether the invariant holds. `N_x-T1` verifies understanding after a `Teaching Block` by changing the **failure mode**, never just swapping nouns.                                                    |
-| **Pedagogy**   | `Teaching Block`                                | Focused explanation delivered immediately when the user says `"teach me"` or misses a check—citing `Source` mechanics + a 1-sentence structural analogy. Never counts as mastery without a follow-up `N_x-T1`.                                                           |
+| **State**      | `✅ Mastered` / `🎯 Ready Next` / `🔒 Locked`   | `✅ Mastered`: verified via causal `"why"` check or user skip-ahead. `🎯 Ready Next`: all direct prerequisites `✅ Mastered` (eligible for the current turn). `🔒 Locked`: waiting on prerequisites (never quiz or lecture early). Flag key shifts with `★`.             |
+| **Assessment** | `Scenario Check` / `Transfer Question (N_x-T1)` | **1 concrete causal question** (either open-ended _"what breaks if..."_ or inline `(A)/(B)/(C)` options in plain text **requiring a `"why"` explanation**). `N_x-T1` verifies understanding after a `Teaching Block` by changing the **failure mode**, never just nouns. |
+| **Pedagogy**   | `Teaching Block`                                | Focused explanation delivered immediately when the user says `"teach me"` / `"not sure"` or misses a check—citing `Source` mechanics + a 1-sentence structural analogy. Never counts as mastery without a follow-up `N_x-T1`.                                            |
 
 ---
 
@@ -79,12 +81,12 @@ engineering language—never use academic KST/graph jargon
      **`0` convergence nodes** (or `< 5` items), **halt before creating
      `<topic>_learning_graph.md`**, state clearly why a prerequisite graph adds
      no value for a sequential chain with zero convergence nodes, and offer:
-     1. `(Recommended) Run linear/thematic mastery checks in teach-me` — keep
-        the `Scenario Check` -> `Teaching Block` -> `Transfer Question` loop
-        over a compact `[1/N]` checklist (with `Source`) without a Mermaid DAG.
-     2. `Take an unquizzed guided tour` — walk through with primary-source
-        `Teaching Blocks` and zero quizzing (or switch to `/slice-and-dice` for
-        document review/co-editing).
+     1. `(Recommended) Run linear/thematic mastery checks in quiz-me` — keep the
+        `Scenario Check` -> `Teaching Block` -> `Transfer Question` loop over a
+        compact `[1/N]` checklist (with `Source`) without a Mermaid DAG.
+     2. `Switch to /slice-and-dice for an unquizzed guided walkthrough` — walk
+        through one slice at a time with primary-source explanations and zero
+        quizzing.
      3. `Broaden scope into a convergent system graph` — include upstream or
         adjacent subsystems so genuine convergence dependencies emerge.
    - **Upper-Bound Scope Gate (`> 12–15` Atomic Concepts)**: If honest atomic
@@ -109,7 +111,7 @@ engineering language—never use academic KST/graph jargon
      pre-author multi-line textbook sections for `🔒 Locked` nodes. Append
      **Part 2** notes lazily as concepts unlock.
 
-### Phase 2: Root-First Start + Conversational Skip-Ahead
+### Phase 2: Root-First Start, Skip-Ahead, & Anti-Guessing Calibration
 
 1. **Keep Turn 1 Chat `<= 25` Lines**: Link to `<topic>_learning_graph.md`
    (never paste a duplicate Mermaid code block into chat), show a compact
@@ -119,9 +121,17 @@ engineering language—never use academic KST/graph jargon
 2. **Invite Conversational Skip-Ahead**: Explicitly tell the user they can say
    _"I already know N1/N2, skip to N3"_ at any time to fast-forward those nodes
    (and their upstream prerequisites) directly to `✅ Mastered`.
-3. **Pose 1 Root `Scenario Check` & Yield**: Ask **1 concise causal
-   `Scenario Check`** on `N1` (1–3 sentence answer), then **stop calling tools
-   and wait for the user's response**. Never simulate user answers.
+3. **Pose 1 Root `Scenario Check` with Anti-Guessing Calibration & Yield**:
+   - Frame the check as either an **open-ended causal scenario** (_"What breaks
+     if..."_) OR an **inline 2–3 option scenario in plain text** (`(A) ...`,
+     `(B) ...`, `(C) ...`, never an `ask_question` modal) **that requires
+     explaining WHY**.
+   - End every check with a 1-line anti-guessing nudge so lucky guesses don't
+     mask gaps:
+     > _"Take a stab and explain **why** if you have a solid hunch—or if you'd
+     > be guessing, say `'teach me'` / `'not sure'` so we unpack it first."_
+   - Stop calling tools and wait for the user's response. Never simulate user
+     answers.
 
 ### Phase 3: One-Concept-at-a-Time Assessment & Teaching Loop
 
@@ -129,14 +139,19 @@ engineering language—never use academic KST/graph jargon
    concept at a time** (1 scenario question, or 1 short `Teaching Block` + 1
    follow-up transfer check). Never bundle two concepts (`N1` + `N2`) or 4
    sub-questions into a 50-line wall of text.
-2. **Generous Plain-English Grading**: When the user's plain-English intuition
-   captures the core causal invariant (e.g., _"it's making a change w/out a
-   difference"_), immediately mark the concept `✅ Mastered`, affirm why their
-   intuition holds in 1 sentence, update `<topic>_learning_graph.md`, and pose
-   the `Scenario Check` for the next `🎯 Ready Next` concept. Never withhold
-   credit for missing buzzwords.
-3. **Immediate Teaching on `"Teach Me"` or Any Missed Check (No Walk-Backward
-   Refusal)**: If the user says `"teach me"` or misses a check on _any_ node,
+2. **Generous Plain-English Grading (Require `"Why"` on Inline Options)**:
+   - When the user's plain-English intuition captures the core causal invariant
+     (e.g., _"it's making a change w/out a difference"_), immediately mark the
+     concept `✅ Mastered`, affirm why their intuition holds in 1 sentence,
+     update `<topic>_learning_graph.md`, and pose the `Scenario Check` for the
+     next `🎯 Ready Next` concept. Never withhold credit for missing buzzwords.
+   - If the check included inline `(A)/(B)/(C)` options and the user replies
+     with **only** a bare letter (`"B"`) without explaining _why_, do not mark
+     `✅ Mastered` yet—confirm whether `"B"` is the right branch and ask a
+     1-line _"What's the causal reason B happens here?"_ so a lucky guess never
+     fakes comprehension.
+3. **Immediate Teaching on `"Teach Me"` / `"Not Sure"` or Any Missed Check**: If
+   the user says `"teach me"`, `"not sure"`, or misses a check on _any_ node,
    **teach that concept immediately**—never refuse to explain a question you
    just asked or send the user backward empty-handed. Follow the turn skeleton
    in [references/graph_schemas.md](references/graph_schemas.md):
@@ -166,10 +181,15 @@ bullets, and offer to transition directly into concrete codebase work or
 
 - **No Memorization or Convention Trivia**: Never quiz on arbitrary string
   literals, badge formatting, CLI flag names, or acronym expansions.
+- **No Unexplained Multiple-Choice Guessing**: Inline `(A)/(B)/(C)` options in
+  plain text are welcome when they clarify the scenario, but never use
+  `ask_question` modals for quiz questions and never credit a bare letter pick
+  without a `"why"` explanation.
 - **No Walk-Backward Refusal to Teach**: Never ask a question and then refuse to
   explain the answer when the user misses or says `"teach me"`.
 - **No Pedantic Buzzword Grading**: Credit plain-English causal understanding
   immediately as `✅ Mastered`.
 - **No Self-Grading (`"Does that make sense?"`)**: Mastery transitions
-  (`🎯 -> ✅`) require passing a `Scenario Check`, passing an `N_x-T1` transfer
-  check, or an explicit user skip-ahead—never an analogy agreement.
+  (`🎯 -> ✅`) require passing a `Scenario Check` (with `"why"`), passing an
+  `N_x-T1` transfer check, or an explicit user skip-ahead—never an analogy
+  agreement.

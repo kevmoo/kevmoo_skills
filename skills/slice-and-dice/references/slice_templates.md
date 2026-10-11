@@ -1,17 +1,17 @@
 # Slice-and-Dice (`SND`) Turn Templates
 
-Reference templates for active `[SND K/N]` turns across Mode 1 (Document /
-Proposal Review) and Mode 2 (Co-Authoring & Iterative Editing).
+Reference templates for active `[SND K/N]` turns across Mode 1 (Unquizzed
+Learning & Document Review) and Mode 2 (Co-Authoring & Iterative Editing),
+showing the **4 Tracker States** (`[ ]`, `[-]`, `⏳ Deferred`, `☑️ Done`) and
+the **Two-Tier End-of-Slice Action Footer**.
 
-## Template 1: Mode 1 — Document Review Slice with Explicit Agent Realization & Split Anchors
+## Template 1: Case B Slice (Agent Offers Comments/Questions) with Upfront Realization & Split Anchors
 
 ````markdown
 ### Slice-and-Dice (`SND`) Progress Tracker
 
-*(`"skip"` = `⏭️` Deferred to revisit later, never delete; `"drop"` = `🗑️` Dropped)*
-
-- `☑️ [SND 1/5] Summary & Phases Overview (Source: Proposal §1)` -- **Locked**
-- **`[-] [SND 2/5] Client Constructors & Credential Wiring (Source: Proposal §2, lib/src/client.dart#L140-L152)`** 👈 *Reviewing now*
+- `☑️ [SND 1/5] Summary & Phases Overview (Source: Proposal §1)` -- **Done (Kept as-is)**
+- **`[-] [SND 2/5] Client Constructors & Credential Wiring (Source: Proposal §2, lib/src/client.dart#L140-L152)`** 👈 *Active now*
 - `[ ] [SND 3/5] Shared Type Inventory (Source: Proposal §3, lib/src/types.dart#L1-L60)` *(Updated: verified Row 4 in source)*
 - `[ ] [SND 4/5] Cross-Platform Implications (Source: Proposal §4)`
 - `[ ] [SND 5/5] Release & Versioning (Source: Proposal §5)`
@@ -53,29 +53,25 @@ In `platform_interface.dart:30`, `_instance` currently defaults to `MethodChanne
 Once the base platform class moves to the pure-Dart package while `MethodChannelImpl` stays in the framework package, how will `_instance` be defaulted on mobile when no explicit registration call runs?
 ```
 
-How do **Comment 2A** and **Comment 2B** look? (Reply with edits, `"skip"` to
-defer for later, `"drop"` to omit, or `"next"` to lock `[SND 2/5]` and move to
-`[SND 3/5]`.)
+👉 **Decision needed:** Say `"accept"` (or `"accept with <tweak>"`) to lock these comments and advance, `"keep as-is"` to ignore them and advance, `"defer"` to revisit at the end, or reply to zoom in.
 ````
 
-## Template 2: Mode 2 — Co-Authoring / Edit Slice (`Before` → `After` + `What Changed`)
+## Template 2: Case B Slice — Co-Authoring / Edit (`Before` → `After` + `What Changed`)
 
 ````markdown
 ### Slice-and-Dice (`SND`) Progress Tracker
 
-*(`"skip"` = `⏭️` Deferred to revisit later, never delete; `"drop"` = `🗑️` Dropped)*
-
-- `☑️ [SND 1/5] Executive Summary & Goals (Source: docs/rollout_plan.md#L1-L40)` -- **Locked**
-- **`[-] [SND 2/5] Rollout Criteria & Confidence Gates (Source: docs/rollout_plan.md#L42-L50)`** 👈 *Reviewing now*
-- `[ ] [SND 3/5] Cross-Package API Boundaries (Source: docs/rollout_plan.md#L52-L88)`
-- `[ ] [SND 4/5] Testing & Corpus Verification Strategy (Source: docs/rollout_plan.md#L90-L120)`
-- `[ ] [SND 5/5] 2027 Horizon & Non-Goals (Source: docs/rollout_plan.md#L122-L150)`
+- `☑️ [SND 1/5] Executive Summary & Goals (Source: docs/rollout_plan.md#L1-L40)` -- **Done (Applied edit)**
+- `⏳ [SND 2/5] Legacy Migration Timeline (Source: docs/rollout_plan.md#L42-L50)` -- **Deferred (Revisit after `[SND 5/5]`)**
+- **`[-] [SND 3/5] Rollout Criteria & Confidence Gates (Source: docs/rollout_plan.md#L52-L68)`** 👈 *Active now*
+- `[ ] [SND 4/5] Testing & Corpus Verification Strategy (Source: docs/rollout_plan.md#L70-L105)`
+- `[ ] [SND 5/5] 2027 Horizon & Non-Goals (Source: docs/rollout_plan.md#L107-L140)`
 
 ---
 
-### `[-] [SND 2/5]` Rollout Criteria & Confidence Gates
+### `[-] [SND 3/5]` Rollout Criteria & Confidence Gates
 
-- **Target Section**: `docs/rollout_plan.md#L42-L50`
+- **Target Section**: `docs/rollout_plan.md#L52-L68`
 
 #### 1. Current Text (`Before`)
 
@@ -106,7 +102,16 @@ With the opt-in flag and browser CI merged:
 - **Removed**:
   - Nothing substantive removed.
 
-How does **`[SND 2/5]`** look? (Reply with tweaks, `"skip"` to defer and come
-back later, `"drop"` to keep `Before`, or `"next"` to apply `After` and advance
-to `[SND 3/5]`.)
+👉 **Decision needed:** Say `"accept"` (or `"accept, but change X"`) to apply `After` and advance, `"keep as-is"` to keep `Before` and advance, `"defer"` to revisit at the end, or reply to zoom in.
 ````
+
+## Template 3: Case A Slice — Read-Only Walkthrough / `"No Comment Needed"`
+
+```markdown
+### `[-] [SND 4/5]` Testing & Corpus Verification Strategy (`docs/rollout_plan.md#L70-L105`)
+
+- **✅ Verdict: No comment needed (holds up in source)**
+- **How It Works**: `test/corpus_runner_test.dart#L22-L64` already runs the 50-package corpus under both compilers and fails CI on any new diff.
+
+👉 **Next:** Say `"ok"` / `"next"` to advance to `[SND 5/5]`, `"defer"` to revisit at the end, or reply to zoom in.
+```

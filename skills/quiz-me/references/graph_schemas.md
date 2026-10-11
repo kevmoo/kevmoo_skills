@@ -1,8 +1,9 @@
-# Teach Me (`<topic>_learning_graph.md`) Artifact & Turn Schemas
+# Quiz Me (`<topic>_learning_graph.md`) Artifact & Turn Schemas
 
 Reference templates for the persistent `<topic>_learning_graph.md` artifact,
-Turn 1 root-first + skip-ahead chat presentation (`<= 25` lines), and
-single-concept `Teaching Block` + `Transfer Question (N_x-T1)` chat turns.
+Turn 1 root-first + skip-ahead + anti-guessing chat presentation (`<= 25`
+lines), and single-concept `Teaching Block` + `Transfer Question (N_x-T1)` chat
+turns.
 
 ## 1. Persistent Graph Document Template (`<topic>_learning_graph.md`)
 
@@ -64,12 +65,13 @@ Why does verifying a release against a mutable Git tag (`v1.0.0`) fail to guaran
 - _(Populated lazily as each concept reaches `✅ Mastered`.)_
 ````
 
-## 2. Turn 1 Chat Skeleton: Root-First Start + Conversational Skip-Ahead (`<= 25` Lines)
+## 2. Turn 1 Chat Skeleton: Root-First Start + Skip-Ahead + Anti-Guessing Nudge (`<= 25` Lines)
 
 Do not paste a duplicate Mermaid diagram into chat when
 `<topic>_learning_graph.md` is saved. Start at **1 foundational root concept
-(`N1`)** and invite the user to skip ahead if they already know the
-fundamentals:
+(`N1`)** (using either an open-ended scenario or inline `(A)/(B)/(C)` options +
+mandatory `"why"` explanation) and include the skip-ahead and anti-guessing
+prompts:
 
 ```markdown
 Saved the live prerequisite graph and source index to [`<topic>_learning_graph.md`](file:///path/to/<topic>_learning_graph.md).
@@ -81,10 +83,12 @@ Saved the live prerequisite graph and source index to [`<topic>_learning_graph.m
 | `N3` | Untrusted Registry Threat Model `★` | `N1`, `N2` | `docs/threat_model.md#L12-L58` | 🔒 Locked |
 | `N4-N8` | Certs, Rekor Logs `★`, TUF Rotation, Policy Trap `★`, Pinning | `N2-N7` | _(See artifact)_ | 🔒 Locked |
 
-> **Skip-Ahead Anytime:** We're starting at `N1` (`1` concept at a time). If you already know `N1`/`N2`, just say *"Skip N1 and N2, start at N3"* (or `"teach me"` if you'd like the explanation right away).
+> **Skip-Ahead Anytime:** Starting at `N1` (`1` concept at a time). If you already know `N1`/`N2`, say *"Skip N1 and N2, start at N3"*.
 
 ### Scenario Check `N1`: Deterministic Content Digests
 Why does verifying a release against a mutable Git tag (`v1.0.0`) fail to guarantee artifact integrity even over TLS, and what property of a canonical `SHA-256` tarball digest closes that gap?
+
+*(Take a stab and explain **why** if you have a solid hunch—or if you'd be guessing, say `"teach me"` / `"not sure"` so we unpack it first.)*
 ```
 
 ## 3. Chat Turn Skeleton: Teaching Block & Fresh Transfer Question (`N_x-T1`)
@@ -99,5 +103,10 @@ Focus on **1 concept per turn** with zero robotic `- **Diagnosis:**` headers:
 - **Mechanism & Analogy:** [`docs/attestation.md#L26-L48`](file:///path/to/docs/attestation.md#L26-L48) requires verifying signatures against an **out-of-band trusted root** pinned outside the untrusted archive. Bundling the public key inside the untrusted tarball is like accepting a passport strictly because the laminated photo matches the person standing in front of you, even though they printed the passport themselves.
 
 ### Transfer Check `N2-T1` (Unlocks `✅ Mastered` for `N2`)
-Suppose the verifier now pins the publisher's genuine Ed25519 public key out-of-band, and the publisher signs **only** the raw `SHA-256` digest of `foo-1.0.0-alpha.tar.gz` (omitting the package name and version string from the signed envelope). How can a malicious registry exploit that valid signature when a user requests `foo@1.0.0` stable?
+Suppose the verifier now pins the publisher's genuine Ed25519 public key out-of-band, and the publisher signs **only** the raw `SHA-256` digest of `foo-1.0.0-alpha.tar.gz` (omitting the package name and version string from the signed envelope). What happens when a user requests `foo@1.0.0` stable from a compromised registry?
+- **(A)** Signature verification fails because the tarball filename changed.
+- **(B)** Signature verification succeeds, allowing an attacker to replay the buggy `-alpha` tarball as `1.0.0` stable.
+- **(C)** TLS prevents the registry from serving a different version's tarball.
+
+*(Pick **(A)**, **(B)**, or **(C)** and explain **why**—or say `"teach me"` if you're unsure.)*
 ```

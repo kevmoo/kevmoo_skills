@@ -8,7 +8,7 @@
         "Echoes the Slice-and-Dice (SND) Progress Tracker at the top of the reply showing [SND 1/4] active ([-]) and remaining slices queued ([ ]).",
         "Presents ONLY [SND 1/4] in chat without dumping the full content of slices 2-4.",
         "Formats the candidate edit using Current Text (Before), Proposed Text (After), and What Changed (Added / Changed / Removed).",
-        "Yields in plain chat without invoking an interactive multiple-choice modal tool (ask_question / AskUserQuestion) during the active slice turn."
+        "Ends with an explicit Case B decision footer ('accept', 'keep as-is', 'defer', or reply to zoom in) and yields in plain chat without invoking an interactive multiple-choice modal tool (ask_question / AskUserQuestion) during the active slice turn."
       ],
       "expected_repo_state": [
         "Stages the canonical Progress Tracker in the session artifact directory or /tmp/snd_plan_<slug>.md without creating untracked files in the repository worktree or injecting tracker lines into tracked repository files.",

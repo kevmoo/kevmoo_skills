@@ -1,15 +1,20 @@
-# Miss Diagnosis, Plain-English Grading & Transfer Question Examples (`teach-me`)
+# Miss Diagnosis, Plain-English Grading & Transfer Question Examples (`quiz-me`)
 
 Use this guide during **Phase 3 (One-Concept-at-a-Time Assessment & Teaching
 Loop)** when evaluating user responses or designing a follow-up
 `Transfer Question (N_x-T1)`.
 
-- **Credit Plain-English Intuition First**: Before diagnosing a miss, check
-  whether the user's everyday phrasing already captures the causal mechanism
-  (for example, saying _"it's making a change w/out a difference"_ when asked
-  why a noun-swapped transfer question fails). When the intuition holds, mark
-  the concept `✅ Mastered` immediately—never withhold credit for missing
-  textbook or rubric buzzwords.
+- **Credit Plain-English Intuition First (And Require `"Why"` on Inline
+  Options)**:
+  - Check whether the user's everyday phrasing already captures the causal
+    mechanism (for example, saying _"it's making a change w/out a difference"_
+    when asked why a noun-swapped transfer question fails). When the intuition
+    holds, mark the concept `✅ Mastered` immediately—never withhold credit for
+    missing textbook or rubric buzzwords.
+  - When a question offers inline `(A)/(B)/(C)` options in plain text, a bare
+    letter pick (`"B"`) without a causal `"because..."` explanation does **not**
+    prove comprehension—confirm the branch and ask a 1-line _"Why does B happen
+    here?"_ before marking `✅ Mastered`.
 - **Resist Reflexive Graph Mutation**: Most genuine misses come from an
   ambiguous scenario prompt or a normal gap on the active concept itself,
   neither of which changes the prerequisite graph. Diagnose silently—do **not**
@@ -19,8 +24,9 @@ Loop)** when evaluating user responses or designing a follow-up
 
 ## 1. Five-Way Miss Diagnosis Procedure (Evaluate Silently in Order)
 
-When a user's answer misses the target invariant (or the user says
-`"teach me"`), walk this decision list top-to-bottom before touching the graph:
+When a user's answer misses the target invariant (or the user says `"teach me"`
+/ `"not sure"`), walk this decision list top-to-bottom before touching the
+graph:
 
 | Order | Diagnosis                                             | Diagnostic Signal                                                                                                                                                                     | Required Action                                                                                                                                                                             | Mutates Graph?   |
 | :---- | :---------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | :--------------- |
@@ -99,6 +105,6 @@ scenario mechanics**, not the surface nouns.
 
 | Quality                                                  | Example Question                                                                                                                                                                                                                                                                                                                               | Why It Fails or Succeeds                                                                                                                                                                             |
 | :------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Invalid (Trivial / Bureaucratic Convention Question)** | _"What exact string suffix does `teach-me` forbid in the `Source` column, and what exact badge text does `slice-and-dice` print when code holds up?"_                                                                                                                                                                                          | **Invalid**: Quizzes arbitrary string literals and formatting conventions that cannot be deduced from first principles. State conventions directly; only ask causal _"what breaks if..."_ questions. |
+| **Invalid (Trivial / Bureaucratic Convention Question)** | _"What exact string suffix does `quiz-me` forbid in the `Source` column, and what exact badge text does `slice-and-dice` print when code holds up?"_                                                                                                                                                                                           | **Invalid**: Quizzes arbitrary string literals and formatting conventions that cannot be deduced from first principles. State conventions directly; only ask causal _"what breaks if..."_ questions. |
 | **Weak `N3-T1` (Noun Swap Only)**                        | _Original (`N3`)*: _"A mirror serves a valid signature for `pkg-a` when the client requested `pkg-b`, and the signed payload omits the package name. How does the attack work?"_ -> _Candidate `N3-T1`_: _"A CDN serves a valid signature for `image-x` when Docker requested `image-y`, and the payload omits the image name. What happens?"_ | **Invalid**: Identical cross-package substitution mechanics with `"pkg"` replaced by `"image"` (a change without a difference).                                                                      |
 | **Strong `N3-T1` (New Failure Mode)**                    | _"Now suppose the signed payload includes the exact package name `pkg-b` and `SHA-256` digest, but the registry strips the `attestations` field from the JSON metadata response and serves an older unattested `pkg-b@1.0.0` tarball. If the client only verifies attestations when the field is present, what invariant is violated?"_        | **Valid**: Tests the same `N3` untrusted-intermediary invariant via a **downgrade / stripping failure mode** rather than a **cross-package substitution** failure mode.                              |
