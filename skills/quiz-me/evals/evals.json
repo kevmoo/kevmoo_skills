@@ -34,7 +34,7 @@
       "expected_chat_output": [
         "Maps atomic concepts honestly without compressing distinct mechanisms into muddy umbrella nodes just to fit under 15 nodes.",
         "Triggers the Pre-Flight Upper-Bound Gate (> 15 atomic concepts) and halts before starting calibration.",
-        "Presents a high-level cluster breakdown in chat and prompts the user with the 3 scoping options: (1) Start with a foundational sub-area first (Recommended), (2) Prune to a specific target goal, or (3) Proceed with all N concepts."
+        "Presents a compact bulleted cluster breakdown in chat (without cramming multi-line <br> concept lists into wide Markdown table cells) and prompts the user with the 3 scoping options: (1) Start with a foundational sub-area first (Recommended), (2) Prune to a specific target goal, or (3) Proceed with all N concepts."
       ],
       "expected_repo_state": [
         "Does NOT start diagnostic calibration until the user chooses a scope option."
@@ -45,12 +45,24 @@
       "id": "quiz_me_task_4",
       "prompt": "Continue a /quiz-me session at active concept N2 (Asymmetric Identity Binding, Source: docs/attestation.md#L26-L48) after the user replies to N2-Q1 ('Why does bundling META-INF/signer.pub inside the tarball break publisher authentication?'): 'I think verification fails because Ed25519 signatures only verify the raw bytes and don't hash the filename—Wait, actually I'm not sure why bundling META-INF/signer.pub inside the tarball breaks identity verification if the Ed25519 math passes. Teach me!'",
       "expected_chat_output": [
-        "Generously acknowledges what held up in the user's intuition first (that Ed25519 verifies the raw bytes) and teaches N2 immediately without requiring a robotic '- **Diagnosis:** ...' header line.",
+        "Acknowledges what held up in the user's intuition first (that Ed25519 verifies the raw bytes) without sycophantic flattery adjectives ('Spot on', 'Great', 'Brilliant') and without a robotic '- **Diagnosis:** ...' header line, then teaches N2 immediately.",
         "Delivers a focused Teaching Block (Pedagogy) anchored in docs/attestation.md#L26-L48 explaining why an in-band public key bundled inside the untrusted tarball cannot establish trusted publisher identity (paired with a concrete structural analogy).",
         "Poses 1 fresh Transfer Question (N2-T1) (Assessment) that changes the failure mode or scenario mechanics (either open-ended or inline (A)/(B)/(C) options requiring a 'why' explanation) rather than merely swapping surface nouns."
       ],
       "expected_repo_state": [
         "Keeps N2 in 🎯 Ready Next state without inserting a spurious new prerequisite node into <topic>_learning_graph.md."
+      ],
+      "agent_config": "bare-agent"
+    },
+    {
+      "id": "quiz_me_task_5",
+      "prompt": "In an active /quiz-me session, N1 (Deterministic Content Digests) was asked as a plain-text Scenario Check and N2-T1 (Asymmetric Identity Binding) was asked with inline options (A), (B), (C) requiring a 'why' explanation. First, for N1, the user replied with informal plain-English intuition: 'basically a git tag is just a sticky note somebody can move to a totally different commit, whereas a sha256 hash is baked from the actual bytes so changing one byte changes the hash!' Second, when N2-T1 was presented with inline options (A), (B), (C), the user replied with just a bare letter: 'B'. Handle this N2-T1 reply (assuming N1 was just credited as Mastered).",
+      "expected_chat_output": [
+        "Credits informal plain-English causal intuition generously for N1 (✅ Mastered) without demanding textbook buzzwords and without sycophantic flattery ('Spot on', 'Great', 'Brilliant').",
+        "Enforces the 'Explain Why' anti-guessing gate on N2-T1 when the user replies with only the bare letter 'B': confirms that (B) is the right option, does NOT mark N2 as ✅ Mastered yet, and asks a concise 1-line follow-up ('Why does signature verification still succeed in (B)?') so a lucky multiple-choice guess cannot bypass comprehension verification."
+      ],
+      "expected_repo_state": [
+        "Marks N1 as ✅ Mastered in <topic>_learning_graph.md while keeping N2 in 🎯 Ready Next until the user explains why (B) happens."
       ],
       "agent_config": "bare-agent"
     }

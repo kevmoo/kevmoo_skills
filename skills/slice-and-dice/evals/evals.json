@@ -42,6 +42,30 @@
         "Updates the persistent working artifact's Progress Tracker for [SND 2/5] while keeping base slice numbers 1..5 stable."
       ],
       "agent_config": "bare-agent"
+    },
+    {
+      "id": "snd_task_4",
+      "prompt": "In an active /slice-and-dice session on a 4-slide deck (slides.md), you just presented [SND 1/4] (Slide 1) with a proposed Before -> After rewrite (Case B). The user replies: 'Keep Slide 1 as-is. For Slide 2, delete that slide from the deck and move on. Defer Slide 3 until the end, and show me Slide 4.'",
+      "expected_chat_output": [
+        "Updates the Progress Tracker using the 4 clean tracker states without using 'skip' or 'drop': marks [SND 1/4] as '☑️ ... Done (Kept as-is)', marks [SND 2/4] as '☑️ ... Done (Deleted slide)' (recognizing that deleting Slide 2 from the deck completes Slice 2 rather than dropping Slice 2 from the tracker), marks [SND 3/4] as '⏳ ... Deferred (Revisit after [SND 4/4])', and sets [SND 4/4] to '[-]' (Active now).",
+        "Presents [SND 4/4] (Slide 4) and ends with the appropriate Two-Tier Action Footer while noting that [SND 3/4] (⏳ Deferred) will be revisited after [SND 4/4]."
+      ],
+      "expected_repo_state": [
+        "Applies the requested deletion of Slide 2 to slides.md (while leaving Slide 1 unchanged) and updates the persistent working tracker artifact with stable 1..4 numbering."
+      ],
+      "agent_config": "bare-agent"
+    },
+    {
+      "id": "snd_task_5",
+      "prompt": "Use /slice-and-dice to walk me through our open greenfield architecture decision tree: first we must choose between SQLite, Postgres, or DynamoDB; depending on which database we pick, that branches into completely different schema normalization choices, which in turn branch into different caching and consistency models.",
+      "expected_chat_output": [
+        "Triggers the Pre-Flight Boundary Against Branching Decision Trees: recognizes that the request is an open-ended branching decision tree where upstream choices reshape downstream branches rather than a linear or thematic collection of existing sections/items.",
+        "Halts before starting [SND 1/N] and recommends a branching decision-tree workflow (such as grilling / /grill-me or clarify-confirm-continue), or asks if the user wants to compare the 3 storage options as a flat 3-slice trade-off review instead."
+      ],
+      "expected_repo_state": [
+        "Does NOT create a specious linear [SND 1/N] plan over unchosen downstream branches before the user responds."
+      ],
+      "agent_config": "bare-agent"
     }
   ]
 }

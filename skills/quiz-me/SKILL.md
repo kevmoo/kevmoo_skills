@@ -91,8 +91,10 @@ engineering language—never use academic KST/graph jargon
         adjacent subsystems so genuine convergence dependencies emerge.
    - **Upper-Bound Scope Gate (`> 12–15` Atomic Concepts)**: If honest atomic
      mapping yields **`> 15` concepts** (or `> 12` across multiple subsystems),
-     **halt before starting calibration**, present a high-level cluster
-     breakdown in chat, and offer:
+     **halt before starting calibration**, present a compact bulleted cluster
+     breakdown in chat (`1` bullet per cluster with node range, count, and
+     1-line scope summary—never pack multi-line `<br>` node lists into wide
+     Markdown table cells), and offer:
      1. `(Recommended) Start with a foundational sub-area first ({k} concepts)`
         — master the foundational cluster before expanding downstream.
      2. `Prune to a specific target goal` — keep only the prerequisite chain
@@ -142,9 +144,10 @@ engineering language—never use academic KST/graph jargon
 2. **Generous Plain-English Grading (Require `"Why"` on Inline Options)**:
    - When the user's plain-English intuition captures the core causal invariant
      (e.g., _"it's making a change w/out a difference"_), immediately mark the
-     concept `✅ Mastered`, affirm why their intuition holds in 1 sentence,
-     update `<topic>_learning_graph.md`, and pose the `Scenario Check` for the
-     next `🎯 Ready Next` concept. Never withhold credit for missing buzzwords.
+     concept `✅ Mastered`, state the causal link that held in 1 sentence (no
+     flattery filler like _"Spot on!"_, _"Great!"_, or _"Brilliant!"_), update
+     `<topic>_learning_graph.md`, and pose the `Scenario Check` for the next
+     `🎯 Ready Next` concept. Never withhold credit for missing buzzwords.
    - If the check included inline `(A)/(B)/(C)` options and the user replies
      with **only** a bare letter (`"B"`) without explaining _why_, do not mark
      `✅ Mastered` yet—confirm whether `"B"` is the right branch and ask a
@@ -155,9 +158,9 @@ engineering language—never use academic KST/graph jargon
    **teach that concept immediately**—never refuse to explain a question you
    just asked or send the user backward empty-handed. Follow the turn skeleton
    in [references/graph_schemas.md](references/graph_schemas.md):
-   - Deliver a focused **`Teaching Block`**: affirm what held up in the user's
-     answer first, explain the core mechanism anchored in `Source`, and give a
-     1-sentence structural analogy.
+   - Deliver a focused **`Teaching Block`**: state what held up in the user's
+     answer first (without sycophantic adjectives), explain the core mechanism
+     anchored in `Source`, and give a 1-sentence structural analogy.
    - Pose **1 fresh `Transfer Question (N_x-T1)`** that **changes the failure
      mode or scenario mechanics** rather than swapping surface nouns (see
      [references/miss-diagnosis-examples.md](references/miss-diagnosis-examples.md)).
