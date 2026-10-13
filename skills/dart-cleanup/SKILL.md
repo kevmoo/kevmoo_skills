@@ -121,9 +121,9 @@ output:
 
 | Repository | Local Directory | Synced Commit |
 | :--- | :--- | :--- |
-| [`dart-lang/skills`](https://github.com/dart-lang/skills) | `~/github/skills` | [`82a4960`](https://github.com/dart-lang/skills/commit/82a49602fe18cecfe41859592af600cb9d875e40) |
-| [`kevmoo/analytica.dart`](https://github.com/kevmoo/analytica.dart) | `~/github/kevmoo/analytica.dart` | [`f13b568`](https://github.com/kevmoo/analytica.dart/commit/f13b56881a2c16518e4bf69d40b2307a10b665ea) |
-| [`kevmoo/dash_skills`](https://github.com/kevmoo/dash_skills) | `~/github/kevmoo/dash_skills` | [`387b257`](https://github.com/kevmoo/dash_skills/commit/387b2571831e34cb1d91d45d2e4b262979eb968e) |
+| [`dart-lang/skills`](https://github.com/dart-lang/skills) | `~/github/skills` | [`b046fa1`](https://github.com/dart-lang/skills/commit/b046fa14cf8c2cbc203c6ccd08354653e41d17d1) |
+| [`kevmoo/analytica.dart`](https://github.com/kevmoo/analytica.dart) | `~/github/kevmoo/analytica.dart` | [`1955b9e`](https://github.com/kevmoo/analytica.dart/commit/1955b9ed485f54ba7f6898de6b1c7a37b1b1b4e6) |
+| [`kevmoo/dash_skills`](https://github.com/kevmoo/dash_skills) | `~/github/kevmoo/dash_skills` | [`397a703`](https://github.com/kevmoo/dash_skills/commit/397a703060ec8449b4cee63749036f19662b1f0e) |
 
 ### A. Refactoring & Code Quality
 * **`dart-build-cli-app`**: CLI entrypoint structure, argument parsing
@@ -173,8 +173,8 @@ output:
   `sealed` types to enable compiler-verified exhaustive pattern matching.
   * *Path*: `~/github/kevmoo/dash_skills/skills/dart-seal-type-hierarchies/SKILL.md`
 * **`dart-use-pattern-matching`**: Applies Dart 3 pattern matching, switch
-  expressions, and list/map/split destructuring to validate schemas and simplify
-  control flow.
+  expressions, and object/record/MapEntry/list destructuring to unpack fields,
+  validate schemas, and simplify control flow.
   * *Path*: `~/github/skills/skills/dart-use-pattern-matching/SKILL.md`
 * **`dart-use-primary-constructors`**: Adopts primary constructor syntax,
   empty-body semicolon syntax, in-body initializers, and concise forms.
