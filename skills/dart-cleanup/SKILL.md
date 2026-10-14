@@ -103,6 +103,21 @@ output:
        (`package:http/testing.dart` `MockClient`), and `@TestOn('browser')` for
        DOM/Wasm interop. Assert boundary behavior of functions consuming
        constants and execute or render units directly.
+     - **Published Package `-wip` Versioning & `CHANGELOG.md` Guardrail**:
+       Modifying any file (`lib/`, `bin/`, `test/`, `tool/`, `README.md`,
+       `pubspec.yaml`, `CHANGELOG.md`) inside a published package
+       (`publish_to != 'none'` and already published on `pub.dev`) sitting at a
+       released version requires bumping `pubspec.yaml` to the next `-wip`
+       version (`major.minor.patch-wip`, or `0.major.minor-wip` for pre-`1.0.0`
+       packages; never `+1-wip`) and adding a matching `## <version>-wip`
+       section at the top of `CHANGELOG.md` (unless only fixing historical
+       `CHANGELOG.md` typos). Never append new entries under an
+       already-published `CHANGELOG.md` heading. For internal or
+       non-user-visible cleanup (`test/`, `tool/`, `README.md`, refactorings,
+       complexity reductions, `dev_dependencies`, `dependency_overrides`), leave
+       a newly created `## <version>-wip` section empty or leave `CHANGELOG.md`
+       untouched (and apply `skip-changelog-check` in `package:firehose` repos)
+       when already at `-wip`.
 2. **Optional `kscripts` Config Hygiene (`lint-cleanup` & `tighten`)**:
    - When `kscripts` is on `PATH`, use `kscripts lint-cleanup --rewrite` to
      prune redundant lints in `analysis_options.yaml` and `kscripts tighten` (or
