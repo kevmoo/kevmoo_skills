@@ -188,13 +188,8 @@ Verify developer ergonomics and repository norms:
   mechanics?
 - Does the code follow repository style guidelines and pass formatters
   (`dart format`, `gofmt`, `black`)?
-- In published Dart packages (`publish_to != 'none'`), does a PR modifying a
-  released version bump `pubspec.yaml` and `CHANGELOG.md` to `-wip` (never
-  appending new entries under an already-published `CHANGELOG.md` heading,
-  especially after merging `main`), respect SemVer for `pubspec.yaml` fields
-  (renaming/removing `executables:` is breaking/major; adding `executables:` is
-  minor; `environment.sdk:` and runtime `dependencies:` updates are patch), and
-  keep internal/test/doc-only churn out of `CHANGELOG.md` bullets?
+- On Dart packages, does the change follow the `pubspec.yaml` `-wip` versioning
+  and `CHANGELOG.md` rules in `~/.agents/CODING_STANDARDS.md`?
 
 ### 13. Cyclomatic Complexity
 
