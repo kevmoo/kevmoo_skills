@@ -39,9 +39,10 @@ moment you can make your next decision.
    filler, and on PRs any file-by-file diff inventory (`- path/to/file: ...`) or
    routine CI pass counts (`dart analyze`, `dart test`) that duplicate the PR's
    Files Changed tab and CI checks. Reproduction steps, logs, stack traces,
-   measurements, non-CI verification notes, and proposed fixes on issues serve
-   the person who fixes or reviews; keep them out of `cut_list` even when your
-   own decision did not need them.
+   measurements, non-CI verification notes, proposed fixes on issues, and
+   repository-mandated PR template checklists (`## Pre-Adoption Checklist`,
+   `## Pre-launch Checklist`) serve the person or bot who fixes or reviews; keep
+   them out of `cut_list` even when your own decision did not need them.
 8. `decision_line` is the first physical line of the block (title, paragraph,
    list item, or heading) that completed your decision. A paragraph wrapped
    across several physical lines counts from its first line. `-1` means the file

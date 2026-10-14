@@ -53,8 +53,9 @@ artifacts as process narration and as background the reader already has.
 4. **Act on the verdict.**
    - `decide_in_n`: proceed.
    - `decide_later` or `cannot_decide`: move the sentence that carries the
-     decision to the first body line, apply `cut_list`, add any `missing` facts,
-     then re-run once.
+     decision to the first body line, apply `cut_list` (keeping any sections
+     required by the repository's PR template), add any `missing` facts, then
+     re-run once.
 5. **Report one line in chat**: verdict, decision line, words above the fold,
    and the number of cut lines. Do not restate the draft.
 
