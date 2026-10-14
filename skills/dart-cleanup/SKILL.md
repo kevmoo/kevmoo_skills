@@ -105,7 +105,7 @@ output:
        constants and execute or render units directly.
      - **Published Package `-wip` Versioning & `CHANGELOG.md` Guardrail**:
        Follow the published package `-wip` and `CHANGELOG.md` rules in
-       `~/.agents/CODING_STANDARDS.md` and the `dart-package-maintenance` skill.
+       `~/.agents/CODING_STANDARDS.md`.
 2. **Optional `kscripts` Config Hygiene (`lint-cleanup` & `tighten`)**:
    - When `kscripts` is on `PATH`, use `kscripts lint-cleanup --rewrite` to
      prune redundant lints in `analysis_options.yaml` and `kscripts tighten` (or
