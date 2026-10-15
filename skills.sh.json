@@ -1,0 +1,53 @@
+{
+  "$schema": "https://skills.sh/schemas/skills.sh.schema.json",
+  "notGrouped": "bottom",
+  "groupings": [
+    {
+      "title": "Planning & Strategy",
+      "description": "Skills for structured task intake, architectural brainstorming, strategy distillation, and multi-quest conversation tracking.",
+      "skills": [
+        "clarify-confirm-continue",
+        "just-brainstorm",
+        "distilling-strategies-interactively",
+        "sidequest"
+      ]
+    },
+    {
+      "title": "Learning, Reading & Q&A",
+      "description": "Skills for bite-sized walkthroughs, first-principles comprehension quizzes, fresh-reader artifact checks, and rapid Q&A.",
+      "skills": [
+        "slice-and-dice",
+        "quiz-me",
+        "cold-read",
+        "quick-question"
+      ]
+    },
+    {
+      "title": "Code Review, Git & Gerrit",
+      "description": "Skills for adversarial pull request reviews, sibling Git worktree creation, and Gerrit stacked changelist workflows.",
+      "skills": [
+        "pr-review",
+        "new-worktree",
+        "gerrit-stacked-cls"
+      ]
+    },
+    {
+      "title": "Code Intelligence, Data & Formatting",
+      "description": "Skills for Dart code modernization, semantic code navigation, local DuckDB SQL analytics, and Markdown line-length formatting.",
+      "skills": [
+        "dart-cleanup",
+        "sem-cli",
+        "duckdb",
+        "markdown-long-lines"
+      ]
+    },
+    {
+      "title": "Agent Self-Improvement",
+      "description": "Skills for bookmarking workflow papercuts mid-task and auditing session transcripts to harden rules, hooks, and tools.",
+      "skills": [
+        "sharpen-saw",
+        "sharpen-later"
+      ]
+    }
+  ]
+}
