@@ -3,7 +3,7 @@
   "notGrouped": "bottom",
   "groupings": [
     {
-      "title": "Planning & Strategy",
+      "title": "Agent Workflows",
       "description": "Skills for structured task intake, architectural brainstorming, strategy distillation, and multi-quest conversation tracking.",
       "skills": [
         "clarify-confirm-continue",
@@ -13,7 +13,7 @@
       ]
     },
     {
-      "title": "Learning, Reading & Q&A",
+      "title": "Learning & Reading",
       "description": "Skills for bite-sized walkthroughs, first-principles comprehension quizzes, fresh-reader artifact checks, and rapid Q&A.",
       "skills": [
         "slice-and-dice",
@@ -23,7 +23,7 @@
       ]
     },
     {
-      "title": "Code Review, Git & Gerrit",
+      "title": "Review & Git",
       "description": "Skills for adversarial pull request reviews, sibling Git worktree creation, and Gerrit stacked changelist workflows.",
       "skills": [
         "pr-review",
@@ -32,7 +32,7 @@
       ]
     },
     {
-      "title": "Code Intelligence, Data & Formatting",
+      "title": "Code & Data",
       "description": "Skills for Dart code modernization, semantic code navigation, local DuckDB SQL analytics, and Markdown line-length formatting.",
       "skills": [
         "dart-cleanup",
@@ -42,7 +42,7 @@
       ]
     },
     {
-      "title": "Agent Self-Improvement",
+      "title": "Self-Improvement",
       "description": "Skills for bookmarking workflow papercuts mid-task and auditing session transcripts to harden rules, hooks, and tools.",
       "skills": [
         "sharpen-saw",
