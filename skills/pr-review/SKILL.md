@@ -1,7 +1,7 @@
 ---
 name: pr-review
 description: >-
-  Reviews GitHub Pull Requests or local Git branch diffs using an adversarial 13-angle review rubric and the Inquisitor Presumption of Theater doctrine to eliminate LLM noise. Evaluates code correctness, removed behavior, error handling, testing, and simplification, generates a ranked Markdown report with clickable line permalinks, and presents an interactive action gate (keep findings, apply local fixes, or post inline to GitHub). Use when reviewing a PR (#N or URL), auditing a local feature branch, or invoked via /pr-review. Don't use for Google3 Piper changelists (use /cl-finalize or review) or general formatting.
+  Reviews GitHub Pull Requests or local Git branch diffs for defects, removed behavior, and specification drift using a 13-angle rubric and adversarial noise filtering. Use when reviewing a GitHub PR (#N or URL), auditing a local feature branch before opening a PR, or invoked via /pr-review. Don't use for triaging existing PR review comments or CI failures (use pr-triage), multi-repo branch cleanup sweeps (use pr-cleanup), or Google3 Piper changelists (use cl-finalize or review).
 key_features:
   - Explicit 3D Paranoia Tiering (Ring, Confidence, One-Way/Two-Way Door) with --deep escalation
   - Two-Axis Evaluation (Linked Issue Spec Traceability + CODING_STANDARDS.md)
@@ -67,12 +67,11 @@ to purge hallucinatory AI fluff, pedantic theater, and unverified assumptions.
      ```bash
      gh issue view <N> --json title,body
      ```
-   - On explicit PRs with prior commits or review rounds, fetch existing review
-     threads (both resolved and unresolved) so you do not re-litigate design
-     trade-offs or nitpicks the author already settled:
+   - On explicit PRs with prior review rounds, fetch existing review threads
+     (resolved and unresolved) to respect settled design decisions and skip
+     previously addressed feedback:
      ```bash
-     gh api graphql -F owner='<owner>' -F name='<repo>' -F pr=<PR> \
-       -f query='query($owner:String!, $name:String!, $pr:Int!) { repository(owner:$owner, name:$name) { pullRequest(number:$pr) { reviewThreads(first:100) { nodes { isResolved path line comments(first:10) { nodes { author { login } body } } } } } } }'
+     gh api graphql -F owner='<owner>' -F name='<repo>' -F pr=<PR> -f query='query($owner:String!, $name:String!, $pr:Int!) { repository(owner:$owner, name:$name) { pullRequest(number:$pr) { reviewThreads(first:100) { nodes { isResolved path line comments(first:10) { nodes { author { login } body } } } } } } }'
      ```
 
 3. **3D Paranoia Header & Review Mode Selection (`OQ3`)**:
@@ -95,8 +94,8 @@ to purge hallucinatory AI fluff, pedantic theater, and unverified assumptions.
 
 ### Step 2: Two-Axis Grounding (`Spec` + `CODING_STANDARDS.md`)
 
-Never review diff hunks in isolation. Inspect complete modified files
-(`view_file`) and verify callers and SDK/package dependencies.
+Inspect complete modified files (`view_file`) along with callers and SDK/package
+dependencies rather than diff hunks in isolation.
 
 1. **Axis A — Spec & Issue Contract Traceability (`FU1`)**:
    - Cross-check every requirement in the linked issue (`gh issue view <N>`)
@@ -106,14 +105,13 @@ Never review diff hunks in isolation. Inspect complete modified files
 2. **Axis B — Dart & Package Standards (`~/.agents/CODING_STANDARDS.md`)**:
    - Audit Dart diffs against `~/.agents/CODING_STANDARDS.md`:
      - **Deep Externally, Pure Internally**: Keep `lib/<pkg>.dart` and `api.txt`
-       minimal. Forbid stateful single-use `_Populator` / `_Runner` helper
-       classes that mutate caller collections in-place; require pure private
-       functions (`_computeX(input) -> output`).
+       minimal, and use pure private functions (`_computeX(input) -> output`)
+       for internal decomposition.
      - **Load-Bearing Library Boundary Rule**: Extract a standalone `lib/src/`
        library (`Tier 1`) only when zero `_private` visibility widening is
        needed; use `part` / `part of` (`Tier 2`) when crossing `sealed`,
-       `final`, `interface`, `base`, `._()`, or `_private` class members (never
-       widen `_private` to `@internal`).
+       `final`, `interface`, `base`, `._()`, or `_private` class members so
+       `_private` members stay library-scoped.
      - **Public API Surface Verification**: When refactors extract helpers
        across files, verify public API stability with
        `dart run api_summary@^1.1.0` (`--check` if `api.txt` exists, or
@@ -129,15 +127,14 @@ Never review diff hunks in isolation. Inspect complete modified files
      Testing (Anti-Tautology & Public-Entrypoint Seams)_ · _8. Reuse_ · _9.
      Simplification_ · _10. Efficiency_ · _11. Altitude_ · _12. Readability &
      Conventions_ · _13. Cyclomatic Complexity_.
-   - In `Review Mode: Deep`, keep deterministic CLI verification (`dart format`,
+   - In `Review Mode: Deep`, run deterministic CLI verification (`dart format`,
      `dart analyze --fatal-infos`, `cognitive_complexity`, `dart test`) in the
-     parent agent while dispatching strictly read-only subagents
-     (`Model: "flash"`) across bounded file slices (`<= 10` files per subagent)
-     and angle clusters before running the Inquisitor pass. Subagents must not
-     run test suites or call `write_to_file` / `ask_question` (writing to a
-     parent conversation's `<appDataDir>/brain/<parent_cid>/` path is blocked by
-     the subagent artifact sandbox); they return their markdown findings
-     directly in their response message.
+     parent agent, and dispatch read-only subagents (`Model: "flash"`) across
+     bounded file slices (`<= 10` files per subagent) and angle clusters before
+     running the Inquisitor pass. Have each subagent return its markdown
+     findings directly in its response message so the parent agent can
+     synthesize and write `pr_review_<PR>.md` inside the parent session's
+     artifact sandbox.
 2. **Execute Inquisitor Filters ("Presumption of Theater")**: Discard any
    finding matching `[DISMISSED: INVENTED_ARCHITECTURE]`,
    `[DISMISSED: PARANOIA]`, `[DISMISSED: PEDANTIC_ESCALATION]`,
@@ -155,15 +152,11 @@ delegated subagent, return the markdown directly in your response for the parent
 agent to write `pr_review_<PR>.md`, and echo the Paranoia Header in visible
 chat).
 
-> [!IMPORTANT]
->
-> **Never Leak Internal Inquisitor Proof into Outbound GitHub Comments**: To
-> pass [`RUBRIC.md`](RUBRIC.md)'s Inquisitor filters, you must gather mechanical
-> proof. Keep that forensic trace in **`Internal Proof (Do Not Post)`** for the
-> reviewer gate, and write a separate **`Outbound Inline Comment`** capped at
-> **`<= 50 words` (2–3 sentences)** that states only **(1) what
-> breaks/regresses** and **(2) the concrete fix**—with **zero call-stack
-> narration** of code the PR author just wrote.
+**Separate Internal Proof from Outbound Comments**: Keep mechanical call-site
+traces and rubric checks in **`Internal Proof (Do Not Post)`** for the local
+reviewer gate, and write a self-contained **`Outbound Inline Comment`** capped
+at **`<= 50 words` (2-3 sentences)** that states only **(1) what breaks or
+regresses** and **(2) the concrete fix**.
 
 ```markdown
 # Code Review: <Repo> PR #<Number> - <PR Title>
@@ -225,20 +218,21 @@ Present the `ask_question` gate tailored to the Ownership Tier (`OQ1`) and
 `"Select findings to post inline to GitHub"` Is Chosen)**:
 
 - **Verify Diff-Hunk Bounds Before Inline Anchoring**: Because Step 2 inspects
-  complete modified files (`view_file`), a finding may land on a pre-existing
-  line outside the modified `@@ -a,b +c,d @@` diff hunk. Check each surviving
-  finding's line number against `git diff --unified=0` (or `gh pr diff <PR>`)
-  before offering inline anchors:
-  - **In-hunk lines**: Anchor via `comments[].line` (`side: "RIGHT"`).
+  complete modified files (`view_file`), a finding may fall on a pre-existing
+  line outside the modified `@@ -a,b +c,d @@` diff hunk, and GitHub's Pull
+  Request Review API resolves inline `comments[].line` anchors only within
+  modified diff hunks (returning `HTTP 422: Line could not be resolved` outside
+  the hunk). Check each surviving finding's line number against
+  `git diff --unified=0` (or `gh pr diff <PR>`) before offering inline anchors:
+  - **In-hunk lines**: Anchor inline via `comments[].line` (`side: "RIGHT"`).
   - **Out-of-hunk / pre-existing lines**: Label as
-    `(Pre-existing, outside diff hunk)` in the report and route to the top-level
+    `(Pre-existing, outside diff hunk)` in the report and place in the top-level
     review `body` with a blob permalink
-    (`https://github.com/<owner>/<repo>/blob/<sha>/<path>#L<line>`) instead of
-    `comments[].line` (which GitHub's REST API rejects with
-    `HTTP 422: Line could not be resolved`).
-- Post **strictly** the `Outbound Inline Comment` text (`<= 50 words` of prose);
-  never include the `Internal Proof` trace or severity emoji headers (`🚨`,
-  `💡`).
-- Leave the top-level GitHub review `body` empty (`""`) when all posted comments
-  are in-hunk inline comments, unless routing an out-of-hunk note or the user
-  explicitly provides a 1–2 sentence human lead.
+    (`https://github.com/<owner>/<repo>/blob/<sha>/<path>#L<line>`).
+- **Post Only the Outbound Comment Text**: In GitHub review comments, include
+  only the `Outbound Inline Comment` prose (`<= 50 words`) and any `suggestion`
+  block, keeping `Internal Proof` traces and severity badges (`🚨`, `💡`) in the
+  local report artifact.
+- **Keep Top-Level Review Body Minimal**: Set the top-level GitHub review `body`
+  to `""` when all posted comments are in-hunk inline comments, populating
+  `body` only when routing an out-of-hunk note or a user-requested summary lead.
