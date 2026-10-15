@@ -71,7 +71,7 @@ to purge hallucinatory AI fluff, pedantic theater, and unverified assumptions.
      (resolved and unresolved) to respect settled design decisions and skip
      previously addressed feedback:
      ```bash
-     gh api graphql -F owner='<owner>' -F name='<repo>' -F pr=<PR> -f query='query($owner:String!, $name:String!, $pr:Int!) { repository(owner:$owner, name:$name) { pullRequest(number:$pr) { reviewThreads(first:100) { nodes { isResolved path line comments(first:10) { nodes { author { login } body } } } } } } }'
+     gh api graphql -F owner='{owner}' -F name='{repo}' -F pr={pr_number} -f query='query($owner:String!, $name:String!, $pr:Int!) { repository(owner:$owner, name:$name) { pullRequest(number:$pr) { reviewThreads(first:100) { nodes { isResolved path line comments(first:10) { nodes { author { login } body } } } } } } }'
      ```
 
 3. **3D Paranoia Header & Review Mode Selection (`OQ3`)**:
