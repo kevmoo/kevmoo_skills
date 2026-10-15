@@ -61,11 +61,18 @@ to purge hallucinatory AI fluff, pedantic theater, and unverified assumptions.
      - **Tier 2 (External/Peer PR, non-`kevmoo` author, or PR branch not checked
        out locally)**: Strictly read-only local checkout.
 
-2. **Linked Issue & Spec Extraction (`FU1`)**:
+2. **Linked Issue, Spec & Prior Review Thread Extraction (`FU1`)**:
    - When a PR links an issue (`Fixes #N`, `Closes #N`, or prompt issue URL),
      fetch the specification contract:
      ```bash
      gh issue view <N> --json title,body
+     ```
+   - On explicit PRs with prior commits or review rounds, fetch existing review
+     threads (both resolved and unresolved) so you do not re-litigate design
+     trade-offs or nitpicks the author already settled:
+     ```bash
+     gh api graphql -F owner='<owner>' -F name='<repo>' -F pr=<PR> \
+       -f query='query($owner:String!, $name:String!, $pr:Int!) { repository(owner:$owner, name:$name) { pullRequest(number:$pr) { reviewThreads(first:100) { nodes { isResolved path line comments(first:10) { nodes { author { login } body } } } } } } }'
      ```
 
 3. **3D Paranoia Header & Review Mode Selection (`OQ3`)**:
@@ -122,11 +129,15 @@ Never review diff hunks in isolation. Inspect complete modified files
      Testing (Anti-Tautology & Public-Entrypoint Seams)_ · _8. Reuse_ · _9.
      Simplification_ · _10. Efficiency_ · _11. Altitude_ · _12. Readability &
      Conventions_ · _13. Cyclomatic Complexity_.
-   - In `Review Mode: Deep`, dispatch parallel subagents across angle clusters
-     before running the Inquisitor pass. Subagents must return their markdown
-     findings in their response message (never call `write_to_file` on a parent
-     conversation's `<appDataDir>/brain/<parent_cid>/` path, which is blocked by
-     the subagent artifact sandbox).
+   - In `Review Mode: Deep`, keep deterministic CLI verification (`dart format`,
+     `dart analyze --fatal-infos`, `cognitive_complexity`, `dart test`) in the
+     parent agent while dispatching strictly read-only subagents
+     (`Model: "flash"`) across bounded file slices (`<= 10` files per subagent)
+     and angle clusters before running the Inquisitor pass. Subagents must not
+     run test suites or call `write_to_file` / `ask_question` (writing to a
+     parent conversation's `<appDataDir>/brain/<parent_cid>/` path is blocked by
+     the subagent artifact sandbox); they return their markdown findings
+     directly in their response message.
 2. **Execute Inquisitor Filters ("Presumption of Theater")**: Discard any
    finding matching `[DISMISSED: INVENTED_ARCHITECTURE]`,
    `[DISMISSED: PARANOIA]`, `[DISMISSED: PEDANTIC_ESCALATION]`,
@@ -155,7 +166,7 @@ chat).
 > narration** of code the PR author just wrote.
 
 ```markdown
-# Code Review: <Repo> PR #<Number> — <PR Title>
+# Code Review: <Repo> PR #<Number> - <PR Title>
 
 🛡️ Paranoia Tier: Ring <0..4B> (<Label>) · Confidence: <High|Low> · Door: <🚪 One-Way | 🔄 Two-Way> -> Review Mode: <Standard | Deep>
 
@@ -213,8 +224,21 @@ Present the `ask_question` gate tailored to the Ownership Tier (`OQ1`) and
 **Outbound Posting Guardrails (When Option
 `"Select findings to post inline to GitHub"` Is Chosen)**:
 
+- **Verify Diff-Hunk Bounds Before Inline Anchoring**: Because Step 2 inspects
+  complete modified files (`view_file`), a finding may land on a pre-existing
+  line outside the modified `@@ -a,b +c,d @@` diff hunk. Check each surviving
+  finding's line number against `git diff --unified=0` (or `gh pr diff <PR>`)
+  before offering inline anchors:
+  - **In-hunk lines**: Anchor via `comments[].line` (`side: "RIGHT"`).
+  - **Out-of-hunk / pre-existing lines**: Label as
+    `(Pre-existing, outside diff hunk)` in the report and route to the top-level
+    review `body` with a blob permalink
+    (`https://github.com/<owner>/<repo>/blob/<sha>/<path>#L<line>`) instead of
+    `comments[].line` (which GitHub's REST API rejects with
+    `HTTP 422: Line could not be resolved`).
 - Post **strictly** the `Outbound Inline Comment` text (`<= 50 words` of prose);
   never include the `Internal Proof` trace or severity emoji headers (`🚨`,
   `💡`).
-- Leave the top-level GitHub review `body` empty (`""`) when inline comments are
-  self-contained, unless the user explicitly provides a 1–2 sentence human lead.
+- Leave the top-level GitHub review `body` empty (`""`) when all posted comments
+  are in-hunk inline comments, unless routing an out-of-hunk note or the user
+  explicitly provides a 1–2 sentence human lead.
