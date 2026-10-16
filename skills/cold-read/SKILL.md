@@ -1,6 +1,6 @@
 ---
 name: cold-read
-description: |-
+description: >-
   Reads a draft issue, pull request, bug report, commit message, or review
   comment as a busy, fresh-context reader and reports whether that reader can
   make their next decision from the first few lines. Use when invoking
@@ -77,7 +77,31 @@ reader two artifacts; the second read is primed by the first.
 
 ## What the reader is for
 
-The reader targets three failure modes of agent-written text:
+The reader enforces the five outbound authoring principles and targets three
+failure modes of agent-written text:
+
+<!-- BEGIN SPOT: workflow-outbound-five-principles -->
+
+1. **Lead with the decision.** Line 1 states the defect, ask, or change.
+   Discovery history and process narrative go last or in a collapsed block.
+2. **Budget words by reader count.** Title: hundreds of readers, search key +
+   decision signal, `<= 70` chars. First 3 lines: tens, enough to triage or
+   review. Body: one reader, repro + evidence + permalinks.
+3. **Report the delta, not the tour.** Open with what is wrong or what changes.
+   The owner already knows how their code works today, so a "currently, X does
+   Y" opener is cut; a visitor gets one orienting line + permalink.
+4. **Fill a slot only if it changes a decision.** Delete empty template
+   sections, headers over single paragraphs, and parenthetical asides. One
+   audience and one owner per artifact.
+5. **Anchor, verify, then cold-read.** In issues/bugs, every claim carries a
+   permalink and repro/verification steps. In PRs/CLs, never narrate the diff
+   file-by-file or recite routine CI checks (`dart analyze`/`dart test`)—state
+   only the intent/why, non-obvious callouts or breaking changes, `Fixes #N`,
+   and non-CI verification (e.g. benchmarks or manual UI checks). Traces go in
+   `<details>` or issue attachments. Run `/cold-read` on the publish form and
+   fix anything the reader cannot decide from the first 3 lines.
+
+<!-- END SPOT: workflow-outbound-five-principles -->
 
 - **Discovery narration**: leading with what the agent found, in the order it
   found it.

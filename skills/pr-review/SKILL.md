@@ -1,10 +1,10 @@
 ---
 name: pr-review
 description: >-
-  Reviews GitHub Pull Requests or local Git branch diffs for defects, removed behavior, and specification drift using a 13-angle rubric and adversarial noise filtering. Use when reviewing a GitHub PR (#N or URL), auditing a local feature branch before opening a PR, or invoked via /pr-review. Don't use for triaging existing PR review comments or CI failures (use pr-triage), multi-repo branch cleanup sweeps (use pr-cleanup), or Google3 Piper changelists (use cl-finalize or review).
+  Reviews GitHub Pull Requests or local Git branch diffs for defects, removed behavior, and specification drift using a 13-angle rubric and adversarial noise filtering. Use when reviewing a GitHub PR (#N or URL), auditing a local feature branch before opening a PR, or invoked via /pr-review. Don't use for triaging existing PR review comments or CI failures (use pr-triage), multi-repo branch cleanup sweeps (use pr-cleanup), or non-GitHub code review systems.
 key_features:
   - Explicit 3D Paranoia Tiering (Ring, Confidence, One-Way/Two-Way Door) with --deep escalation
-  - Two-Axis Evaluation (Linked Issue Spec Traceability + CODING_STANDARDS.md)
+  - Two-Axis Evaluation (Linked Issue Spec Traceability + RUBRIC.md Standards)
   - 13 analytical review angles + Inquisitor Presumption of Theater doctrine
   - 2-Tier ownership action gate (own repo auto-fix vs. external read-only)
 ---
@@ -25,8 +25,8 @@ to purge hallucinatory AI fluff, pedantic theater, and unverified assumptions.
    (`🚪 One-Way` vs. `🔄 Two-Way` Door) to select `Standard` (single-pass) or
    `Deep` (multi-subagent parallel) review mode.
 2. **Two-Axis Evaluation (`Spec` vs. `Standards`)**: Verifies issue requirement
-   traceability (`gh issue view <N>`) alongside `~/.agents/CODING_STANDARDS.md`
-   and the 13-angle defect rubric in [`RUBRIC.md`](RUBRIC.md).
+   traceability (`gh issue view <N>`) alongside the Dart, package, and 13-angle
+   defect standards in [`RUBRIC.md`](RUBRIC.md).
 3. **Adversarial Inquisitor Gating & Clickable Permalinks**: Filters every
    candidate finding through the Five Inquisitorial Filters in
    [`RUBRIC.md`](RUBRIC.md) and links directly to GitHub source lines
@@ -75,24 +75,31 @@ to purge hallucinatory AI fluff, pedantic theater, and unverified assumptions.
      ```
 
 3. **3D Paranoia Header & Review Mode Selection (`OQ3`)**:
-   - Always compute and render at the top of `pr_review_<PR>.md` and in visible
-     chat:
-     `🛡️ Paranoia Tier: Ring <0..4B> (<Label>) · Confidence: <High|Low> · Door: <🚪 One-Way | 🔄 Two-Way> -> Review Mode: <Standard | Deep>`
-   - **Ring Defaults**:
-     - **`Ring 0-2` (`kevmoo/*` personal dotfiles, skills, scripts)**: Default
-       to `Review Mode: Standard` (single-pass review across the 13 angles)
-       unless `--deep` / `--paranoid` is passed or `Door: 🚪 One-Way`.
-     - **`Ring 3-4` (`kevmoo/*` published `pub.dev` packages, `dart-lang/*`,
-       `flutter/*`, `google/*`, or low-confidence C++/VM/Wasm/Skwasm/WIMP
-       domains) or `Door: 🚪 One-Way` (public API/wire/schema changes)**:
-       Default to `Review Mode: Deep` (multi-subagent parallel angle audit +
-       adversarial verification).
-   - Support `--deep` (`--paranoid`) as an upfront flag to force
-     `Review Mode: Deep` on any ring.
+
+   <!-- BEGIN SPOT: workflow-3d-paranoia-tiers -->
+   - **Banner Format**: Render at the top of review and PR draft preview
+     artifacts (and in chat):
+     `🛡️ Paranoia Tier: Ring <0..4B> (<Label>) · Confidence: <High|Low> · Door: <🚪 One-Way | 🔄 Two-Way>`
+   - **Reuse Ring (`Ring 0..4B`)**: `Ring 0` (personal dotfiles & private
+     configs) · `Ring 1-2` (public skills, utilities & internal scripts) ·
+     `Ring 3` (published `pub.dev` packages) · `Ring 4A` (upstream Dart/Flutter
+     framework & packages) · `Ring 4B` (upstream C++, Dart VM internals, WIMP,
+     Skwasm engine). Default to `Review Mode: Standard` on `Ring 0-2` and
+     `Review Mode: Deep` on `Ring 3-4` or when `--deep` (`--paranoid`) is
+     passed.
+   - **Confidence (`High | Low`)**: `High` for familiar pure Dart, CLI, package
+     & framework code; `Low` (forcing `Review Mode: Deep`) for unfamiliar C++,
+     VM internals, or WIMP/Skwasm/engine plumbing.
+   - **Door Type (`🚪 One-Way | 🔄 Two-Way`)**: `🚪 One-Way` (forcing
+     `Review Mode: Deep`) for public `api.txt` / CLI flag / JSON schema deltas,
+     SemVer `-wip` bumps, DB migrations, or CI release workflows; `🔄 Two-Way`
+     for internal `lib/src/` refactors, isolated tests, and docs.
+
+   <!-- END SPOT: workflow-3d-paranoia-tiers -->
 
 ---
 
-### Step 2: Two-Axis Grounding (`Spec` + `CODING_STANDARDS.md`)
+### Step 2: Two-Axis Grounding (`Spec` + [`RUBRIC.md`](RUBRIC.md))
 
 Inspect complete modified files (`view_file`) along with callers and SDK/package
 dependencies rather than diff hunks in isolation.
@@ -102,29 +109,15 @@ dependencies rather than diff hunks in isolation.
      against the implementation and test suite (`Met ✅`, `Partial ⚠️`,
      `Unmet ❌`, `Out-of-Scope ➖`). Flag unwired CLI flags or missing
      acceptance criteria.
-2. **Axis B — Dart & Package Standards (`~/.agents/CODING_STANDARDS.md`)**:
-   - Audit Dart diffs against `~/.agents/CODING_STANDARDS.md`:
-     - **Deep Externally, Pure Internally**: Keep `lib/<pkg>.dart` and `api.txt`
-       minimal, and use pure private functions (`_computeX(input) -> output`)
-       for internal decomposition.
-     - **Load-Bearing Library Boundary Rule**: Extract a standalone `lib/src/`
-       library (`Tier 1`) only when zero `_private` visibility widening is
-       needed; use `part` / `part of` (`Tier 2`) when crossing `sealed`,
-       `final`, `interface`, `base`, `._()`, or `_private` class members so
-       `_private` members stay library-scoped.
-     - **Public API Surface Verification**: When refactors extract helpers
-       across files, verify public API stability with
-       `dart run api_summary@^1.1.0` (`--check` if `api.txt` exists, or
-       before/after diff).
-     - **Testing & Verification (No Change-Detector Tests)**: Verify tests
-       exercise consumer behavior on synthetic inputs and assert structural or
-       relational invariants on live catalogs/templates
-       (`mergedCount + openCount == totalCount`, workflow job ID matching check
-       context) rather than pinning static config-set membership, named
-       entities, collection counts (`hasLength(N)`), or literal
-       action/flag/version substrings in static template constants. Newly added
-       or literal-updated change-detector assertions in the diff are
-       `[BLOCKING]`.
+2. **Axis B — Dart, Architecture & Testing Standards
+   ([`RUBRIC.md`](RUBRIC.md))**:
+   - Audit Dart and package diffs against the canonical standards embedded in
+     [`RUBRIC.md`](RUBRIC.md) Angles `#3` (Public API Surface Verification),
+     `#5` (Load-Bearing Library Boundary Rule), `#7` (Test Seam Discipline,
+     Hermeticity & No Change-Detector Tests — newly added or literal-updated
+     change-detector assertions in the diff are `[BLOCKING]`), `#9` & `#13`
+     (Deep Externally / Pure Internally & Cognitive Complexity Target Zone
+     `8–15`), and Part 2 (`Dart Inquisitorial Review Dismissal Filters`).
 
 ---
 

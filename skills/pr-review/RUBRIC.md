@@ -74,14 +74,34 @@ Inspect abstraction boundaries and invariants:
 
 - Are domain invariants enforced in public constructors or factory methods?
 - Does a wrapper type leak its underlying implementation primitives to callers?
-- **Load-Bearing Library Boundary Rule (Dart)**: Does a file split widen
-  `_private` class members to `@internal` just to extract a separate `lib/src/`
-  library? Require `part` / `part of` (`Tier 2`) whenever types share privileged
-  library-scoped access (`sealed`, `final`, `interface`, `base`, private
-  constructors `._()`, or `_private` members), reserving standalone `lib/src/`
-  libraries (`Tier 1`) for cuts with zero visibility widening.
 - Are state transitions atomic, or can the object be left in an inconsistent
   intermediate state upon failure?
+
+<!-- BEGIN SPOT: dart-load-bearing-boundaries -->
+
+- **Load-Bearing Library Boundary Rule (`part` / `part of` vs. Separate
+  Libraries)**:
+  - **Core Principle**: Prefer the boundary the language compiler enforces
+    (library privacy + class modifiers) over one an annotation suggests
+    (`@internal`, which is only an analyzer lint and still leaks into `api.txt`
+    when attached to a member of an exported `PublicClass`).
+  - **Tier 1 — Standalone `lib/src/` Library (Default When Boundary Is Not
+    Load-Bearing)**: Extract declarations into a separate library under
+    `lib/src/` with explicit `import` / `show` **only** when the cut requires
+    **zero** visibility widening (`0` cross-cut `_private` member accesses) and
+    crosses **zero** library-scoped class modifier boundaries (`sealed`,
+    `final`, `interface`, `base`, or private generative constructors `._()`).
+  - **Tier 2 — `part` / `part of` (Preferred When the Library Boundary Is
+    Load-Bearing)**: Whenever multiple types require privileged library-level
+    access to each other—such as subtyping a `sealed`, `final`, `interface`, or
+    `base` class/mixin, calling a private constructor `._()` for subtype
+    capability, or accessing `_private` members on a public or shared
+    class—**keep them in the same library using `part` / `part of`**. Never
+    force tightly privileged types into a single giant file just to avoid
+    `part`, and never widen `PublicClass._member` to `@internal` just to split
+    libraries.
+
+<!-- END SPOT: dart-load-bearing-boundaries -->
 
 ### 6. Error Handling
 
@@ -94,48 +114,77 @@ Inspect exception and error paths:
 
 ### 7. Testing (Seam Discipline, Behavioral Assertions & Real Test Doubles)
 
-Scrutinize test quality, seam discipline, and assertion substance (`FU2`):
+Scrutinize test quality, seam discipline, and assertion substance (`FU2`). Flag
+**newly added or literal-updated change-detector and tautological tests** in the
+diff as **`[BLOCKING]`** (`CHANGES_REQUESTED`), and pre-existing untouched ones
+as `[SUGGESTION]`:
 
-- **Test Seam Discipline (`lib/<pkg>.dart` vs. `lib/src/` Deep Modules)**:
-  - Require package-level and integration tests to import the public
-    `package:<pkg>/<pkg>.dart` entrypoint, keeping `lib/<pkg>.dart` exports
-    strictly scoped to public consumers.
-  - Allow—and encourage—subsystem unit tests to import internal **deep modules**
-    (`package:<pkg>/src/<subsystem>.dart`, such as unexported parsers, state
+<!-- BEGIN SPOT: dart-test-hermeticity -->
+
+- **Test Seam Discipline (Package Integration vs. `lib/src/` Unit Tests)**:
+  - **Package-Level & Integration Tests**: Import `package:<pkg>/<pkg>.dart`
+    (the public entrypoint seam) and keep `lib/<pkg>.dart` exports strictly
+    scoped to public consumers.
+  - **Subsystem Unit Tests (`lib/src/`)**: Import internal **deep modules**
+    (`package:<pkg>/src/<subsystem>.dart`)—such as unexported parsers, state
     machines, data models, or algorithms with simple interfaces and rich
-    internal logic), while requiring thin single-caller helpers to be tested
-    through their owning module's entrypoint.
+    internal behavior—to unit-test edge cases directly; test thin single-caller
+    helpers through their owning module's entrypoint.
+- **Real Implementations & First-Party Fakes ("Tests That Can Fail")**: Exercise
+  real dependencies and first-party fakes so tests fail when production
+  contracts break—use `package:test_descriptor` (`d.sandbox`, `d.dir`, `d.file`)
+  or `Directory.systemTemp.createTempSync()` (always registered with
+  `addTearDown(() => tempDir.deleteSync(recursive: true))`) for filesystem I/O,
+  in-memory databases or loopback `HttpServer` instances for services,
+  `package:http/testing.dart` (`MockClient`) for HTTP, hand-written fakes/stubs
+  for custom interfaces, and `@TestOn('browser')` for DOM and JS/Wasm interop.
+- **Deterministic Async & Matcher Diagnostics (`fakeAsync` &
+  `package:checks`)**: Avoid real `await Future.delayed(...)` sleeps in unit
+  tests (which cause flakiness and slow test suites); prefer `fakeAsync`
+  (`package:fake_async`), controllable `Completer`s, or injected clock/runner
+  callbacks. Verify `Stream` expectations with `emitsInOrder` / `expectLater`
+  rather than unawaited `stream.listen(expectAsync1(...))` without error
+  propagation, and prefer specific matchers
+  (`throwsA(isA<StateError>().having((e) => e.message, 'message', contains('...')))`,
+  `completion(...)`, `unorderedEquals(...)`) over `expect(x == y, isTrue)` or
+  manual `try { ...; fail('...'); } catch (e) {}` blocks.
+
+<!-- END SPOT: dart-test-hermeticity -->
+
+<!-- BEGIN SPOT: dart-test-no-change-detectors -->
+
 - **Behavioral, Structural & Relational Assertions (No Change-Detector Tests)**:
-  - Require tests to assert observable outputs, state transitions, and boundary
-    conditions of code that _consumes_ constants, configs, and models using
-    synthetic unit inputs.
-  - Flag **newly added or literal-updated change-detector and tautological
-    tests** in the diff as **`[BLOCKING]`** (`CHANGES_REQUESTED`), and
-    pre-existing untouched ones as `[SUGGESTION]`: tests that echo scalar
-    constants, assert specific item membership in static config sets
-    (`publishedPackages.contains('foo')`), pin named production repos/entities
-    in classification tests, hard-code live catalog/dataset entry counts
-    (`hasLength(33)`), or substring-match literal action names, CLI flags, or
-    pinned tool versions/SHAs inside a single static template constant
-    (`check(canonicalWorkflow).contains('foo/bar@main')`). When a PR updates an
-    existing change-detector literal to match a template/config bump, require
-    deleting the change-detector assertion instead. Require **structural and
-    relational invariants** (`isNotEmpty`,
-    `mergedCount + openCount == totalCount`, or cross-constant key matching)
-    when testing live datasets or canonical templates.
-- **Direct Execution & Rendering Verification**: Require runtime behavior,
-  control flow, and UI/CLI output to be verified by executing functions or
-  rendering components directly, reserving raw file-text reads
-  (`readAsStringSync()`) for `README.md` `--help` drift checks, `BUILD` /
-  `pubspec.yaml` metadata sync, and code-generator fixtures.
-- **Real Implementations & First-Party Fakes ("Tests That Can Fail")**: Require
-  real implementations (`package:test_descriptor` `d.sandbox`/`d.dir`,
-  `Directory.systemTemp`, loopback `HttpServer`, in-memory stores), first-party
-  fakes (`package:http/testing.dart` `MockClient`), or real `@TestOn('browser')`
-  runs for DOM and JS/Wasm interop so tests exercise real failure modes.
-- **Public API Surface Verification**: When refactors extract helpers across
-  files, require `dart run api_summary@^1.1.0` diff or `api.txt` verification so
-  extracted helpers do not leak into the public package entrypoint.
+  - **Test Consumer Behavior on Synthetic Inputs**: Assert observable outputs,
+    state transitions, and boundary conditions of the code that _consumes_
+    constants, configs, and models using synthetic unit inputs (e.g., passing
+    280 vs. 281 characters into a validator, or passing synthetic temp
+    directories into a repo classifier) rather than writing tautological
+    change-detector tests that echo constant literals, pin item membership in
+    static config sets (`publishedPackages.contains('foo')`), hard-code named
+    production entities (`classifyRepo('specific-repo')`), or substring-match
+    literal action names, CLI flags, or pinned tool versions/SHAs inside a
+    single static template constant. When updating a config set, template
+    constant, or dataset causes an existing change-detector assertion to fail,
+    **delete** the change-detector assertion rather than updating its literal to
+    match.
+  - **Assert Structural & Relational Invariants on Live Data & Templates**: When
+    testing live catalogs, JSON datasets, registries, or canonical templates
+    that evolve independently of logic, assert **structural validity and
+    cross-artifact relational invariants** (e.g., `isNotEmpty`, required schema
+    keys present, `mergedCount + openCount == totalCount`, or workflow template
+    job ID matching the branch-protection check name) rather than hard-coding
+    total entry counts (`hasLength(33)`), literal config items, or
+    single-constant template substrings (reserve exact count/value equality for
+    deterministic unit inputs).
+- **Direct Execution & Rendering Verification**: Verify runtime behavior,
+  control flow, and UI/CLI output by invoking functions, running CLI commands,
+  or rendering components directly. Use raw file-text reads
+  (`readAsStringSync()`) specifically for static documentation drift
+  (`README.md` `--help` blocks), build/package metadata sync (`BUILD`,
+  `pubspec.yaml`), and code-generator input/output fixtures.
+
+<!-- END SPOT: dart-test-no-change-detectors -->
+
 - Do tests exercise negative paths, timeout behavior, and invalid inputs, or
   only the happy path?
 - Does every bug fix include a deterministic regression test reproducing the
@@ -156,22 +205,49 @@ Check for wheel reinvention:
 The subtractive lens (eliminate over-engineering):
 
 - Is this more complex than the problem requires?
-- Does the change add premature abstractions, single-caller interfaces, stateful
-  single-use `_Populator` / `_Runner` helper classes that mutate caller
-  maps/sets in-place (prefer pure file-private functions), or speculative
-  configuration knobs that nothing uses?
-- **Shallow Single-Caller Pass-Through Helpers
-  (`cognitive_complexity:shallow`)**: Does the diff extract single-caller
-  (`FanIn == 1`, `TestFanIn == 0`) helpers that are high-arity (`>= 5`
-  parameters), micro-helpers (`< 5` body lines and `CC <= 1`), signature-heavy
-  (`SignatureLines >= BodyLines`), or placed in a sibling `lib/src/` file solely
-  to serve one caller (`CROSS_FILE_SINGLE_CALLER`)? When re-inlining keeps the
-  caller `<= 15` (`SAFE_INLINE`), flag the helper for direct re-inlining; when
-  `CallerCCAfter > 15` and `HelperCC <= 4` (`FLATTEN_AND_INLINE`), recommend
-  flattening the caller in place instead of bucket-brigading local variables
-  across helper signatures.
 - Can nested conditional branches be flattened with early-return guard clauses
   or switch expressions?
+
+<!-- BEGIN SPOT: dart-complexity-and-helpers -->
+
+- **Public Package / Subsystem Boundary (`lib/<pkg>.dart` & `api.txt`)**: Must
+  be **Deep**. Export only top-level orchestrators, immutable configuration
+  value objects, and result records. Hide AST walkers, SQL builders, and parser
+  helpers inside `lib/src/` (never re-exported in `lib/<pkg>.dart`). Use
+  explicit `export 'src/...' show ...;` **only in public `lib/<pkg>.dart`
+  entrypoints**; when splitting an internal `lib/src/` file, update internal
+  `import` sites directly rather than leaving `export ... show` bridge shims
+  inside `lib/src/` files (which obscure symbol provenance and risk circular
+  imports).
+- **Public API Surface Verification (`dart run api_summary@^1.1.0`)**: After any
+  file split or refactoring in a Dart package (Dart 3.12+ remote package
+  runner—zero `pubspec.yaml` edits or global install required):
+  - If `api.txt` is tracked: run `dart run api_summary@^1.1.0 --check` and
+    require exit code `0`.
+  - If `api.txt` is not tracked: capture
+    `dart run api_summary@^1.1.0 -o /tmp/api_before.txt` before refactoring and
+    `diff -u /tmp/api_before.txt /tmp/api_after.txt` after, requiring zero diff
+    unless a public API change was requested.
+- **Internal Decomposition & Shallow-Helper Guardrail (`lib/src/`)**: **Stop
+  rule:** only declarations above `cognitive_complexity` 15 (production) or 40
+  (`_test.dart`) are work items; stop once the max is `<= 15` (Target Zone
+  `8–15`, not `0`). When decomposing, forbid stateful `_Populator` / `_Runner`
+  helper classes that mutate caller maps/sets in-place; require **file-private
+  pure functions (`_computeX(input) -> output`)** with zero out-parameters and
+  `<= 4` parameters (`<= 3` preferred, `sliceScoreAtRoot >= 3`). Flag
+  single-caller (`FanIn == 1`, `TestFanIn == 0`) pass-through helpers
+  (`cognitive_complexity:shallow`: high-arity `>= 5` parameters, micro-helpers
+  `< 5` body lines and `CC <= 1`, `SignatureLines >= BodyLines`, or
+  `CROSS_FILE_SINGLE_CALLER`): re-inline a `SAFE_INLINE` helper when
+  `CallerCCAfter <= 15` and it is a pass-through with no same-shape siblings and
+  no meaningful domain contract; when `CallerCCAfter > 15` and `HelperCC <= 4`
+  (`FLATTEN_AND_INLINE`), flatten the caller in place instead of
+  bucket-brigading local variables across helper signatures. Benchmark hot
+  per-element loops before splitting them; prefer a per-declaration
+  `// cognitive_complexity:ignore` with a reason comment. Details: the
+  `dart-cognitive-complexity` skill.
+
+<!-- END SPOT: dart-complexity-and-helpers -->
 
 ### 10. Efficiency
 
@@ -263,6 +339,34 @@ Filter every candidate finding against these five pathologies:
    - _Rule_: If the proposed replacement symbol or dependency cannot be verified
      to exist in the repository's active dependencies or language SDK,
      **DISMISS** as `[DISMISSED: HALLUCINATED_API]`.
+
+<!-- BEGIN SPOT: dart-inquisitor-dismissal-filters -->
+
+- **Dart Inquisitorial Review Dismissal Filters (`[DISMISSED: DART_THEATER]`)**:
+  - **Exhaustive `switch` vs. Lookup Map Theater**: Never replace an exhaustive
+    Dart 3 `switch` statement or `switch` expression over an `enum` or
+    `sealed class` with a `Map<Enum, Handler>` lookup table or polymorphic
+    Strategy class (which destroys compile-time exhaustiveness checking and adds
+    heap allocation).
+  - **Low-Cognitive-Complexity Split Theater**: Never split a Dart function
+    whose AST `cognitive_complexity` score is `<= 15` (production) or `<= 40`
+    (`_test.dart`) solely because of line count (`~50 lines`) or multi-phase
+    procedural structure.
+  - **High-Arity / Shallow Helper Extraction Theater**: Never extract a private
+    helper that requires `>= 4` parameters (`HIGH_ARITY`), returns a
+    record/tuple of mutated local state, or would be flagged by
+    `cognitive_complexity:shallow` (`SAFE_INLINE`, `MICRO_HELPER`, `SIG_HEAVY`,
+    `LOW_COMPLEXITY_PAYOFF`).
+  - **Foreign-Language Idiom & Unverified Linter Duplication**: Never recommend
+    `kConstantName` (instead of `lowerCamelCase`), explicit `break;` inside Dart
+    3 `switch` cases, `sprintf`/string builders for single-expression string
+    interpolation, or manual null checks where null-aware operators (`?.`, `??`,
+    `??=`) or pattern matching (`if (x case final y?)`) already apply; do not
+    flag unused imports, dead variables, or formatting issues already enforced
+    by `dart analyze` and `dart format` unless corroborated by static analysis
+    tools (`undead --suggest-private`, `dedupe`, `cognitive_complexity`).
+
+<!-- END SPOT: dart-inquisitor-dismissal-filters -->
 
 ---
 
