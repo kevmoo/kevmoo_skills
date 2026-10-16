@@ -105,10 +105,24 @@ Scrutinize test quality, seam discipline, and assertion substance (`FU2`):
     machines, data models, or algorithms with simple interfaces and rich
     internal logic), while requiring thin single-caller helpers to be tested
     through their owning module's entrypoint.
-- **Behavioral & Boundary Assertions**: Require tests to assert observable
-  outputs, state transitions, and boundary conditions of code that consumes
-  constants and models against concrete expected values (rather than echoing
-  constant literals, DTO getters, or production formulas).
+- **Behavioral, Structural & Relational Assertions (No Change-Detector Tests)**:
+  - Require tests to assert observable outputs, state transitions, and boundary
+    conditions of code that _consumes_ constants, configs, and models using
+    synthetic unit inputs.
+  - Flag **newly added or literal-updated change-detector and tautological
+    tests** in the diff as **`[BLOCKING]`** (`CHANGES_REQUESTED`), and
+    pre-existing untouched ones as `[SUGGESTION]`: tests that echo scalar
+    constants, assert specific item membership in static config sets
+    (`publishedPackages.contains('foo')`), pin named production repos/entities
+    in classification tests, hard-code live catalog/dataset entry counts
+    (`hasLength(33)`), or substring-match literal action names, CLI flags, or
+    pinned tool versions/SHAs inside a single static template constant
+    (`check(canonicalWorkflow).contains('foo/bar@main')`). When a PR updates an
+    existing change-detector literal to match a template/config bump, require
+    deleting the change-detector assertion instead. Require **structural and
+    relational invariants** (`isNotEmpty`,
+    `mergedCount + openCount == totalCount`, or cross-constant key matching)
+    when testing live datasets or canonical templates.
 - **Direct Execution & Rendering Verification**: Require runtime behavior,
   control flow, and UI/CLI output to be verified by executing functions or
   rendering components directly, reserving raw file-text reads

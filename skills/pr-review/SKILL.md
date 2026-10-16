@@ -116,6 +116,15 @@ dependencies rather than diff hunks in isolation.
        across files, verify public API stability with
        `dart run api_summary@^1.1.0` (`--check` if `api.txt` exists, or
        before/after diff).
+     - **Testing & Verification (No Change-Detector Tests)**: Verify tests
+       exercise consumer behavior on synthetic inputs and assert structural or
+       relational invariants on live catalogs/templates
+       (`mergedCount + openCount == totalCount`, workflow job ID matching check
+       context) rather than pinning static config-set membership, named
+       entities, collection counts (`hasLength(N)`), or literal
+       action/flag/version substrings in static template constants. Newly added
+       or literal-updated change-detector assertions in the diff are
+       `[BLOCKING]`.
 
 ---
 
@@ -124,9 +133,9 @@ dependencies rather than diff hunks in isolation.
 1. **Sweep the 13 Angles in [`RUBRIC.md`](RUBRIC.md)**:
    - _1. Line Scan_ · _2. Removed Behavior_ · _3. Cross-File Tracer_ · _4.
      Language Pitfalls_ · _5. Invariants & Wrappers_ · _6. Error Handling_ · _7.
-     Testing (Anti-Tautology & Public-Entrypoint Seams)_ · _8. Reuse_ · _9.
-     Simplification_ · _10. Efficiency_ · _11. Altitude_ · _12. Readability &
-     Conventions_ · _13. Cyclomatic Complexity_.
+     Testing (Seam Discipline, No Change-Detector Tests & Real Doubles)_ · _8.
+     Reuse_ · _9. Simplification_ · _10. Efficiency_ · _11. Altitude_ · _12.
+     Readability & Conventions_ · _13. Cyclomatic Complexity_.
    - In `Review Mode: Deep`, run deterministic CLI verification (`dart format`,
      `dart analyze --fatal-infos`, `cognitive_complexity`, `dart test`) in the
      parent agent, and dispatch read-only subagents (`Model: "flash"`) across
