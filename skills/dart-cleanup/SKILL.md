@@ -164,9 +164,8 @@ output:
 * **`dart-build-cli-app`**: CLI entrypoint structure, argument parsing
   (`package:args`), cross-platform scripts, exit codes, and compilation.
   * *Path*: `~/github/skills/skills/dart-build-cli-app/SKILL.md`
-* **`dart-cognitive-complexity`**: Reduces cognitive complexity (Target Zone
-  8–15) via pattern matching, guard clauses, `data_flow`, `file_split`, and
-  `cognitive_complexity:shallow` single-caller helper re-inlining.
+* **`dart-cognitive-complexity`**: Analyzes and reduces deeply nested control
+  flow in Dart functions using automated AST scoring and refactoring tools.
   * *Path*: `~/github/kevmoo/analytica.dart/skills/dart-cognitive-complexity/SKILL.md`
 * **`dart-dedupe`**: Detects, audits, and safely remediates structural code
   duplication across Dart and Flutter repositories using the standalone Dedupe

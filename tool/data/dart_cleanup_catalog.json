@@ -31,7 +31,7 @@
         {
           "name": "dart-cognitive-complexity",
           "repo": "analytica.dart",
-          "summary": "Reduces cognitive complexity (Target Zone 8–15) via pattern matching, guard clauses, `data_flow`, `file_split`, and `cognitive_complexity:shallow` single-caller helper re-inlining."
+          "summary": "Analyzes and reduces deeply nested control flow in Dart functions using automated AST scoring and refactoring tools."
         },
         {
           "name": "dart-dedupe",

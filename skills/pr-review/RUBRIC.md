@@ -39,12 +39,10 @@ Trace dependencies beyond the diff hunks:
 
 - Did an interface, signature, or exported type change without updating all call
   sites?
-- Do package exports (`lib/<pkg>.dart`, `index.dart`, `__init__.py`, `mod.rs`)
-  avoid leaking internal helper types (`export 'src/...' show ...;`)?
-- When a refactor extracts helpers across files in a Dart package, require
-  public API surface verification (`dart run api_summary@^1.1.0 --check` if
-  `api.txt` is tracked, or before/after `api_summary` diff) to guarantee zero
-  unintended public API leaks.
+- Do package entrypoints (`index.ts`, `__init__.py`, `mod.rs`) avoid leaking
+  internal module symbols, and for Dart packages, do exports and multi-file
+  refactors comply with the boundary rules in Angle 9
+  (`dart-complexity-and-helpers`)?
 - Do mock implementations in test fixtures still mirror the updated production
   contract?
 
@@ -284,13 +282,8 @@ Verify developer ergonomics and repository norms:
 Evaluate nesting and cognitive strain:
 
 - Are functions excessively long (>50 lines) or deeply indented (>3 levels)?
-- Does the function exceed the Cognitive Complexity ceiling (`> 15` for
-  production logic, `> 40` for tests)? Treat `8–15` as the healthy **Target
-  Zone**—never demand decomposing a cohesive function already `<= 15` into
-  single-caller micro-helpers just to chase `0`.
-- When decomposition is needed (`> 15`), can the logic be flattened in place
-  (guard clauses, switch expressions) or extracted into pure, testable
-  sub-functions with `<= 4` parameters and `sliceScoreAtRoot >= 3`?
+- For Dart code, enforce the cognitive complexity thresholds, decomposition
+  criteria, and shallow-helper rules in Angle 9 (`dart-complexity-and-helpers`).
 
 ---
 

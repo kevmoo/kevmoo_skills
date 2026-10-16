@@ -94,12 +94,13 @@ failure modes of agent-written text:
    sections, headers over single paragraphs, and parenthetical asides. One
    audience and one owner per artifact.
 5. **Anchor, verify, then cold-read.** In issues/bugs, every claim carries a
-   permalink and repro/verification steps. In PRs/CLs, never narrate the diff
-   file-by-file or recite routine CI checks (`dart analyze`/`dart test`)—state
-   only the intent/why, non-obvious callouts or breaking changes, `Fixes #N`,
-   and non-CI verification (e.g. benchmarks or manual UI checks). Traces go in
-   `<details>` or issue attachments. Run `/cold-read` on the publish form and
-   fix anything the reader cannot decide from the first 3 lines.
+   permalink and repro/verification steps. In PRs and code reviews, never
+   narrate the diff file-by-file or recite routine CI checks (`dart analyze`/
+   `dart test`)—state only the intent/why, non-obvious callouts or breaking
+   changes, `Fixes #N`, and non-CI verification (e.g. benchmarks or manual UI
+   checks). Traces go in `<details>` or issue attachments. Run `/cold-read` on
+   the publish form and fix anything the reader cannot decide from the first 3
+   lines.
 
 <!-- END SPOT: workflow-outbound-five-principles -->
 
