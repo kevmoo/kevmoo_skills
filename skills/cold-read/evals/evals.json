@@ -1,7 +1,5 @@
 {
-  "repo_criteria": [
-    "evals/code_quality_rubric.json"
-  ],
+  "repo_criteria": ["evals/code_quality_rubric.json"],
   "evals": [
     {
       "id": "cold_read_buried_lead",
@@ -27,6 +25,19 @@
         "Reports a decision_line of 3 or less.",
         "Does NOT list the opening paragraph, the steps to reproduce, or the stack trace in cut_list.",
         "Reports one summary line, not a paragraph."
+      ],
+      "expected_repo_state": [
+        "No files are modified.",
+        "No artifact files are written to disk."
+      ],
+      "agent_config": "bare-agent"
+    },
+    {
+      "id": "cold_read_prescriptive_opening",
+      "prompt": "/cold-read skills/cold-read/evals/fixtures/prescriptive_opening_issue.md --role triager",
+      "expected_chat_output": [
+        "Reports verdict cannot_decide or decide_later because the draft opens with a prescriptive code change without stating the user/agent problem.",
+        "Records the missing user/agent problem (observed vs. expected behavior) in missing."
       ],
       "expected_repo_state": [
         "No files are modified.",
