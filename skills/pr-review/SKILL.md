@@ -137,10 +137,16 @@ dependencies rather than diff hunks in isolation.
      findings directly in its response message so the parent agent can
      synthesize and write `pr_review_<PR>.md` inside the parent session's
      artifact sandbox.
-2. **Execute Inquisitor Filters ("Presumption of Theater")**: Discard any
-   finding matching `[DISMISSED: INVENTED_ARCHITECTURE]`,
-   `[DISMISSED: PARANOIA]`, `[DISMISSED: PEDANTIC_ESCALATION]`,
-   `[DISMISSED: HARMLESS]`, or `[DISMISSED: HALLUCINATED_API]`.
+2. **Empirical Verification & Anti-Slop Gate**:
+   - Before keeping a candidate finding or offering
+     `"Select findings to post inline to GitHub"`, empirically verify it via
+     local test execution (`dart analyze --fatal-infos`, `dart test` on Tier 1)
+     or live CI check inspection (`gh pr checks <PR>` and
+     `gh run view <id> --log-failed` on Tier 2). Discard any theoretical claim
+     contradicted by passing tests or CI checks, and apply the Inquisitor
+     Filters (`[DISMISSED: INVENTED_ARCHITECTURE]`, `[DISMISSED: PARANOIA]`,
+     `[DISMISSED: PEDANTIC_ESCALATION]`, `[DISMISSED: HARMLESS]`,
+     `[DISMISSED: HALLUCINATED_API]`).
 3. **Assign Severity**: 🚨 `[BLOCKING]`, 💡 `[SUGGESTION]`, or 🧹
    `[HYGIENE_NIT]` (suppress nits if zero blocking/suggestions exist).
 
@@ -148,23 +154,16 @@ dependencies rather than diff hunks in isolation.
 
 ### Step 4: Two-Layer Report Formatting (`Internal Proof` vs. `Outbound Comment`)
 
-Save the report to `<appDataDir>/brain/<conversation_id>/pr_review_<PR>.md`
-using the active conversation's own `<conversation_id>` (if running inside a
-delegated subagent, return the markdown directly in your response for the parent
-agent to write `pr_review_<PR>.md`, and echo the Paranoia Header in visible
-chat).
-
-**Separate Internal Proof from Outbound Comments**: Keep mechanical call-site
-traces and rubric checks in **`Internal Proof (Do Not Post)`** for the local
-reviewer gate, and write a self-contained **`Outbound Inline Comment`** capped
-at **`<= 50 words` (2-3 sentences)** that states only **(1) what breaks or
-regresses** and **(2) the concrete fix**.
+Save the report to `<appDataDir>/brain/<conversation_id>/pr_review_<PR>.md` (if
+running in a delegated subagent, return markdown in your reply for the parent
+agent to write `pr_review_<PR>.md`, and echo the Paranoia Header in chat). Keep
+call-site traces in **`Internal Proof (Do Not Post)`** and cap
+**`Outbound Inline Comment`** at **`<= 50 words` (2-3 sentences)** stating **(1)
+what breaks or regresses** and **(2) the concrete fix**:
 
 ```markdown
 # Code Review: <Repo> PR #<Number> - <PR Title>
-
 🛡️ Paranoia Tier: Ring <0..4B> (<Label>) · Confidence: <High|Low> · Door: <🚪 One-Way | 🔄 Two-Way> -> Review Mode: <Standard | Deep>
-
 **PR**: [<owner>/<repo>#<number>](https://github.com/<owner>/<repo>/pull/<number>) | **Author**: `<author>` | **Head**: `<headRef>` (`<headSHA>`)
 **Verdict**: `✅ Approved` | `⚠️ Approved with suggestions` | `❌ Changes requested`
 
@@ -177,23 +176,11 @@ regresses** and **(2) the concrete fix**.
 | <Requirement from issue #N> | Met ✅ | `lib/foo.dart:42`, `test/foo_test.dart:18` |
 
 ## Findings
-
-### 🚨 Blocking Issues
+### 🚨 Blocking Issues / 💡 Suggestions / 🧹 Hygiene Nits
 - [ ] [**path/to/file.dart#L42-L48**](https://github.com/<owner>/<repo>/blob/<sha>/path/to/file.dart#L42-L48)
-  - **Internal Proof (Do Not Post)**: <Call-site trace, invariant check, and why alternatives fail Inquisitor filters.>
+  - **Internal Proof (Do Not Post)**: <Call-site trace, caller fan-in, invariant check, and Inquisitor filter proof.>
   - **Outbound Inline Comment (`<= 50 words`)**:
-    > <1 sentence stating what breaks/throws + 1 sentence or `suggestion` block with the fix. Zero call-stack narration.>
-
-### 💡 Suggestions
-- [ ] [**path/to/file.dart#L105**](https://github.com/<owner>/<repo>/blob/<sha>/path/to/file.dart#L105)
-  - **Internal Proof (Do Not Post)**: <Verification of caller fan-in, complexity delta, or test seam.>
-  - **Outbound Inline Comment (`<= 50 words`)**:
-    > <1-2 sentences stating the simplification or edge case + concrete fix.>
-
-### 🧹 Hygiene Nits
-- [ ] [**path/to/file.dart#L12**](https://github.com/<owner>/<repo>/blob/<sha>/path/to/file.dart#L12)
-  - **Outbound Inline Comment (`<= 25 words`)**:
-    > <Direct 1-line nit.>
+    > <1 sentence stating what breaks/throws + 1 sentence or `suggestion` block with the concrete fix.>
 ```
 
 ---
@@ -219,17 +206,25 @@ Present the `ask_question` gate tailored to the Ownership Tier (`OQ1`) and
 **Outbound Posting Guardrails (When Option
 `"Select findings to post inline to GitHub"` Is Chosen)**:
 
-- **Verify Diff-Hunk Bounds Before Inline Anchoring**: Because Step 2 inspects
-  complete modified files (`view_file`), a finding may fall on a pre-existing
-  line outside the modified `@@ -a,b +c,d @@` diff hunk, and GitHub's Pull
-  Request Review API resolves inline `comments[].line` anchors only within
-  modified diff hunks (returning `HTTP 422: Line could not be resolved` outside
-  the hunk). Check each surviving finding's line number against
-  `git diff --unified=0` (or `gh pr diff <PR>`) before offering inline anchors:
-  - **In-hunk lines**: Anchor inline via `comments[].line` (`side: "RIGHT"`).
-  - **Out-of-hunk / pre-existing lines**: Label as
-    `(Pre-existing, outside diff hunk)` in the report and place in the top-level
-    review `body` with a blob permalink
+- **Empirical Pre-Post Gate**: Never offer or post inline review comments to
+  GitHub until local tests (`dart test` / `kscripts pr-check` on Tier 1) or live
+  CI check runs (`gh pr checks <PR>` on Tier 2) have been inspected and confirm
+  the finding is not a false positive.
+- **Mandatory Diff-Hunk `line` & `start_line` Check (`HTTP 422` Prevention)**:
+  Because Step 2 inspects complete files (`view_file`), a finding may target
+  lines outside a modified `@@ -a,b +c,d @@` hunk. GitHub's REST API resolves
+  inline `comments[].line` **and `comments[].start_line`** anchors strictly
+  within modified diff hunks (returning `HTTP 422: Line could not be resolved`
+  if either `line` or `start_line` falls outside the hunk or spans across an
+  unmodified gap). Before posting, verify every inline comment's `line` (and
+  `start_line` when multi-line, ensuring `start_line <= line`) against
+  `git diff` / `gh pr diff <PR>` on `side: "RIGHT"`:
+  - **In-hunk (`line` and `start_line` inside the same diff hunk)**: Anchor
+    inline via `comments[].line` (and optional `start_line`, `side: "RIGHT"`).
+  - **Out-of-hunk / pre-existing lines**: Clamp `start_line`/`line` to the
+    modified hunk range if applicable, or label as
+    `(Pre-existing, outside diff hunk)` and place in the top-level review `body`
+    with a blob permalink
     (`https://github.com/<owner>/<repo>/blob/<sha>/<path>#L<line>`).
 - **Post Only the Outbound Comment Text**: In GitHub review comments, include
   only the `Outbound Inline Comment` prose (`<= 50 words`) and any `suggestion`

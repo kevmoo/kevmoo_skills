@@ -731,6 +731,36 @@ void main() {
       check(data.quests[0].status).equals(QuestStatus.completed);
       check(data.lastCompletionOrder).equals(1);
 
+      // Completing a MainQuest (`1` or `M1`) clears stale `vcs.stage=dirty` to
+      // `clean` unless `--stage` is explicitly passed
+      await runAndLoad(['reopen', 'M1']);
+      await runAndLoad([
+        'vcs',
+        '1',
+        '--stage=dirty',
+        '--branch=feat/quest-1',
+        '--files=lib/dirty.dart',
+      ]);
+      data = await runAndLoad(['complete', 'M1']);
+      check(data.quests[0].status).equals(QuestStatus.completed);
+      check(data.quests[0].vcs?.stage).equals(VcsStage.clean);
+      check(data.quests[0].vcs?.branch).equals('feat/quest-1');
+      check(data.quests[0].vcs!.modifiedFiles).isEmpty();
+
+      // Explicit `--stage` is preserved when completing a MainQuest
+      await runAndLoad(['reopen', '1']);
+      await runAndLoad([
+        'vcs',
+        '1',
+        '--stage=dirty',
+        '--branch=feat/quest-1',
+        '--files=lib/dirty.dart',
+      ]);
+      data = await runAndLoad(['complete', '1', '--stage=dirty']);
+      check(data.quests[0].status).equals(QuestStatus.completed);
+      check(data.quests[0].vcs?.stage).equals(VcsStage.dirty);
+      check(data.quests[0].vcs!.modifiedFiles).deepEquals(['lib/dirty.dart']);
+
       // Reopen Global SideQuest G1
       data = await runAndLoad(['reopen', 'G1']);
       check(data.globalSideQuests[0].status).equals(SideQuestStatus.active);

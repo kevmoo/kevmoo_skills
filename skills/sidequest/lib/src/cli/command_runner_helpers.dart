@@ -113,14 +113,46 @@ List<String> extractIds(List<String> args) => args
     .where((s) => s.isNotEmpty)
     .toList();
 
+bool _matchesQuestId(MainQuest q, String id) =>
+    q.id == id || 'M${q.id}' == id.toUpperCase();
+
+void _syncQuestVcsOnComplete(MainQuest q, VcsStage? explicitStage) {
+  if (explicitStage != null) {
+    final clearFiles =
+        explicitStage == VcsStage.clean || explicitStage == VcsStage.merged;
+    q.vcs = VcsState(
+      stage: explicitStage,
+      branch: q.vcs?.branch,
+      modifiedFiles: clearFiles ? const [] : (q.vcs?.modifiedFiles ?? const []),
+      details: q.vcs?.details,
+      revision: q.vcs?.revision,
+    );
+    return;
+  }
+  if (q.vcs case final vcs? when vcs.stage == VcsStage.dirty) {
+    q.vcs = VcsState(
+      stage: VcsStage.clean,
+      branch: vcs.branch,
+      details: vcs.details,
+      revision: vcs.revision,
+    );
+  }
+}
+
 @internal
 ItemCompleteResult completeSingleItem(
   SidequestData data,
   String id,
-  int nextOrder,
-) {
+  int nextOrder, {
+  VcsStage? explicitStage,
+}) {
   for (final q in data.quests) {
-    final qResult = _completeQuest(q, id, nextOrder);
+    final qResult = _completeQuest(
+      q,
+      id,
+      nextOrder,
+      explicitStage: explicitStage,
+    );
     if (qResult != ItemCompleteResult.notFound) return qResult;
   }
 
@@ -132,8 +164,14 @@ ItemCompleteResult completeSingleItem(
   return ItemCompleteResult.notFound;
 }
 
-ItemCompleteResult _completeQuest(MainQuest q, String id, int nextOrder) {
-  if (q.id == id) {
+ItemCompleteResult _completeQuest(
+  MainQuest q,
+  String id,
+  int nextOrder, {
+  VcsStage? explicitStage,
+}) {
+  if (_matchesQuestId(q, id)) {
+    _syncQuestVcsOnComplete(q, explicitStage);
     if (q.status == QuestStatus.completed) {
       return ItemCompleteResult.alreadyCompleted;
     }
@@ -245,7 +283,7 @@ bool startSingleItem(SidequestData data, String id) {
 }
 
 bool _startQuest(SidequestData data, MainQuest q, String id) {
-  if (q.id == id) {
+  if (_matchesQuestId(q, id)) {
     q.status = QuestStatus.active;
     return true;
   }
@@ -308,7 +346,7 @@ bool reopenSingleItem(SidequestData data, String id) {
 }
 
 bool _reopenQuest(SidequestData data, MainQuest q, String id) {
-  if (q.id == id) {
+  if (_matchesQuestId(q, id)) {
     q.status = QuestStatus.active;
     return true;
   }
@@ -360,8 +398,8 @@ bool _reopenSubQuest(SidequestData data, MainQuest q, SubQuest sq, String id) {
 
 bool removeSingleItem(SidequestData data, String id) {
   var found = false;
-  if (data.quests.any((q) => q.id == id)) {
-    data.quests.removeWhere((q) => q.id == id);
+  if (data.quests.any((q) => _matchesQuestId(q, id))) {
+    data.quests.removeWhere((q) => _matchesQuestId(q, id));
     return true;
   }
 
@@ -452,7 +490,7 @@ enum BatchOp {
   blockerAdd('blocker_add', {_kSubquest, _kTitle, _kStart, _kStatus}),
   sidequestAdd('sidequest_add', {_kQuest, _kTitle, _kGlobal, _kParked, _kNote}),
   start('start', {_kIds}),
-  complete('complete', {_kIds}),
+  complete('complete', {_kIds, _kStage}),
   reopen('reopen', {_kIds}),
   vcs('vcs', {_kQuest, _kStage, _kBranch, _kFiles, _kDetails});
 
@@ -583,9 +621,18 @@ void _applyBatchReopen(SidequestData data, Map<String, dynamic> op) {
 
 void _applyBatchComplete(SidequestData data, Map<String, dynamic> op) {
   final validIds = _extractBatchIds(op, action: 'complete');
+  final rawStage = op[_kStage]?.toString();
+  final explicitStage = (rawStage != null && rawStage.trim().isNotEmpty)
+      ? VcsStage.fromJson(rawStage.trim())
+      : null;
   for (final id in validIds) {
     final nextOrder = data.lastCompletionOrder + 1;
-    final result = completeSingleItem(data, id, nextOrder);
+    final result = completeSingleItem(
+      data,
+      id,
+      nextOrder,
+      explicitStage: explicitStage,
+    );
     _applyCompletionResult(data, id, result, nextOrder);
   }
 }
@@ -725,7 +772,7 @@ void _applyBatchVcs(SidequestData data, Map<String, dynamic> op) {
 }
 
 MainQuest? findQuest(SidequestData data, String id, {bool silent = false}) {
-  final q = data.quests.where((e) => e.id == id).firstOrNull;
+  final q = data.quests.where((e) => _matchesQuestId(e, id)).firstOrNull;
   if (!silent && q == null) {
     stderr.writeln('Error: Main Quest "$id" not found.');
   }

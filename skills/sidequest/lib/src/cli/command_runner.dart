@@ -566,11 +566,19 @@ class CompleteCommand extends SidequestCommand {
   @override
   String get invocation => '${runner.executableName} complete <id> [id2]...';
 
-  CompleteCommand(super.runner);
+  CompleteCommand(super.runner) {
+    argParser.addOption(
+      'stage',
+      allowed: ['dirty', 'local_commit', 'uploaded', 'merged', 'clean'],
+      help: 'Explicit VCS lifecycle stage when completing a main quest.',
+    );
+  }
 
   @override
   Future<int> run() async {
     final ids = requireNonEmptyIds('Usage: complete <id> [id2] [id3]...');
+    final rawStage = argResults?['stage'] as String?;
+    final explicitStage = rawStage != null ? VcsStage.fromJson(rawStage) : null;
     final data = await requireData();
     final completedIds = <String>[];
     final alreadyCompletedIds = <String>[];
@@ -578,7 +586,12 @@ class CompleteCommand extends SidequestCommand {
 
     for (final id in ids) {
       final nextOrder = data.lastCompletionOrder + 1;
-      final result = completeSingleItem(data, id, nextOrder);
+      final result = completeSingleItem(
+        data,
+        id,
+        nextOrder,
+        explicitStage: explicitStage,
+      );
       if (result == ItemCompleteResult.completedWithOrder) {
         data.lastCompletionOrder = nextOrder;
         completedIds.add(id);

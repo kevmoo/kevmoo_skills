@@ -131,8 +131,11 @@ sidequest start 1.1 1.1.1
 # 4. Batch Operations (Atomic multi-item execution in a single call)
 sidequest batch '[{"type":"subquest_add","quest":"1","title":"Backend"},{"type":"step_add","subquest":"1.2","title":"API client","status":"pending"},{"type":"start","ids":["1.1.1"]}]'
 
-# 5. Complete One or Multiple Items (Atomic disk write & star update)
+# 5. Complete One or Multiple Items (Atomic disk write & star update;
+#    completing Main Quest `1` / `M1` clears stale `vcs.stage=dirty` to `clean`
+#    unless `--stage` is explicitly passed)
 sidequest complete 1.1.1 1.1.2 1.1
+sidequest complete 1 [--stage=clean|merged|uploaded|local_commit|dirty]
 
 # 6. Update VCS Lifecycle
 sidequest vcs 1 --stage=dirty|local_commit|uploaded|merged|clean [--branch=B] [--files=F]
