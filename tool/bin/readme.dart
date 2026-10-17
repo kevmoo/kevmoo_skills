@@ -65,6 +65,8 @@ String _generateSkillsTable(Directory skillsDir, String repoSlug) {
     ..writeln('<!-- SKILLS_LIST_START -->\n')
     ..writeln('To install any skill individually:\n')
     ..writeln('```bash')
+    ..writeln('dart run skills@ add $repoSlug --skill <skill-name>')
+    ..writeln('# or')
     ..writeln('npx skills add $repoSlug --skill <skill-name>')
     ..writeln('```\n')
     ..writeln('<!-- prettier-ignore -->')

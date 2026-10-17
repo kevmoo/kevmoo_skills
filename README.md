@@ -11,6 +11,8 @@ domains or tasks.
 To install any skill individually:
 
 ```bash
+dart run skills@ add kevmoo/kevmoo_skills --skill <skill-name>
+# or
 npx skills add kevmoo/kevmoo_skills --skill <skill-name>
 ```
 

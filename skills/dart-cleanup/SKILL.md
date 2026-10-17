@@ -156,9 +156,10 @@ output:
 
 | Repository | Local Directory | Synced Commit |
 | :--- | :--- | :--- |
-| [`dart-lang/skills`](https://github.com/dart-lang/skills) | `~/github/skills` | [`b046fa1`](https://github.com/dart-lang/skills/commit/b046fa14cf8c2cbc203c6ccd08354653e41d17d1) |
-| [`kevmoo/analytica.dart`](https://github.com/kevmoo/analytica.dart) | `~/github/kevmoo/analytica.dart` | [`1955b9e`](https://github.com/kevmoo/analytica.dart/commit/1955b9ed485f54ba7f6898de6b1c7a37b1b1b4e6) |
-| [`kevmoo/dash_skills`](https://github.com/kevmoo/dash_skills) | `~/github/kevmoo/dash_skills` | [`397a703`](https://github.com/kevmoo/dash_skills/commit/397a703060ec8449b4cee63749036f19662b1f0e) |
+| [`dart-lang/skills`](https://github.com/dart-lang/skills) | `~/github/skills` | [`bf984f3`](https://github.com/dart-lang/skills/commit/bf984f3ef223dd85e92036f934bbcb6bf301e4ce) |
+| [`kevmoo/analytica.dart`](https://github.com/kevmoo/analytica.dart) | `~/github/kevmoo/analytica.dart` | [`5d2e9dd`](https://github.com/kevmoo/analytica.dart/commit/5d2e9dde47c657527ff517b184f29c666b6e50e8) |
+| [`kevmoo/dash_skills`](https://github.com/kevmoo/dash_skills) | `~/github/kevmoo/dash_skills` | [`ce6cdbd`](https://github.com/kevmoo/dash_skills/commit/ce6cdbde55300d871c974f70a686d329aafc01af) |
+| [`kevmoo/source_gen_test`](https://github.com/kevmoo/source_gen_test) | `~/github/kevmoo/source_gen_test` | [`b42ebf0`](https://github.com/kevmoo/source_gen_test/commit/b42ebf0851a7e0c1ee0fbd2042b28186622edacb) |
 
 ### A. Refactoring & Code Quality
 * **`dart-build-cli-app`**: CLI entrypoint structure, argument parsing
@@ -236,6 +237,10 @@ output:
 * **`dart-test-fundamentals`**: Core `package:test` practices, test grouping,
   `setUp`/`tearDown` lifecycles, and `dart_test.yaml` configuration.
   * *Path*: `~/github/kevmoo/dash_skills/skills/dart-test-fundamentals/SKILL.md`
+* **`source-gen-test-fuzz`**: Stress-tests Dart `source_gen` `Generator` and
+  `GeneratorForAnnotation` code generators across combinatorial AST declaration
+  matrices (`cartesianProduct` and `verifyGeneratorBatch`).
+  * *Path*: `~/github/kevmoo/source_gen_test/skills/source-gen-test-fuzz/SKILL.md`
 
 ### D. Documentation, Packaging & Native Interop
 * **`dart-doc-validation`**: Validates doc comments using `dart doc` to catch

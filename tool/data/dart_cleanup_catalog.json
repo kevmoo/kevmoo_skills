@@ -3,20 +3,26 @@
     "skills": {
       "path": "~/github/skills",
       "cloneUrl": "https://github.com/dart-lang/skills.git",
-      "commitSha": "b046fa14cf8c2cbc203c6ccd08354653e41d17d1",
-      "commitDate": "2026-10-13T16:06:58-07:00"
+      "commitSha": "bf984f3ef223dd85e92036f934bbcb6bf301e4ce",
+      "commitDate": "2026-10-16T09:51:02-07:00"
     },
     "dash_skills": {
       "path": "~/github/kevmoo/dash_skills",
       "cloneUrl": "https://github.com/kevmoo/dash_skills.git",
-      "commitSha": "397a703060ec8449b4cee63749036f19662b1f0e",
-      "commitDate": "2026-10-08T10:45:41-07:00"
+      "commitSha": "ce6cdbde55300d871c974f70a686d329aafc01af",
+      "commitDate": "2026-10-16T17:40:23-07:00"
     },
     "analytica.dart": {
       "path": "~/github/kevmoo/analytica.dart",
       "cloneUrl": "https://github.com/kevmoo/analytica.dart.git",
-      "commitSha": "1955b9ed485f54ba7f6898de6b1c7a37b1b1b4e6",
-      "commitDate": "2026-10-10T22:53:26-07:00"
+      "commitSha": "5d2e9dde47c657527ff517b184f29c666b6e50e8",
+      "commitDate": "2026-10-15T23:31:44-07:00"
+    },
+    "source_gen_test": {
+      "path": "~/github/kevmoo/source_gen_test",
+      "cloneUrl": "https://github.com/kevmoo/source_gen_test.git",
+      "commitSha": "b42ebf0851a7e0c1ee0fbd2042b28186622edacb",
+      "commitDate": "2026-10-17T00:45:13Z"
     }
   },
   "categories": [
@@ -142,6 +148,11 @@
           "name": "dart-test-fundamentals",
           "repo": "dash_skills",
           "summary": "Core `package:test` practices, test grouping, `setUp`/`tearDown` lifecycles, and `dart_test.yaml` configuration."
+        },
+        {
+          "name": "source-gen-test-fuzz",
+          "repo": "source_gen_test",
+          "summary": "Stress-tests Dart `source_gen` `Generator` and `GeneratorForAnnotation` code generators across combinatorial AST declaration matrices (`cartesianProduct` and `verifyGeneratorBatch`)."
         }
       ]
     },
