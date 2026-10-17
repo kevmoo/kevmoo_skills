@@ -19,6 +19,16 @@
       ],
       "expected_repo_state": ["No files are modified."],
       "agent_config": "bare-agent"
+    },
+    {
+      "id": "duckdb_task_3_code_diff_macros",
+      "prompt": "Using the duckdb skill, how can I query a raw git diff pipeline or a staged diff directory with SQL to find modified functions and signature drift?",
+      "expected_chat_output": [
+        "References loading 'scripts/diff_macros.sql' via '-init'.",
+        "Mentions 'read_diff_lines' or 'read_diff_hunks' for raw unified diffs (such as '/dev/stdin') and 'diff_entity_churn', 'diff_signature_drift', or 'diff_untested_functions' for staged JSONL diff directories."
+      ],
+      "expected_repo_state": ["No files are modified."],
+      "agent_config": "bare-agent"
     }
   ]
 }

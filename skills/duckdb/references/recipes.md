@@ -433,3 +433,72 @@ SET preserve_insertion_order = false;
 SELECT count(*) FROM 'massive_dataset/*.parquet';
 "
 ```
+
+---
+
+## 8. Querying Large Code Diffs
+
+Use [`../scripts/diff_macros.sql`](../scripts/diff_macros.sql) to query unified
+diffs with SQL. Use `rg` for single-pattern text searches in a working tree, and
+use DuckDB for multi-condition filters, aggregations, and AST range joins on
+diffs.
+
+### Recipe 8.1: Query Raw Unified Diffs via Standard Input
+
+Pipe `git diff` or `gh pr diff` directly into `read_diff_lines('/dev/stdin')` or
+`read_diff_hunks('/dev/stdin')`:
+
+```bash
+git diff main...HEAD | duckdb -batch -dark-mode -box \
+  -init skills/duckdb/scripts/diff_macros.sql -c "
+SELECT file_path, new_line, content
+FROM read_diff_lines('/dev/stdin')
+WHERE op = '+'
+  AND regexp_matches(content, 'TODO|FIXME|console\.log')
+  AND file_path NOT LIKE '%test%';
+"
+```
+
+### Recipe 8.2: Query Staged Review Directories (`diff_lines.jsonl` & `diff_entities.jsonl`)
+
+When a diff-staging step emits `diff_lines.jsonl`, `diff_hunks.jsonl`, and
+`diff_entities.jsonl` into a staging directory (for example `staged_diff`), run
+relational queries against that directory with `diff_macros.sql`:
+
+```bash
+duckdb -batch -dark-mode -box \
+  -init skills/duckdb/scripts/diff_macros.sql -c "
+-- 1. Top modified functions and methods ranked by lines added and rewrite %
+SELECT file_path, kind, name, chunk_name, lines_added, pct_rewritten
+FROM diff_entity_churn('staged_diff')
+LIMIT 15;
+
+-- 2. Public or internal functions whose signature changed between OLD and NEW
+SELECT file_path, kind, name, old_signature, new_signature
+FROM diff_signature_drift('staged_diff');
+
+-- 3. Modified production functions not referenced in any test diff
+SELECT file_path, kind, name, chunk_name, lines_added
+FROM diff_untested_functions('staged_diff');
+"
+```
+
+### Recipe 8.3: Find Deleted Symbols (`ANTI JOIN`)
+
+Find symbols that existed in `OLD` (`--base-ref`) and were removed from `NEW`
+without a matching replacement in the same file:
+
+```bash
+duckdb -batch -dark-mode -box \
+  -init skills/duckdb/scripts/diff_macros.sql -c "
+SELECT o.file_path, o.kind, o.name, o.signature, o.line_start AS old_line
+FROM staged_diff_entities('staged_diff') o
+ANTI JOIN staged_diff_entities('staged_diff') n
+  ON o.file_path = n.file_path
+ AND o.kind = n.kind
+ AND o.name = n.name
+ AND n.side = 'NEW'
+WHERE o.side = 'OLD'
+ORDER BY o.file_path, o.line_start;
+"
+```
