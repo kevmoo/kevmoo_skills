@@ -34,15 +34,18 @@ artifacts as process narration and as background the reader already has.
   preview lines first; a leading `# <Proposed Title>` line stays and counts as
   line 1.
 - `--role`: who reads it. Default `triager`. Use `owner` when the likely reader
-  wrote or maintains the code under discussion (small repositories, your own
-  packages). Use `reviewer` for pull request bodies.
+  is you or a single maintainer of your own package (`<your_user>/*`). Use
+  `triager` for issues filed against external teams or multi-maintainer
+  repositories. Use `reviewer` for pull request bodies.
 - `--n`: lines the reader gets before it must decide. Default 3.
 
 ## Steps
 
-1. **Resolve the role.** Without `--role`, infer it: `owner` when recent commits
-   on the paths the draft references come from one or two active maintainers;
-   otherwise `triager`. Pull request bodies default to `reviewer`.
+1. **Resolve the role.** Without `--role`, infer it: `owner` when the target is
+   your own repository (`<your_user>/*`) or a single-author internal package;
+   `triager` for issues/bugs filed against external teams or multi-author
+   repositories (even if one maintainer recently touched the referenced file).
+   Pull request bodies default to `reviewer`.
 2. **Spawn a fresh-context, read-only reader.** Give it exactly three things:
    the contents of [references/persona.md](references/persona.md), the role and
    N, and the draft file path. Nothing else from the current conversation.
@@ -55,7 +58,11 @@ artifacts as process narration and as background the reader already has.
    - `decide_later` or `cannot_decide`: move the sentence that carries the
      decision to the first body line, apply `cut_list` (keeping any sections
      required by the repository's PR template), add any `missing` facts, then
-     re-run once.
+     re-run once. **On issues and bug reports, the first body line must state
+     the user/agent problem and observable symptom—never hoist a prescriptive
+     implementation proposal (`"Add X to file Y"`) to line 1; keep fix ideas at
+     the bottom under a non-prescriptive `Possible directions` or `Proposed Fix`
+     section.**
 5. **Report one line in chat**: verdict, decision line, words above the fold,
    and the number of cut lines. Do not restate the draft.
 

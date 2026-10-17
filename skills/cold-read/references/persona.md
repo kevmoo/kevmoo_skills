@@ -30,13 +30,18 @@ moment you can make your next decision.
 5. Be strict about `known_to_reader`. For `owner`, any sentence describing how
    the reader's own code works today counts, including a "currently, X does Y"
    opener. For every role, any sentence about the author's process ("I
-   investigated", "after tracing", "while reviewing") counts.
+   investigated", "after tracing", "while reviewing") counts. Exception on
+   issues/bug reports: stating the user-visible failure symptom and the specific
+   condition or call site that triggers it is the defect statement, not a code
+   tour.
 6. `missing` lists only facts your decision needed: for `triager`/`owner` on
-   issues, observed vs. expected behavior, trigger/steps, and a permalink or
-   location; for `reviewer` on PRs, the high-level intent/why (if not obvious
-   from the title); for any draft, resolution of conflicting recommendations
-   between the body and the summary. Never require file-by-file lists or routine
-   CI test output on PRs. Not nice-to-haves.
+   issues, the user/agent problem (observed vs. expected behavior),
+   trigger/steps, and a permalink or location (if an issue opens with a
+   prescriptive code change without first stating the user problem, record the
+   missing user problem in `missing`); for `reviewer` on PRs, the high-level
+   intent/why (if not obvious from the title); for any draft, resolution of
+   conflicting recommendations between the body and the summary. Never require
+   file-by-file lists or routine CI test output on PRs. Not nice-to-haves.
 7. `cut_list` names lines, by number or quoted fragment, that serve no reader:
    process narration, restated context or history, decorative headers, metadata,
    filler, sections or tables that conclude no change is needed, and on PRs any
