@@ -2,29 +2,24 @@
 -- Load with: duckdb -batch -dark-mode -init skills/duckdb/scripts/markdown_macros.sql
 
 -- Internal helper: Parse raw Markdown lines, strip YAML frontmatter, track
--- nested 3/4/5-backtick and tilde code fences, and classify ATX headings.
+-- CommonMark backtick and tilde code fences, and classify ATX headings.
 CREATE OR REPLACE MACRO _parse_markdown(md_glob) AS TABLE
-WITH raw_stream AS (
+WITH RECURSIVE raw_files AS (
   SELECT
     filename AS file_path,
-    row_number() OVER () AS stream_row,
-    rtrim(COALESCE(line, ''), chr(13)) AS line
-  FROM read_csv(
-    md_glob,
-    header=false,
-    columns={'line': 'VARCHAR'},
-    quote='',
-    delim=chr(0),
-    null_padding=true,
-    filename=true
-  )
+    regexp_split_to_array(
+      regexp_replace(ltrim(content, chr(65279)), '(\r\n|\r|\n)$', ''),
+      '\r\n|\r|\n'
+    ) AS lines
+  FROM read_text(md_glob)
+  WHERE ltrim(content, chr(65279)) <> ''
 ),
 raw_lines AS (
   SELECT
     file_path,
-    row_number() OVER (PARTITION BY file_path ORDER BY stream_row) AS line_num,
-    line
-  FROM raw_stream
+    unnest(range(1, len(lines) + 1)) AS line_num,
+    unnest(lines) AS line
+  FROM raw_files
 ),
 frontmatter_state AS (
   SELECT
@@ -58,122 +53,87 @@ fm_filtered AS (
     ) AS is_frontmatter
   FROM frontmatter_state
 ),
-f5_marked AS (
+fence_candidates AS (
   SELECT
     file_path,
     line_num,
-    line,
-    is_frontmatter,
-    (
-      NOT is_frontmatter
-      AND regexp_matches(line, '^[ \t]*(`{5,}|~{5,})[^`~]*$')
-    ) AS is_f5
+    row_number() OVER (PARTITION BY file_path ORDER BY line_num) AS cand_seq,
+    left(regexp_extract(line, '^[ \t]*(`{3,}|~{3,})', 1), 1) AS marker_char,
+    strlen(regexp_extract(line, '^[ \t]*(`{3,}|~{3,})', 1)) AS marker_len,
+    regexp_matches(line, '^[ \t]*(`{3,}|~{3,})[ \t]*$') AS is_bare,
+    trim(regexp_extract(line, '^[ \t]*(?:`{3,}|~{3,})[ \t]*([^`~\s]*)', 1)) AS info_lang
   FROM fm_filtered
+  WHERE NOT is_frontmatter
+    AND regexp_matches(line, '^[ \t]*(`{3,}[^`]*|~{3,}.*)$')
 ),
-f5_state AS (
+fence_walk AS (
   SELECT
-    *,
-    (
-      is_f5
-      OR (
-        COUNT(*) FILTER (WHERE is_f5) OVER (
-          PARTITION BY file_path
-          ORDER BY line_num
-          ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
-        ) % 2 = 1
-      )
-    ) AS in_f5
-  FROM f5_marked
-),
-f4_marked AS (
+    file_path,
+    line_num,
+    cand_seq,
+    true AS is_fence_delim,
+    marker_char AS open_char,
+    marker_len AS open_len,
+    info_lang AS fence_lang
+  FROM fence_candidates
+  WHERE cand_seq = 1
+  UNION ALL
   SELECT
-    *,
-    (
-      NOT is_frontmatter
-      AND NOT in_f5
-      AND regexp_matches(line, '^[ \t]*(`{4}|~{4})[^`~]*$')
-    ) AS is_f4
-  FROM f5_state
-),
-f4_state AS (
-  SELECT
-    *,
-    (
-      is_f4
-      OR (
-        COUNT(*) FILTER (WHERE is_f4) OVER (
-          PARTITION BY file_path
-          ORDER BY line_num
-          ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
-        ) % 2 = 1
-      )
-    ) AS in_f4
-  FROM f4_marked
-),
-t3_marked AS (
-  SELECT
-    *,
-    (
-      NOT is_frontmatter
-      AND NOT in_f5
-      AND NOT in_f4
-      AND regexp_matches(line, '^[ \t]*~{3}[^~]*$')
-    ) AS is_t3
-  FROM f4_state
-),
-t3_state AS (
-  SELECT
-    *,
-    (
-      is_t3
-      OR (
-        COUNT(*) FILTER (WHERE is_t3) OVER (
-          PARTITION BY file_path
-          ORDER BY line_num
-          ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
-        ) % 2 = 1
-      )
-    ) AS in_t3
-  FROM t3_marked
-),
-b3_marked AS (
-  SELECT
-    *,
-    (
-      NOT is_frontmatter
-      AND NOT in_f5
-      AND NOT in_f4
-      AND NOT in_t3
-      AND regexp_matches(line, '^[ \t]*`{3}[^`]*$')
-    ) AS is_b3
-  FROM t3_state
+    c.file_path,
+    c.line_num,
+    c.cand_seq,
+    CASE
+      WHEN w.open_char IS NULL THEN true
+      WHEN c.is_bare AND c.marker_char = w.open_char AND c.marker_len >= w.open_len THEN true
+      ELSE false
+    END AS is_fence_delim,
+    CASE
+      WHEN w.open_char IS NULL THEN c.marker_char
+      WHEN c.is_bare AND c.marker_char = w.open_char AND c.marker_len >= w.open_len THEN NULL
+      ELSE w.open_char
+    END AS open_char,
+    CASE
+      WHEN w.open_char IS NULL THEN c.marker_len
+      WHEN c.is_bare AND c.marker_char = w.open_char AND c.marker_len >= w.open_len THEN 0
+      ELSE w.open_len
+    END AS open_len,
+    CASE
+      WHEN w.open_char IS NULL THEN c.info_lang
+      ELSE NULL
+    END AS fence_lang
+  FROM fence_walk w
+  JOIN fence_candidates c
+    ON c.file_path = w.file_path
+   AND c.cand_seq = w.cand_seq + 1
 ),
 fence_state AS (
   SELECT
-    file_path,
-    line_num,
-    line,
-    is_frontmatter,
-    (is_f5 OR is_f4 OR is_t3 OR is_b3) AS is_fence_delim,
+    f.file_path,
+    f.line_num,
+    f.line,
+    f.is_frontmatter,
+    COALESCE(w.is_fence_delim, false) AS is_fence_delim,
+    w.fence_lang,
     (
-      in_f5
-      OR in_f4
-      OR in_t3
-      OR is_b3
+      COALESCE(w.is_fence_delim, false)
       OR (
-        COUNT(*) FILTER (WHERE is_b3) OVER (
-          PARTITION BY file_path
-          ORDER BY line_num
+        COUNT(*) FILTER (WHERE COALESCE(w.is_fence_delim, false)) OVER (
+          PARTITION BY f.file_path
+          ORDER BY f.line_num
           ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
         ) % 2 = 1
       )
     ) AS in_code_block,
-    COUNT(*) FILTER (WHERE is_f5 OR is_f4 OR is_t3 OR is_b3) OVER (
-      PARTITION BY file_path
-      ORDER BY line_num
+    COUNT(*) FILTER (WHERE COALESCE(w.is_fence_delim, false)) OVER (
+      PARTITION BY f.file_path
+      ORDER BY f.line_num
       ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
     ) AS fence_delim_count
-  FROM b3_marked
+  FROM fm_filtered f
+  LEFT JOIN fence_walk w
+    ON f.file_path = w.file_path
+   AND f.line_num = w.line_num
+   AND w.is_fence_delim
 ),
 classified AS (
   SELECT
@@ -187,11 +147,7 @@ classified AS (
       WHEN in_code_block THEN (fence_delim_count + 1) // 2
       ELSE NULL
     END AS code_block_id,
-    CASE
-      WHEN is_fence_delim AND (fence_delim_count % 2 = 1) THEN
-        trim(regexp_extract(line, '^[ \t]*(?:`{3,}|~{3,})[ \t]*([^`~\s]*)', 1))
-      ELSE NULL
-    END AS fence_lang,
+    fence_lang,
     (
       NOT is_frontmatter
       AND NOT in_code_block
@@ -248,13 +204,6 @@ section_agg AS (
   WHERE NOT is_frontmatter
   GROUP BY file_path, section_id
 ),
-file_bounds AS (
-  SELECT
-    file_path,
-    MAX(line_num) AS file_max_line
-  FROM parsed
-  GROUP BY file_path
-),
 hierarchy AS (
   SELECT
     s.file_path,
@@ -266,38 +215,28 @@ hierarchy AS (
     s.own_lines,
     s.own_code_blocks,
     s.content,
-    NULLIF(LAST_VALUE(CASE WHEN s.level = 1 THEN s.heading END IGNORE NULLS) OVER (
-      PARTITION BY s.file_path ORDER BY s.section_id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
-    ), '') AS h1,
-    NULLIF(LAST_VALUE(CASE WHEN s.level BETWEEN 1 AND 2 THEN CASE WHEN s.level = 2 THEN s.heading ELSE '' END END IGNORE NULLS) OVER (
-      PARTITION BY s.file_path ORDER BY s.section_id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
-    ), '') AS h2,
-    NULLIF(LAST_VALUE(CASE WHEN s.level BETWEEN 1 AND 3 THEN CASE WHEN s.level = 3 THEN s.heading ELSE '' END END IGNORE NULLS) OVER (
-      PARTITION BY s.file_path ORDER BY s.section_id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
-    ), '') AS h3,
-    NULLIF(LAST_VALUE(CASE WHEN s.level BETWEEN 1 AND 4 THEN CASE WHEN s.level = 4 THEN s.heading ELSE '' END END IGNORE NULLS) OVER (
-      PARTITION BY s.file_path ORDER BY s.section_id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
-    ), '') AS h4,
-    NULLIF(LAST_VALUE(CASE WHEN s.level BETWEEN 1 AND 5 THEN CASE WHEN s.level = 5 THEN s.heading ELSE '' END END IGNORE NULLS) OVER (
-      PARTITION BY s.file_path ORDER BY s.section_id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
-    ), '') AS h5,
-    NULLIF(LAST_VALUE(CASE WHEN s.level BETWEEN 1 AND 6 THEN CASE WHEN s.level = 6 THEN s.heading ELSE '' END END IGNORE NULLS) OVER (
-      PARTITION BY s.file_path ORDER BY s.section_id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
-    ), '') AS h6,
+    NULLIF(LAST_VALUE(CASE WHEN s.level = 1 THEN s.heading END IGNORE NULLS) OVER w_upto, '') AS h1,
+    NULLIF(LAST_VALUE(CASE WHEN s.level BETWEEN 1 AND 2 THEN CASE WHEN s.level = 2 THEN s.heading ELSE '' END END IGNORE NULLS) OVER w_upto, '') AS h2,
+    NULLIF(LAST_VALUE(CASE WHEN s.level BETWEEN 1 AND 3 THEN CASE WHEN s.level = 3 THEN s.heading ELSE '' END END IGNORE NULLS) OVER w_upto, '') AS h3,
+    NULLIF(LAST_VALUE(CASE WHEN s.level BETWEEN 1 AND 4 THEN CASE WHEN s.level = 4 THEN s.heading ELSE '' END END IGNORE NULLS) OVER w_upto, '') AS h4,
+    NULLIF(LAST_VALUE(CASE WHEN s.level BETWEEN 1 AND 5 THEN CASE WHEN s.level = 5 THEN s.heading ELSE '' END END IGNORE NULLS) OVER w_upto, '') AS h5,
+    NULLIF(LAST_VALUE(CASE WHEN s.level BETWEEN 1 AND 6 THEN CASE WHEN s.level = 6 THEN s.heading ELSE '' END END IGNORE NULLS) OVER w_upto, '') AS h6,
     COALESCE(
       CASE s.level
         WHEN 0 THEN s.line_end
-        WHEN 1 THEN MIN(CASE WHEN s.level BETWEEN 1 AND 1 THEN s.line_start END) OVER (PARTITION BY s.file_path ORDER BY s.section_id ROWS BETWEEN 1 FOLLOWING AND UNBOUNDED FOLLOWING) - 1
-        WHEN 2 THEN MIN(CASE WHEN s.level BETWEEN 1 AND 2 THEN s.line_start END) OVER (PARTITION BY s.file_path ORDER BY s.section_id ROWS BETWEEN 1 FOLLOWING AND UNBOUNDED FOLLOWING) - 1
-        WHEN 3 THEN MIN(CASE WHEN s.level BETWEEN 1 AND 3 THEN s.line_start END) OVER (PARTITION BY s.file_path ORDER BY s.section_id ROWS BETWEEN 1 FOLLOWING AND UNBOUNDED FOLLOWING) - 1
-        WHEN 4 THEN MIN(CASE WHEN s.level BETWEEN 1 AND 4 THEN s.line_start END) OVER (PARTITION BY s.file_path ORDER BY s.section_id ROWS BETWEEN 1 FOLLOWING AND UNBOUNDED FOLLOWING) - 1
-        WHEN 5 THEN MIN(CASE WHEN s.level BETWEEN 1 AND 5 THEN s.line_start END) OVER (PARTITION BY s.file_path ORDER BY s.section_id ROWS BETWEEN 1 FOLLOWING AND UNBOUNDED FOLLOWING) - 1
-        WHEN 6 THEN MIN(CASE WHEN s.level BETWEEN 1 AND 6 THEN s.line_start END) OVER (PARTITION BY s.file_path ORDER BY s.section_id ROWS BETWEEN 1 FOLLOWING AND UNBOUNDED FOLLOWING) - 1
+        WHEN 1 THEN MIN(CASE WHEN s.level BETWEEN 1 AND 1 THEN s.line_start END) OVER w_after - 1
+        WHEN 2 THEN MIN(CASE WHEN s.level BETWEEN 1 AND 2 THEN s.line_start END) OVER w_after - 1
+        WHEN 3 THEN MIN(CASE WHEN s.level BETWEEN 1 AND 3 THEN s.line_start END) OVER w_after - 1
+        WHEN 4 THEN MIN(CASE WHEN s.level BETWEEN 1 AND 4 THEN s.line_start END) OVER w_after - 1
+        WHEN 5 THEN MIN(CASE WHEN s.level BETWEEN 1 AND 5 THEN s.line_start END) OVER w_after - 1
+        WHEN 6 THEN MIN(CASE WHEN s.level BETWEEN 1 AND 6 THEN s.line_start END) OVER w_after - 1
       END,
-      b.file_max_line
+      MAX(s.line_end) OVER (PARTITION BY s.file_path)
     ) AS subtree_line_end
   FROM section_agg s
-  JOIN file_bounds b ON s.file_path = b.file_path
+  WINDOW
+    w_upto AS (PARTITION BY s.file_path ORDER BY s.section_id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW),
+    w_after AS (PARTITION BY s.file_path ORDER BY s.section_id ROWS BETWEEN 1 FOLLOWING AND UNBOUNDED FOLLOWING)
 )
 SELECT
   file_path,
@@ -318,37 +257,48 @@ SELECT
 FROM hierarchy
 ORDER BY file_path, section_id;
 
--- 2. Extract fenced code blocks with enclosing section metadata and line spans
+-- 2. Extract fenced code blocks with language tags, line ranges, and section context
 CREATE OR REPLACE MACRO read_md_code_blocks(md_glob) AS TABLE
 WITH parsed AS (
   SELECT * FROM _parse_markdown(md_glob)
 ),
-section_titles AS (
+headings AS (
   SELECT
     file_path,
     section_id,
-    COALESCE(MAX(heading_text), '(preamble)') AS section_heading
+    heading_text AS section_heading
   FROM parsed
-  WHERE NOT is_frontmatter
-  GROUP BY file_path, section_id
+  WHERE is_heading
+),
+blocks AS (
+  SELECT
+    p.file_path,
+    p.code_block_id AS block_id,
+    MIN(p.section_id) AS section_id,
+    COALESCE(MAX(p.fence_lang), '') AS lang,
+    MIN(p.line_num) AS line_start,
+    MAX(p.line_num) AS line_end,
+    COUNT(*) FILTER (WHERE NOT p.is_fence_delim) AS code_lines,
+    COALESCE(
+      string_agg(p.line, chr(10) ORDER BY p.line_num) FILTER (WHERE NOT p.is_fence_delim),
+      ''
+    ) AS code
+  FROM parsed p
+  WHERE p.in_code_block
+  GROUP BY p.file_path, p.code_block_id
 )
 SELECT
-  p.file_path,
-  p.code_block_id AS block_id,
-  FIRST(p.section_id ORDER BY p.line_num) AS section_id,
-  FIRST(COALESCE(s.section_heading, '(preamble)') ORDER BY p.line_num) AS section_heading,
-  COALESCE(MAX(p.fence_lang), '') AS lang,
-  MIN(p.line_num) AS line_start,
-  MAX(p.line_num) AS line_end,
-  COUNT(*) FILTER (WHERE NOT p.is_fence_delim) AS code_lines,
-  COALESCE(
-    string_agg(p.line, chr(10) ORDER BY p.line_num) FILTER (WHERE NOT p.is_fence_delim),
-    ''
-  ) AS code
-FROM parsed p
-LEFT JOIN section_titles s
-  ON p.file_path = s.file_path
- AND p.section_id = s.section_id
-WHERE p.in_code_block
-GROUP BY p.file_path, p.code_block_id
-ORDER BY p.file_path, p.code_block_id;
+  b.file_path,
+  b.block_id,
+  b.section_id,
+  COALESCE(h.section_heading, '(preamble)') AS section_heading,
+  b.lang,
+  b.line_start,
+  b.line_end,
+  b.code_lines,
+  b.code
+FROM blocks b
+LEFT JOIN headings h
+  ON b.file_path = h.file_path
+ AND b.section_id = h.section_id
+ORDER BY b.file_path, b.block_id;
