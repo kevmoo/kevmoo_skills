@@ -855,13 +855,21 @@ def cmd_resolve(args):
 
 def _common_parser(suppress_defaults=False):
     parser = argparse.ArgumentParser(add_help=False)
-    default = lambda val: argparse.SUPPRESS if suppress_defaults else val
-    parser.add_argument("--projects-dir", type=Path, default=default(config_dir() / "projects"))
-    parser.add_argument("--later-file", type=Path, default=default(default_ledger()))
+    suppress = argparse.SUPPRESS
+    parser.add_argument(
+        "--projects-dir",
+        type=Path,
+        default=suppress if suppress_defaults else config_dir() / "projects",
+    )
+    parser.add_argument(
+        "--later-file",
+        type=Path,
+        default=suppress if suppress_defaults else default_ledger(),
+    )
     parser.add_argument(
         "--include-subagents",
         action="store_true",
-        default=default(False),
+        default=suppress if suppress_defaults else False,
         help="treat subagent transcripts as sessions",
     )
     return parser
