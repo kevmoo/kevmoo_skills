@@ -5,7 +5,8 @@ description: >-
   skill or hook) in one command, then resumes the active task in the same turn.
   Use when the user invokes /sharpen-later, says "log this for sharpen-saw", or
   wants to note a papercut without derailing current work. Don't use for
-  root-cause analysis or for fixing tools and rules now (use sharpen-saw).
+  multi-session transcript audits (use sharpen-saw) or when the user explicitly
+  asks to edit a specific named rule or skill file right now.
 key_features:
   - One-command friction bookmark
   - Same-turn task resumption
@@ -49,9 +50,10 @@ in the **same turn**. A dedicated `/sharpen-saw` session investigates it later.
 
 - Infer `--cat` and `--agent-note` from the conversation and proceed; the user
   already said everything they wanted to say.
-- Keep the detour to that single command. Root causes, transcript reading, and
-  edits to rules, skills or CLIs all belong to the later `/sharpen-saw` session,
-  which finds the surrounding steps from the bookmark's session and timestamp.
+- Keep the bookmark detour to that single command. Multi-session root-cause
+  audits, transcript reading, and unsolicited edits to rules, skills or CLIs
+  belong to the later `/sharpen-saw` session, which finds the surrounding steps
+  from the bookmark's session and timestamp.
 
 ## Details
 

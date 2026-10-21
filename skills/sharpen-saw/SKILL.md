@@ -5,9 +5,11 @@ description: >-
   friction (failing commands, edit spirals, permission denials, context hogs,
   dormant skills) and turns the findings into durable fixes across rules, hooks,
   CLI shims and skills. Use when the user asks to "sharpen the saw", audit past
-  sessions for friction, fix repetitive agent mistakes, drain the /sharpen-later
-  queue, or runs /sharpen-saw. Don't use for debugging the feature currently
-  being built, or for logging a papercut mid-task (use sharpen-later).
+  sessions for friction, fix repetitive agent mistakes across transcripts, drain
+  the /sharpen-later queue, or runs /sharpen-saw. Don't use for debugging the
+  feature currently being built, for logging a papercut mid-task (use
+  sharpen-later), or when the user asks mid-session to directly edit a specific
+  named skill or rule file.
 key_features:
   - Single-pass offline transcript scan
   - Error clusters with succeeding-sibling contrast
@@ -23,9 +25,11 @@ tools, rules and skills that caused it.
 
 ## The 3 Laws
 
-1. **Dedicated sessions.** Tool and rule refactoring happens here, in its own
-   session. Mid-feature friction gets a `/sharpen-later` bookmark and is picked
-   up from the queue.
+1. **Dedicated sessions.** Multi-session transcript audits and deep tool or rule
+   refactoring happen here, in their own session. Mid-feature friction gets a
+   `/sharpen-later` bookmark and is picked up from the queue; when the user
+   explicitly asks mid-session to patch a named rule or skill in-place, apply
+   that targeted edit directly with affirmative wording.
 2. **Deterministic tools over soft prompts.** A failure that recurs or is
    safety-critical gets a hook, a permission rule or a CLI wrapper. Prose rules
    are for routing.
@@ -99,12 +103,12 @@ Reading the audit:
 Before touching any rule, hook, script or skill, write
 `tool_optimization_report.md` to a scratch location. Classify each finding:
 
-| Root cause                | Signature                                              | Typical fix                                    |
-| :------------------------ | :----------------------------------------------------- | :--------------------------------------------- |
-| **Cognitive / attention** | Negation priming; a rule buried mid-file and forgotten | Rewrite affirmatively, or move it to a hook.   |
-| **Tool / harness gap**    | Pagers, editors, watchers that hang; missing flags     | Wrapper or hook that supplies the flag.        |
-| **Policy ambiguity**      | Unclear line between autonomous and gated actions      | State the boundary; encode it as a permission. |
-| **Iterative struggle**    | 3+ consecutive calls to the same command               | One session: error hint. Many: a real tool.    |
+| Root cause                | Signature                                                                   | Typical fix                                                         |
+| :------------------------ | :-------------------------------------------------------------------------- | :------------------------------------------------------------------ |
+| **Cognitive / attention** | Negation priming; a rule buried mid-file and forgotten                      | Rewrite affirmatively, or move it to a hook.                        |
+| **Tool / harness gap**    | Pagers, editors, watchers that hang; missing flags; blind remote overwrites | Wrapper or hook that supplies the flag or fetches live state first. |
+| **Policy ambiguity**      | Unclear line between autonomous and gated actions                           | State the boundary; encode it as a permission.                      |
+| **Iterative struggle**    | 3+ consecutive calls to the same command                                    | One session: error hint. Many: a real tool.                         |
 
 When an existing skill or rule was involved, also say which way it failed:
 
@@ -113,6 +117,12 @@ When an existing skill or rule was involved, also say which way it failed:
 2. **Adherence miss**: it loaded and was not followed. Move the constraint into
    a hook or wrapper, or restate it affirmatively at the top of its section.
 3. **Coverage gap**: nothing addressed the case. Add one surgical rule or flag.
+4. **Delegation / handoff miss**: a parent or coordinator agent omitted required
+   target paths, constraints, or skill pointers when spawning a subagent or
+   worker. Encode the invariant in a `PreToolUse` hook, CLI wrapper, or
+   read-only subagent permission (Law 2), the repository's `CLAUDE.md` /
+   `AGENTS.md`, or a one-line `SKILL.md` pointer with explicit target paths
+   rather than duplicating inline prompt blocks.
 
 ### 4. Propose Fixes by Tier
 
