@@ -27,9 +27,7 @@ tools, rules and skills that caused it.
 
 1. **Dedicated sessions.** Multi-session transcript audits and deep tool or rule
    refactoring happen here, in their own session. Mid-feature friction gets a
-   `/sharpen-later` bookmark and is picked up from the queue; when the user
-   explicitly asks mid-session to patch a named rule or skill in-place, apply
-   that targeted edit directly with affirmative wording.
+   `/sharpen-later` bookmark and is picked up from the queue.
 2. **Deterministic tools over soft prompts.** A failure that recurs or is
    safety-critical gets a hook, a permission rule or a CLI wrapper. Prose rules
    are for routing.
@@ -119,10 +117,15 @@ When an existing skill or rule was involved, also say which way it failed:
 3. **Coverage gap**: nothing addressed the case. Add one surgical rule or flag.
 4. **Delegation / handoff miss**: a parent or coordinator agent omitted required
    target paths, constraints, or skill pointers when spawning a subagent or
-   worker. Encode the invariant in a `PreToolUse` hook, CLI wrapper, or
-   read-only subagent permission (Law 2), the repository's `CLAUDE.md` /
-   `AGENTS.md`, or a one-line `SKILL.md` pointer with explicit target paths
-   rather than duplicating inline prompt blocks.
+   worker. Confirm by re-running with `--include-subagents` (or
+   `view <session>/<agent> --tools`) and comparing the parent's spawn prompt
+   against the subagent's first steps. Prefer lower-complexity fixes first: (a)
+   put the invariant in the repository's `CLAUDE.md` / `AGENTS.md` (which every
+   subagent inherits automatically without relying on the parent's spawn
+   prompt), or (b) add a one-line `SKILL.md` delegation pointer with explicit
+   target paths; reserve `PreToolUse` spawn hooks, CLI wrappers, or read-only
+   subagent permissions for capability bounds or mechanically checkable prompt
+   invariants.
 
 ### 4. Propose Fixes by Tier
 

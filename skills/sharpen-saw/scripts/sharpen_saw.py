@@ -698,7 +698,14 @@ def find_session(root, token):
         return files[0] if files else None
     # Main sessions first: a subagent's id starts with its parent's.
     files += [p for p in session_files(root, include_subagents=True) if p not in files]
-    matches = [p for p in files if session_id(p).startswith(token)]
+    parent_prefix, sep, agent_prefix = token.partition("/")
+    matches = [
+        p
+        for p in files
+        for parent, _, agent in [session_id(p).partition("/")]
+        if parent.startswith(parent_prefix)
+        and (bool(agent) and agent.startswith(agent_prefix) if sep else True)
+    ]
     mains = [p for p in matches if p.parent.name != "subagents"]
     if len(mains) > 1:
         print(f"{len(mains)} sessions match {token!r}; using the newest.", file=sys.stderr)
@@ -846,18 +853,37 @@ def cmd_resolve(args):
     print(f"✅ Resolved {count} /sharpen-later item(s) matching {args.target!r}.")
 
 
+def _common_parser(suppress_defaults=False):
+    parser = argparse.ArgumentParser(add_help=False)
+    suppress = argparse.SUPPRESS
+    parser.add_argument(
+        "--projects-dir",
+        type=Path,
+        default=suppress if suppress_defaults else config_dir() / "projects",
+    )
+    parser.add_argument(
+        "--later-file",
+        type=Path,
+        default=suppress if suppress_defaults else default_ledger(),
+    )
+    parser.add_argument(
+        "--include-subagents",
+        action="store_true",
+        default=suppress if suppress_defaults else False,
+        help="treat subagent transcripts as sessions",
+    )
+    return parser
+
+
 def main(argv=None):
     # A terminal that cannot encode an emoji must not crash a command that already ran.
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(errors="replace")
-    common = argparse.ArgumentParser(add_help=False)
-    common.add_argument("--projects-dir", type=Path, default=config_dir() / "projects")
-    common.add_argument("--later-file", type=Path, default=default_ledger())
-    common.add_argument(
-        "--include-subagents", action="store_true", help="treat subagent transcripts as sessions"
-    )
+    common = _common_parser(suppress_defaults=True)
 
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(
+        description=__doc__.splitlines()[0], parents=[_common_parser()]
+    )
     sub = parser.add_subparsers(dest="command", required=True)
 
     scan = sub.add_parser("scan", parents=[common], help="rank recent sessions by friction")

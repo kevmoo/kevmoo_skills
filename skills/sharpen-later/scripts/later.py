@@ -20,6 +20,7 @@ CATEGORIES = (
     "rule-violation",
     "skill-gap",
     "hook-gap",
+    "handoff-gap",
     "tool-bug",
     "ui-glitch",
     "perf",

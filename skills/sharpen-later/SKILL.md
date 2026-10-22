@@ -30,17 +30,18 @@ in the **same turn**. A dedicated `/sharpen-saw` session investigates it later.
      --cat <category>
    ```
 
-   | `--cat`          | Use for                                                  |
-   | :--------------- | :------------------------------------------------------- |
-   | `cli-gap`        | A CLI that hung, prompted, or needed a flag you guessed. |
-   | `rule-violation` | An instruction that existed and was not followed.        |
-   | `skill-gap`      | A skill that was missing, or present and never loaded.   |
-   | `hook-gap`       | Something a hook or permission rule should have caught.  |
-   | `tool-bug`       | A harness tool that misbehaved.                          |
-   | `ui-glitch`      | Output that rendered wrong for the user.                 |
-   | `perf`           | Work that was needlessly slow or token-heavy.            |
-   | `review-escape`  | A real defect a human reviewer caught after local review |
-   | `other`          | Anything else.                                           |
+   | `--cat`          | Use for                                                         |
+   | :--------------- | :-------------------------------------------------------------- |
+   | `cli-gap`        | A CLI that hung, prompted, or needed a flag you guessed.        |
+   | `rule-violation` | An instruction that existed and was not followed.               |
+   | `skill-gap`      | A skill that was missing, or present and never loaded.          |
+   | `hook-gap`       | Something a hook or permission rule should have caught.         |
+   | `handoff-gap`    | A constraint, path, or tool bound left out of a subagent brief. |
+   | `tool-bug`       | A harness tool that misbehaved.                                 |
+   | `ui-glitch`      | Output that rendered wrong for the user.                        |
+   | `perf`           | Work that was needlessly slow or token-heavy.                   |
+   | `review-escape`  | A real defect a human reviewer caught after local review        |
+   | `other`          | Anything else.                                                  |
 
 2. **Echo the receipt.** Put the printed `📌 Logged for /sharpen-saw (...)` line
    first in your reply.

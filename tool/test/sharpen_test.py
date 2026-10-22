@@ -153,7 +153,14 @@ class ReaderTest(SharpenTestCase):
         self.assertEqual(saw.read_session(sub).sid, f"{SID}/agent-1")
         self.assertEqual(saw.find_session(self.projects, SID[:8]).name, f"{SID}.jsonl")
         self.assertEqual(saw.find_session(self.projects, f"{SID}/agent"), sub)
+        self.assertEqual(saw.find_session(self.projects, f"{SID[:8]}/agent"), sub)
         self.assertEqual(len(saw.read_session(sub).steps), 1)
+        self.assertIn(
+            "Audit of 2 session(s)", self.run_saw("--include-subagents", "audit", "--last", "2")
+        )
+        self.assertIn(
+            "Audit of 2 session(s)", self.run_saw("audit", "--include-subagents", "--last", "2")
+        )
 
 
 class CommandKeyTest(unittest.TestCase):
@@ -398,9 +405,22 @@ class LedgerAndCliTest(SharpenTestCase):
     def test_later_normalizes_notes_and_ids(self):
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
-            later.main(["two\nlines", "--session", "foo.bar/baz", "--later-file", str(self.ledger)])
+            later.main(
+                [
+                    "two\nlines",
+                    "--cat",
+                    "handoff-gap",
+                    "--session",
+                    "foo.bar/baz",
+                    "--later-file",
+                    str(self.ledger),
+                ]
+            )
         (entry,) = saw.open_entries(self.ledger)
-        self.assertEqual((entry["id"], entry["human_note"]), ("L-foobarba-1", "two lines"))
+        self.assertEqual(
+            (entry["id"], entry["category"], entry["human_note"]),
+            ("L-foobarba-1", "handoff-gap", "two lines"),
+        )
         self.assertTrue(saw.BOOKMARK_RE.match(entry["id"]))
         with self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):
             later.main(["  ", "--later-file", str(self.ledger)])
