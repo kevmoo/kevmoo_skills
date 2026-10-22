@@ -81,41 +81,33 @@ subshells (where `mise` or `asdf` shims are not sourced):
   - `-no-stdin`: Exits after processing CLI options instead of reading `stdin`
     when spawned from child-process runners whose `stdin` pipe stays open (omit
     when streaming data from `/dev/stdin`).
-- **Agent Mode (`v2.0+`: `-agent`, `-no-agent`, `DUCKDB_AGENT_MODE=1`)**:
+- **Agent Mode (`v2.0+`: `-agent`, `-no-agent`, `AI_AGENT=1`,
+  `DUCKDB_AGENT_MODE=1`)**:
   - Renders compact unpadded Markdown tables with inline column types
     (`| col:TYPE |`), loud head+tail truncation (`1,000` rows, `10,000` bytes,
     `500`-char cells; `.maxrows` / `.maxbytes`) with a row-count +
     order-independent result hash footer, structured JSON errors and `>1M`-row
     scan progress on `stderr`, and 1-line-per-operator `EXPLAIN` plans.
-  - **Omit `-box` on exploratory queries**: On `v1.x`,
-    `duckdb -batch -dark-mode` already defaults to `box`. On `v2.0+`, built-in
-    Agent Mode auto-detection (`CLAUDECODE`, `GEMINI_CLI`, `CURSOR_AGENT`,
-    `CODEX_*`, `COPILOT_*`, `AI_AGENT`, `AGENT`) **only activates when `stdout`
-    is NOT a TTY AND no output-mode flag is passed**. Passing `-box` disables
-    auto-detection and overrides `-agent` back to padded Unicode boxes (`3x-5x`
-    whitespace token tax and silent `>40`-row truncation). In PTY-allocated
-    agent subshells (where `stdout` is a TTY), pass `-agent` explicitly on
-    `v2.0+` (or set `DUCKDB_AGENT_MODE=1` when no output-mode flag is present).
+  - **Omit `-box` on exploratory queries**: `duckdb -batch -dark-mode` already
+    defaults to `box` on `v1.x`, whereas on `v2.0+` built-in Agent Mode
+    auto-detection (`CLAUDECODE`, `GEMINI_CLI`, `CURSOR_AGENT`, `CODEX_*`,
+    `COPILOT_*`, `AI_AGENT`, `AGENT`) activates only when `stdout` is NOT a TTY
+    and no output-mode flag is passed. Passing `-box` disables auto-detection
+    and overrides `-agent` (`3x-5x` whitespace padding tax and silent `>40`-row
+    truncation). Pass `-agent` explicitly in PTY subshells (`stdout` is a TTY);
+    in `PATH` wrapper scripts, `export AI_AGENT=1` instead of
+    `DUCKDB_AGENT_MODE=1` because `DUCKDB_AGENT_MODE=1` keeps
+    `agent_mode_active = true` on `stderr` even alongside `-json`, `-csv`, or
+    `-markdown` (pass `-no-agent` or unset `DUCKDB_AGENT_MODE` if set).
 - **Explicit output & utility flags**:
-  - `-json` / `-jsonlines`: Structured JSON array or NDJSON rows for scripts and
-    programmatic consumers.
+  - `-json` / `-jsonlines`: Structured JSON array or NDJSON rows for scripts.
   - `-csv`: Uncapped comma-separated rows with headers (prefer for full-table
-    exports or macro scans like `read_md_sections` over large corpora where row
-    or byte caps would truncate output).
-  - `-markdown`: Clean GFM pipe tables without `:TYPE` header suffixes or hash
-    footers (prefer when pasting tables into PRs, issues, or docs).
+    exports or `read_md_sections` scans where row/byte caps would clip rows).
+  - `-markdown`: Clean GFM pipe tables without `:TYPE` suffixes or hash footers.
   - `-box` / `-no-agent`: Human-oriented padded Unicode boxed tables.
-  - **`DUCKDB_AGENT_MODE=1` + `-json`/`-csv`/`-markdown` `stderr` gotcha**:
-    Setting `DUCKDB_AGENT_MODE=1` alongside an explicit output flag preserves
-    `stdout` formatting, **but keeps `agent_mode_active = true` on `stderr`**
-    (emitting the Agent Mode startup banner, progress lines, and JSON errors).
-    Unset `DUCKDB_AGENT_MODE` or pass `-no-agent` when a caller inspects raw
-    `stderr`.
   - `-manual <function>` (`v2.0+`): Prints offline signature, description, and
-    examples for any built-in SQL function
-    (`duckdb -batch -dark-mode -manual regexp_extract`).
-  - `-format` / `-format-file <path.sql>` (`v2.0+`): Formats SQL from `stdin` or
-    a file to `stdout`.
+    examples (`duckdb -batch -dark-mode -manual regexp_extract`).
+  - `-format` / `-format-file <path.sql>` (`v2.0+`): Formats SQL to `stdout`.
   - `-bail`: Stop execution immediately on first error.
 
 ```bash
