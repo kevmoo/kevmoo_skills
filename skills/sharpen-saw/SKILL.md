@@ -119,11 +119,13 @@ When an existing skill or rule was involved, also say which way it failed:
    target paths, constraints, or skill pointers when spawning a subagent or
    worker. Confirm by re-running with `--include-subagents` (or
    `view <session>/<agent> --tools`) and comparing the parent's spawn prompt
-   against the subagent's first steps. Put the invariant where every spawn sees
-   it: the repository's `CLAUDE.md` / `AGENTS.md`, or a one-line `SKILL.md`
-   pointer with explicit target paths. Use a `PreToolUse` hook on the spawn
-   tool, CLI wrapper, or read-only subagent permission (Law 2) for mechanically
-   checkable prompt invariants or capability bounds.
+   against the subagent's first steps. Prefer lower-complexity fixes first: (a)
+   put the invariant in the repository's `CLAUDE.md` / `AGENTS.md` (which every
+   subagent inherits automatically without relying on the parent's spawn
+   prompt), or (b) add a one-line `SKILL.md` delegation pointer with explicit
+   target paths; reserve `PreToolUse` spawn hooks, CLI wrappers, or read-only
+   subagent permissions for capability bounds or mechanically checkable prompt
+   invariants.
 
 ### 4. Propose Fixes by Tier
 
