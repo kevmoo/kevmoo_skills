@@ -599,23 +599,27 @@ WHERE level <= 2;
 
 ### Recipe 9.2: Audit Fenced Code Blocks Across a Glob (`read_md_code_blocks`)
 
-Extract fenced code blocks by language tag or enclosing section across an entire
-repository. A non-matching glob returns zero rows with exit code 0, and any
-non-UTF-8 file aborts the scan, so verify `read_md_sections` is non-empty first:
+Extract fenced code blocks by language tag across a repository, join line
+continuations (`\\\n`), and audit each non-comment logical shell line where
+`duckdb` appears in command position (avoiding false positives on paths or
+`brew install duckdb`, and false negatives on multi-command blocks or string
+literals; verify `read_md_sections` is non-empty first):
 
 ```bash
 duckdb -batch -dark-mode -csv \
   -init skills/duckdb/scripts/markdown_macros.sql -c "
 SELECT
-  regexp_extract(file_path, '[^/]+/[^/]+$') AS skill_file,
-  block_id,
-  section_heading,
-  lang,
-  line_start,
-  line_end
-FROM read_md_code_blocks('skills/**/*.md')
-WHERE lang IN ('bash', 'sh')
-  AND contains(code, 'duckdb')
-  AND NOT contains(code, '-dark-mode');
+  regexp_extract(b.file_path, '[^/]+/[^/]+$') AS skill_file,
+  b.block_id,
+  b.section_heading,
+  b.line_start,
+  trim(l.cmd) AS offending_cmd
+FROM read_md_code_blocks('skills/**/*.md') b,
+  unnest(string_split(regexp_replace(b.code, '\\\r?\n', ' ', 'g'), chr(10))) AS l(cmd)
+WHERE b.lang IN ('bash', 'sh')
+  AND NOT regexp_matches(l.cmd, '^\s*#')
+  AND regexp_matches(l.cmd, '(?:^\s*|[|;&]|\$\()\s*duckdb(?:\s|$)')
+  AND NOT regexp_matches(l.cmd, '(^|\s)-(dark|light)-mode(\s|$)')
+  AND NOT regexp_matches(l.cmd, '\|\s*duckdb\s+-format(\s*(\||>)|$)');
 "
 ```

@@ -30,8 +30,9 @@ documents directly from the shell without database servers or external imports.
 
 ## Quick Start & Execution Setup
 
-DuckDB runs as a standalone CLI binary. Always invoke `duckdb` with
-**`-batch -dark-mode`**.
+DuckDB runs as a standalone CLI binary. Always pass **`-dark-mode`** on every
+invocation (including `duckdb -dark-mode --version` and `--help`), and pass
+**`-batch -dark-mode`** on all queries and `-manual` lookups.
 
 ### Installation & Subshell PATH Setup (Linux & macOS)
 
@@ -69,12 +70,13 @@ subshells (where `mise` or `asdf` shims are not sourced):
 ### Critical Flags & DuckDB `v2.0+` Agent Mode
 
 - `-batch -dark-mode` _(MANDATORY together in subshells)_:
-  - `-dark-mode`: DuckDB attempts to detect terminal background color via OSC
-    query sequences on startup. In non-interactive or PTY-allocated agent
-    subshells, this probe times out after **5 seconds**
-    (`Timeout trying to read terminal background color (> 5s elapsed)`).
-    **Neither `-batch`, `-agent`, nor `DUCKDB_AGENT_MODE=1` disables this
-    probe** — `-dark-mode` (or `-light-mode`) is strictly required.
+  - `-dark-mode`: DuckDB probes terminal background color via OSC sequences
+    whenever `stdout` is a TTY — **even before handling `--version`, `--help`,
+    `-manual`, or `-format`**. In PTY-allocated agent subshells this times out
+    after **5 seconds**
+    (`Timeout trying to read terminal background color (> 5s elapsed)`), and
+    **neither `-batch`, `-agent`, nor `DUCKDB_AGENT_MODE=1` disables it** — pass
+    `-dark-mode` (or `-light-mode`) on every invocation.
   - `-batch`: Disables interactive prompts, progress bars, and `less` paging
     (also mandatory with `v2.0+` `-manual <fn>`, which otherwise retains
     interactive detection and triggers both the 5-second color probe and pager).
@@ -84,30 +86,33 @@ subshells (where `mise` or `asdf` shims are not sourced):
 - **Agent Mode (`v2.0+`: `-agent`, `-no-agent`, `AI_AGENT=1`,
   `DUCKDB_AGENT_MODE=1`)**:
   - Renders compact unpadded Markdown tables with inline column types
-    (`| col:TYPE |`), loud head+tail truncation (`1,000` rows, `10,000` bytes,
-    `500`-char cells; `.maxrows` / `.maxbytes`) with a row-count +
-    order-independent result hash footer, structured JSON errors and `>1M`-row
-    scan progress on `stderr`, and 1-line-per-operator `EXPLAIN` plans.
-  - **Omit `-box` on exploratory queries**: `duckdb -batch -dark-mode` already
-    defaults to `box` on `v1.x`, whereas on `v2.0+` built-in Agent Mode
-    auto-detection (`CLAUDECODE`, `GEMINI_CLI`, `CURSOR_AGENT`, `CODEX_*`,
-    `COPILOT_*`, `AI_AGENT`, `AGENT`) activates only when `stdout` is NOT a TTY
-    and no output-mode flag is passed. Passing `-box` disables auto-detection
-    and overrides `-agent` (`3x-5x` whitespace padding tax and silent `>40`-row
+    (`| col:TYPE |`), loud head+tail caps (`1,000` rows, `10,000` bytes,
+    `500`-char cells; `.maxrows` / `.maxbytes` — **enforced even under `-batch`
+    and `> file` redirection**, so use `-csv` or `-json` for untruncated
+    exports) with a row-count + order-independent hash footer, JSON errors +
+    `>1M`-row progress on `stderr`, and 1-line-per-operator `EXPLAIN` plans.
+  - **Omit `-box` on exploratory queries**: `duckdb -batch -dark-mode` defaults
+    to `box` on `v1.x`, whereas on `v2.0+` built-in Agent Mode auto-detection
+    (`CLAUDECODE`, `GEMINI_CLI`, `CURSOR_AGENT`, `CODEX_*`, `COPILOT_*`,
+    `AI_AGENT`, `AGENT`) activates only when `stdout` is NOT a TTY and no
+    output-mode flag is passed. Passing `-box` disables auto-detection and
+    overrides `-agent` (`3x-5x` whitespace padding tax and silent `>40`-row
     truncation). Pass `-agent` explicitly in PTY subshells (`stdout` is a TTY);
-    in `PATH` wrapper scripts, `export AI_AGENT=1` instead of
-    `DUCKDB_AGENT_MODE=1` because `DUCKDB_AGENT_MODE=1` keeps
-    `agent_mode_active = true` on `stderr` even alongside `-json`, `-csv`, or
-    `-markdown` (pass `-no-agent` or unset `DUCKDB_AGENT_MODE` if set).
+    in `PATH` wrappers, pair `export AI_AGENT=1; unset DUCKDB_AGENT_MODE`
+    because `DUCKDB_AGENT_MODE=1` keeps `agent_mode_active = true` on `stderr`
+    even with `-json`, `-csv`, or `-markdown` (and inspect `"$@"` before
+    prepending `-dark-mode` / `-batch` so `-light-mode` / `-interactive` win).
 - **Explicit output & utility flags**:
-  - `-json` / `-jsonlines`: Structured JSON array or NDJSON rows for scripts.
-  - `-csv`: Uncapped comma-separated rows with headers (prefer for full-table
-    exports or `read_md_sections` scans where row/byte caps would clip rows).
-  - `-markdown`: Clean GFM pipe tables without `:TYPE` suffixes or hash footers.
+  - `-json` / `-jsonlines`: Structured JSON array or NDJSON rows (`0` `stderr`).
+  - `-csv`: Uncapped comma-separated rows with headers (required over `-agent`
+    for full-table exports or large `read_md_sections` scans).
+  - `-markdown`: Column-padded GFM pipe tables without `:TYPE` or hash footers.
   - `-box` / `-no-agent`: Human-oriented padded Unicode boxed tables.
   - `-manual <function>` (`v2.0+`): Prints offline signature, description, and
     examples (`duckdb -batch -dark-mode -manual regexp_extract`).
-  - `-format` / `-format-file <path.sql>` (`v2.0+`): Formats SQL to `stdout`.
+  - `-format` / `-format-file <path.sql>` (`v2.0+`): Formats SQL to `stdout`
+    (emits ANSI color codes on a TTY; pass `-dark-mode` and pipe `| cat` or
+    redirect `> out.sql` for plain SQL text).
   - `-bail`: Stop execution immediately on first error.
 
 ```bash
@@ -120,9 +125,9 @@ duckdb -batch -dark-mode -c "SELECT 42 AS answer;"
 # Programmatic JSON output (add -no-stdin when spawned from a child-process runner)
 duckdb -batch -no-stdin -dark-mode -json -c "SELECT 42 AS answer;"
 
-# Offline SQL function manual lookup & SQL formatting (v2.0+)
+# Offline SQL function manual lookup & plain-text SQL formatting (v2.0+)
 duckdb -batch -dark-mode -manual regexp_extract
-printf "select a, b from tbl where a = 1;\n" | duckdb -format
+printf "select a, b from tbl where a = 1;\n" | duckdb -dark-mode -format | cat
 ```
 
 ---
@@ -130,10 +135,10 @@ printf "select a, b from tbl where a = 1;\n" | duckdb -format
 ## Core Gotchas & Invariants
 
 1.  **5-Second Hang on Subshells (`-batch -dark-mode` Required)**: Passing
-    `-batch`, `-agent`, `DUCKDB_AGENT_MODE=1`, or `-manual` without `-dark-mode`
-    does **not** disable DuckDB's 5-second OSC terminal background color probe
-    timeout in PTY subshells (and `-manual` without `-batch` also retains
-    interactive paging). Always pass `-batch -dark-mode` together.
+    `-batch`, `-agent`, `DUCKDB_AGENT_MODE=1`, `--version`, `--help`, `-manual`,
+    or `-format` without `-dark-mode` does **not** disable DuckDB's 5-second OSC
+    terminal background color probe on a TTY (and `-manual` without `-batch`
+    retains interactive paging). Always pass `-batch -dark-mode`.
 2.  **1-Based Array Indexing**: DuckDB follows ANSI SQL standards: `arr[1]` is
     the first element. `arr[0]` produces an out-of-bounds error.
 3.  **Heterogeneous JSON Schemas**: When reading JSONL with varying keys across
@@ -161,10 +166,11 @@ printf "select a, b from tbl where a = 1;\n" | duckdb -format
     database fails with `file is not a database`. Run `file path/to/file.db`
     first when the format is unknown.
 8.  **Persistent `.duckdb` Storage Format Across `v1.x` and `v2.0+`**: DuckDB
-    `v2.0+` writes storage version `69` when creating new `.duckdb` files, which
-    `v1.5.x` and earlier cannot open (while `v2.0+` reads existing `v1.x` files
-    transparently). Pass `-storage-version v1.2.0` when creating a database file
-    that older `v1.2+` / `v1.5.x` clients must open.
+    `v2.0+` writes storage version `69` (`v2.0.0+`) on new `.duckdb` files,
+    which `v1.5.x` and earlier cannot open (while `v2.0+` reads existing `v1.x`
+    files transparently). Pass `-storage-version v1.5.0` for `v1.5.x` readers
+    (or `v1.2.0` for `v1.2+`; verify via
+    `SELECT tags['storage_version'] FROM duckdb_databases()`).
 
 ---
 
@@ -174,14 +180,10 @@ printf "select a, b from tbl where a = 1;\n" | duckdb -format
 
 ```bash
 # Preview JSONL with irregular schema / interrupted lines tolerance
-duckdb -batch -dark-mode -c "
-SELECT * FROM read_json('logs/*.jsonl', union_by_name=true, ignore_errors=true) LIMIT 10;
-"
+duckdb -batch -dark-mode -c "SELECT * FROM read_json('logs/*.jsonl', union_by_name=true, ignore_errors=true) LIMIT 10;"
 
 # Dot access, 1-based array indexing, and unnest()
-duckdb -batch -dark-mode -c "
-SELECT id, user.email, tags[1] AS primary_tag, unnest(tags) AS tag FROM 'users.jsonl';
-"
+duckdb -batch -dark-mode -c "SELECT id, user.email, tags[1] AS primary_tag, unnest(tags) AS tag FROM 'users.jsonl';"
 ```
 
 ### 2. CSV, TSV & Parquet
@@ -191,10 +193,7 @@ SELECT id, user.email, tags[1] AS primary_tag, unnest(tags) AS tag FROM 'users.j
 duckdb -batch -dark-mode -c "SELECT * FROM 'export.csv.gz' LIMIT 10;"
 
 # Read Parquet globs and inspect schema without scanning rows
-duckdb -batch -dark-mode -c "
-SELECT * FROM 'metrics/*.parquet' WHERE value > 100 LIMIT 10;
-SELECT * FROM parquet_schema('metrics/part-00.parquet');
-"
+duckdb -batch -dark-mode -c "SELECT * FROM 'metrics/*.parquet' WHERE value > 100 LIMIT 10; SELECT * FROM parquet_schema('metrics/part-00.parquet');"
 ```
 
 ### 3. Standard Input Streaming (`/dev/stdin`)
