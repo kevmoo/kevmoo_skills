@@ -6,7 +6,18 @@
       "prompt": "Using the duckdb skill, what flags must always be passed when invoking duckdb in a non-interactive agent subshell, and why?",
       "expected_chat_output": [
         "Specifies passing '-batch -dark-mode' (or '-light-mode') together.",
-        "Explains that '-batch' alone does not disable DuckDB's 5-second OSC terminal background color detection timeout."
+        "Explains that '-batch' (and '-agent' / 'DUCKDB_AGENT_MODE=1' on v2.0+) does not disable DuckDB's 5-second OSC terminal background color detection timeout."
+      ],
+      "expected_repo_state": ["No files are modified."],
+      "agent_config": "bare-agent"
+    },
+    {
+      "id": "duckdb_task_6_agent_mode_v2",
+      "prompt": "Using the duckdb skill on DuckDB v2.0+, how does CLI Agent Mode interact with '-box', PTY subshells, and programmatic flags like '-json'?",
+      "expected_chat_output": [
+        "Explains omitting '-box' on exploratory queries because passing '-box' disables Agent Mode auto-detection and overrides '-agent' back to padded Unicode boxes.",
+        "Notes passing '-agent' explicitly in PTY-allocated subshells (where stdout is a TTY) while still keeping '-batch -dark-mode'.",
+        "Warns that setting 'DUCKDB_AGENT_MODE=1' alongside '-json', '-csv', or '-markdown' still keeps Agent Mode active on stderr (banner, progress, JSON errors)."
       ],
       "expected_repo_state": ["No files are modified."],
       "agent_config": "bare-agent"

@@ -13,12 +13,13 @@ description: >-
   for remote cloud data warehouses (BigQuery, Snowflake, Spanner) or PLx
   dashboards.
 key_features:
-  - Non-interactive subshell flag safety (-batch -dark-mode)
+  - Non-interactive subshell flag safety (-batch -dark-mode) & v2.0+ Agent Mode (-agent)
   - Fast JSONL, CSV, Parquet, and SQLite querying
   - Explicit schema projection & multi-file globbing
   - Cross-format SQL joins & Parquet materialization
   - Relational code diff querying (scripts/diff_macros.sql)
   - Relational Markdown indexing (scripts/markdown_macros.sql)
+  - Offline SQL function manual (-manual) & SQL formatter (-format)
 ---
 
 # DuckDB CLI Analytics
@@ -37,13 +38,15 @@ DuckDB runs as a standalone CLI binary. Always invoke `duckdb` with
 To prevent `exit code 127: duckdb: command not found` in non-interactive agent
 subshells (where `mise` or `asdf` shims are not sourced):
 
-- **`mise` shims on `PATH` (Recommended)**: If `mise` manages `duckdb`, put
-  `~/.local/share/mise/shims` on `PATH` in the files non-interactive shells
-  actually read (`~/.zshenv` / `BASH_ENV`, and `~/.config/environment.d/*.conf`
-  for `systemd` user units) rather than symlinking each tool. The shims are
-  symlinks to the `mise` binary itself, so they resolve even when `mise` is not
-  on `PATH`, and one entry covers every managed tool. Keep `~/.local/bin`
-  _before_ the shims dir so custom wrappers still win.
+- **`mise` shims on `PATH` (Recommended)**: Pin `"github:duckdb/duckdb" = "2"`
+  in `~/.config/mise/config.toml` to track stable `2.x` releases with SLSA
+  provenance verification, and put `~/.local/share/mise/shims` on `PATH` in the
+  files non-interactive shells actually read (`~/.zshenv` / `BASH_ENV`, and
+  `~/.config/environment.d/*.conf` for `systemd` user units) rather than
+  symlinking each tool. The shims are symlinks to the `mise` binary itself, so
+  they resolve even when `mise` is not on `PATH`, and one entry covers every
+  managed tool. Keep `~/.local/bin` _before_ the shims dir so custom wrappers
+  still win.
 
 - **Direct Binary / Symlink (fallback)**: Where shims are unavailable, make the
   binary directly accessible at `~/.local/bin/duckdb` (or
@@ -51,40 +54,83 @@ subshells (where `mise` or `asdf` shims are not sourced):
   symlink collides with any dotfiles repo that tracks the same path:
 
   ```bash
-  # Option A: If installed via mise, symlink into ~/.local/bin/
-  ln -sf ~/.local/share/mise/installs/duckdb/latest/duckdb ~/.local/bin/duckdb
+  # Option A: If installed via mise ("github:duckdb/duckdb" = "2"), symlink into ~/.local/bin/
+  ln -sf ~/.local/share/mise/installs/github-duckdb-duckdb/2/duckdb ~/.local/bin/duckdb
 
   # Option B: macOS Homebrew
   brew install duckdb
 
-  # Option C: Direct download from GitHub Releases (Linux amd64)
-  curl -LO https://github.com/duckdb/duckdb/releases/latest/download/duckdb_cli-linux-amd64.zip
-  unzip -o duckdb_cli-linux-amd64.zip -d ~/.local/bin/
+  # Option C: Direct download from GitHub Releases (v2.0+ uses .tar.gz archives;
+  # replace linux-amd64 with linux-arm64 or osx-arm64 as needed)
+  curl -fsSL https://github.com/duckdb/duckdb/releases/latest/download/duckdb-cli-linux-amd64.tar.gz \
+    | tar -xzf - -C ~/.local/bin/ duckdb
   ```
 
-### Critical Flags
+### Critical Flags & DuckDB `v2.0+` Agent Mode
 
 - `-batch -dark-mode` _(MANDATORY together in subshells)_:
   - `-dark-mode`: DuckDB attempts to detect terminal background color via OSC
-    query sequences on startup. In non-interactive agent subshells, this probe
-    times out after **5 seconds**
+    query sequences on startup. In non-interactive or PTY-allocated agent
+    subshells, this probe times out after **5 seconds**
     (`Timeout trying to read terminal background color (> 5s elapsed)`).
-    **`-batch` alone does NOT disable this probe** — `-dark-mode` (or
-    `-light-mode`) is strictly required.
-  - `-batch`: Disables interactive progress bars and prompt formatting.
-- Output formatting:
-  - `-box` _(Default)_: Clean Unicode boxed tables, ideal for terminal viewing.
-  - `-json`: Output rows as JSON array of objects (ideal for piping to scripts).
-  - `-csv`: Output standard comma-separated values with headers.
-  - `-markdown`: Output standard markdown pipe tables.
+    **Neither `-batch`, `-agent`, nor `DUCKDB_AGENT_MODE=1` disables this
+    probe** — `-dark-mode` (or `-light-mode`) is strictly required.
+  - `-batch`: Disables interactive prompts, progress bars, and `less` paging
+    (also mandatory with `v2.0+` `-manual <fn>`, which otherwise retains
+    interactive detection and triggers both the 5-second color probe and pager).
+  - `-no-stdin`: Exits after processing CLI options instead of reading `stdin`
+    when spawned from child-process runners whose `stdin` pipe stays open (omit
+    when streaming data from `/dev/stdin`).
+- **Agent Mode (`v2.0+`: `-agent`, `-no-agent`, `DUCKDB_AGENT_MODE=1`)**:
+  - Renders compact unpadded Markdown tables with inline column types
+    (`| col:TYPE |`), loud head+tail truncation (`1,000` rows, `10,000` bytes,
+    `500`-char cells; `.maxrows` / `.maxbytes`) with a row-count +
+    order-independent result hash footer, structured JSON errors and `>1M`-row
+    scan progress on `stderr`, and 1-line-per-operator `EXPLAIN` plans.
+  - **Omit `-box` on exploratory queries**: On `v1.x`,
+    `duckdb -batch -dark-mode` already defaults to `box`. On `v2.0+`, built-in
+    Agent Mode auto-detection (`CLAUDECODE`, `GEMINI_CLI`, `CURSOR_AGENT`,
+    `CODEX_*`, `COPILOT_*`, `AI_AGENT`, `AGENT`) **only activates when `stdout`
+    is NOT a TTY AND no output-mode flag is passed**. Passing `-box` disables
+    auto-detection and overrides `-agent` back to padded Unicode boxes (`3x-5x`
+    whitespace token tax and silent `>40`-row truncation). In PTY-allocated
+    agent subshells (where `stdout` is a TTY), pass `-agent` explicitly on
+    `v2.0+` (or set `DUCKDB_AGENT_MODE=1` when no output-mode flag is present).
+- **Explicit output & utility flags**:
+  - `-json` / `-jsonlines`: Structured JSON array or NDJSON rows for scripts and
+    programmatic consumers.
+  - `-csv`: Uncapped comma-separated rows with headers (prefer for full-table
+    exports or macro scans like `read_md_sections` over large corpora where row
+    or byte caps would truncate output).
+  - `-markdown`: Clean GFM pipe tables without `:TYPE` header suffixes or hash
+    footers (prefer when pasting tables into PRs, issues, or docs).
+  - `-box` / `-no-agent`: Human-oriented padded Unicode boxed tables.
+  - **`DUCKDB_AGENT_MODE=1` + `-json`/`-csv`/`-markdown` `stderr` gotcha**:
+    Setting `DUCKDB_AGENT_MODE=1` alongside an explicit output flag preserves
+    `stdout` formatting, **but keeps `agent_mode_active = true` on `stderr`**
+    (emitting the Agent Mode startup banner, progress lines, and JSON errors).
+    Unset `DUCKDB_AGENT_MODE` or pass `-no-agent` when a caller inspects raw
+    `stderr`.
+  - `-manual <function>` (`v2.0+`): Prints offline signature, description, and
+    examples for any built-in SQL function
+    (`duckdb -batch -dark-mode -manual regexp_extract`).
+  - `-format` / `-format-file <path.sql>` (`v2.0+`): Formats SQL from `stdin` or
+    a file to `stdout`.
   - `-bail`: Stop execution immediately on first error.
 
 ```bash
-# Human-readable boxed table (non-interactive safe, zero 5s hang)
-duckdb -batch -dark-mode -box -c "SELECT 42 AS answer;"
+# Exploratory agent query (v2.0+ compact typed Markdown + hash; omit -box)
+duckdb -batch -dark-mode -agent -c "SELECT 42 AS answer;"
 
-# Programmatic JSON output
-duckdb -batch -dark-mode -json -c "SELECT 42 AS answer;"
+# Version-neutral exploratory query (box on v1.x; Agent Mode when piped or wrapped on v2.0+)
+duckdb -batch -dark-mode -c "SELECT 42 AS answer;"
+
+# Programmatic JSON output (add -no-stdin when spawned from a child-process runner)
+duckdb -batch -no-stdin -dark-mode -json -c "SELECT 42 AS answer;"
+
+# Offline SQL function manual lookup & SQL formatting (v2.0+)
+duckdb -batch -dark-mode -manual regexp_extract
+printf "select a, b from tbl where a = 1;\n" | duckdb -format
 ```
 
 ---
@@ -92,8 +138,10 @@ duckdb -batch -dark-mode -json -c "SELECT 42 AS answer;"
 ## Core Gotchas & Invariants
 
 1.  **5-Second Hang on Subshells (`-batch -dark-mode` Required)**: Passing
-    `-batch` alone does **not** disable DuckDB's 5-second OSC terminal
-    background color probe timeout. Always pass `-batch -dark-mode` together.
+    `-batch`, `-agent`, `DUCKDB_AGENT_MODE=1`, or `-manual` without `-dark-mode`
+    does **not** disable DuckDB's 5-second OSC terminal background color probe
+    timeout in PTY subshells (and `-manual` without `-batch` also retains
+    interactive paging). Always pass `-batch -dark-mode` together.
 2.  **1-Based Array Indexing**: DuckDB follows ANSI SQL standards: `arr[1]` is
     the first element. `arr[0]` produces an out-of-bounds error.
 3.  **Heterogeneous JSON Schemas**: When reading JSONL with varying keys across
@@ -120,6 +168,11 @@ duckdb -batch -dark-mode -json -c "SELECT 42 AS answer;"
     Attempting `ATTACH 'path/to/file.db' AS db (TYPE SQLITE)` on a native DuckDB
     database fails with `file is not a database`. Run `file path/to/file.db`
     first when the format is unknown.
+8.  **Persistent `.duckdb` Storage Format Across `v1.x` and `v2.0+`**: DuckDB
+    `v2.0+` writes storage version `69` when creating new `.duckdb` files, which
+    `v1.5.x` and earlier cannot open (while `v2.0+` reads existing `v1.x` files
+    transparently). Pass `-storage-version v1.2.0` when creating a database file
+    that older `v1.2+` / `v1.5.x` clients must open.
 
 ---
 
@@ -129,12 +182,12 @@ duckdb -batch -dark-mode -json -c "SELECT 42 AS answer;"
 
 ```bash
 # Preview JSONL with irregular schema / interrupted lines tolerance
-duckdb -batch -dark-mode -box -c "
+duckdb -batch -dark-mode -c "
 SELECT * FROM read_json('logs/*.jsonl', union_by_name=true, ignore_errors=true) LIMIT 10;
 "
 
 # Dot access, 1-based array indexing, and unnest()
-duckdb -batch -dark-mode -box -c "
+duckdb -batch -dark-mode -c "
 SELECT id, user.email, tags[1] AS primary_tag, unnest(tags) AS tag FROM 'users.jsonl';
 "
 ```
@@ -143,10 +196,10 @@ SELECT id, user.email, tags[1] AS primary_tag, unnest(tags) AS tag FROM 'users.j
 
 ```bash
 # Auto-detect CSV/TSV or read compressed .csv.gz directly
-duckdb -batch -dark-mode -box -c "SELECT * FROM 'export.csv.gz' LIMIT 10;"
+duckdb -batch -dark-mode -c "SELECT * FROM 'export.csv.gz' LIMIT 10;"
 
 # Read Parquet globs and inspect schema without scanning rows
-duckdb -batch -dark-mode -box -c "
+duckdb -batch -dark-mode -c "
 SELECT * FROM 'metrics/*.parquet' WHERE value > 100 LIMIT 10;
 SELECT * FROM parquet_schema('metrics/part-00.parquet');
 "
@@ -156,7 +209,7 @@ SELECT * FROM parquet_schema('metrics/part-00.parquet');
 
 ```bash
 curl -s "https://api.example.com/items" | \
-  duckdb -batch -dark-mode -box -c "SELECT * FROM read_json('/dev/stdin') LIMIT 10;"
+  duckdb -batch -dark-mode -c "SELECT * FROM read_json('/dev/stdin') LIMIT 10;"
 ```
 
 ### 4. Local Databases (`.db`, `.duckdb`, `.sqlite`)
@@ -165,10 +218,10 @@ Always check `file path/to/database.db` first:
 
 ```bash
 # Native DuckDB database file
-duckdb -batch -dark-mode -box path/to/database.db -c "SHOW TABLES;"
+duckdb -batch -dark-mode path/to/database.db -c "SHOW TABLES;"
 
 # SQLite 3.x database file
-duckdb -batch -dark-mode -box -c "
+duckdb -batch -dark-mode -c "
 ATTACH 'path/to/database.db' AS db (TYPE SQLITE, READ_ONLY);
 SELECT * FROM db.my_table LIMIT 10;
 "
