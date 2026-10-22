@@ -45,7 +45,7 @@ explicit schema projection is used.
 
   ```bash
   fd -H -I -t f --changed-within 7d 'transcript\.jsonl$' ~/.gemini/ > recent_transcripts.txt
-  duckdb -batch -dark-mode -box -c "
+  duckdb -batch -dark-mode -c "
   SET VARIABLE recent_files = (SELECT list(column0) FROM read_csv('recent_transcripts.txt', header=false));
   SELECT count(*) FROM read_json(
     getvariable('recent_files'),
@@ -114,7 +114,7 @@ GROUP BY 1 ORDER BY user_msgs DESC LIMIT 10;
 ### Recipe 1.1: Aggregating Across All Conversations
 
 ```bash
-duckdb -batch -dark-mode -box -c "
+duckdb -batch -dark-mode -c "
 SELECT
   count(*) AS total_steps,
   count(distinct filename) AS num_conversations,
@@ -132,7 +132,7 @@ FROM read_json(
 ### Recipe 1.2: Top 15 Tools Used Across History
 
 ```bash
-duckdb -batch -dark-mode -box -c "
+duckdb -batch -dark-mode -c "
 WITH tool_usage AS (
   SELECT
     tc.name AS tool_name,
@@ -160,7 +160,7 @@ LIMIT 15;
 Find conversations where specific keywords or workflows were discussed:
 
 ```bash
-duckdb -batch -dark-mode -box -c "
+duckdb -batch -dark-mode -c "
 SELECT
   regexp_extract(filename, 'brain/([^/]+)/', 1) AS convo_id,
   created_at,
@@ -183,7 +183,7 @@ Identify which tools fail most often across sessions (correlating the planner
 step with the subsequent tool failure status):
 
 ```bash
-duckdb -batch -dark-mode -box -c "
+duckdb -batch -dark-mode -c "
 WITH steps AS (
   SELECT
     filename,
@@ -236,7 +236,7 @@ LIMIT 10;
   (`dart-review\.googlesource\.com/c/sdk/\+/[0-9]+`) URLs.
 
 ```bash
-duckdb -batch -dark-mode -box -c "
+duckdb -batch -dark-mode -c "
 WITH raw AS (
   SELECT
     regexp_extract(filename, 'brain/([^/]+)/', 1) AS convo_id,
@@ -289,7 +289,7 @@ query.
 
 For example, to search agent transcripts (`transcript.jsonl`) for any topic,
 error, command, symbol, file, CL, or PR and join the hits with
-`~/.gemini/jetski/conversation_summaries.db` (~3.5 seconds):
+`~/.gemini/antigravity/conversation_summaries.db` (~3.5 seconds):
 
 - Extract the join key from each file path with
   `regexp_extract(filename, 'brain/([^/]+)/', 1)`.
@@ -314,14 +314,14 @@ error, command, symbol, file, CL, or PR and join the hits with
   treats `%` and `_` as wildcards.
 
 ```bash
-duckdb -batch -dark-mode -box -c "
-ATTACH '$HOME/.gemini/jetski/conversation_summaries.db' AS db (TYPE SQLITE, READ_ONLY);
+duckdb -batch -dark-mode -c "
+ATTACH '$HOME/.gemini/antigravity/conversation_summaries.db' AS db (TYPE SQLITE, READ_ONLY);
 WITH hits AS (
   SELECT
     regexp_extract(filename, 'brain/([^/]+)/', 1) AS conversation_id,
     count(*) AS matching_steps
   FROM read_json(
-    '~/.gemini/jetski/brain/*/.system_generated/logs/transcript.jsonl',
+    '~/.gemini/*/brain/*/.system_generated/logs/transcript.jsonl',
     columns={'type': 'VARCHAR', 'content': 'VARCHAR', 'tool_calls': 'JSON'},
     ignore_errors=true,
     filename=true
@@ -353,7 +353,7 @@ DuckDB allows joins across heterogeneous file formats (JSONL, CSV, Parquet, and
 attached SQLite databases; see also Recipe 1.6) in a single SQL statement:
 
 ```bash
-duckdb -batch -dark-mode -box -c "
+duckdb -batch -dark-mode -c "
 SELECT
   u.id,
   u.meta.owner AS owner,
@@ -377,7 +377,7 @@ DuckDB automatically parses directory partitions (e.g. `year=2026/month=08/`):
 
 ```bash
 # Read multi-level partitioned dataset
-duckdb -batch -dark-mode -box -c "
+duckdb -batch -dark-mode -c "
 SELECT year, month, count(*) AS event_count
 FROM read_parquet('events/*/*/*.parquet', hive_partitioning=true)
 GROUP BY year, month
@@ -424,7 +424,7 @@ CREATE TABLE users AS SELECT * FROM 'users.jsonl';
 "
 
 # Query the persistent table later
-duckdb -batch -dark-mode analytics.duckdb -box -c "
+duckdb -batch -dark-mode analytics.duckdb -c "
 SELECT count(*) FROM users;
 "
 ```
@@ -439,7 +439,7 @@ and pipe directly into `read_json('/dev/stdin')`:
 
 ```bash
 sed -n '/<<<BENCH_PRESS_JSON_START>>>/,/<<<BENCH_PRESS_JSON_END>>>/{//!p;}' test.log | \
-duckdb -batch -dark-mode -box -c "
+duckdb -batch -dark-mode -c "
 SELECT * FROM read_json('/dev/stdin');
 "
 ```
@@ -516,7 +516,7 @@ Pipe `git diff` or `gh pr diff` directly into `read_diff_lines('/dev/stdin')` or
 `read_diff_hunks('/dev/stdin')`:
 
 ```bash
-git diff main...HEAD | duckdb -batch -dark-mode -box \
+git diff main...HEAD | duckdb -batch -dark-mode \
   -init skills/duckdb/scripts/diff_macros.sql -c "
 SELECT file_path, new_line, content
 FROM read_diff_lines('/dev/stdin')
@@ -532,7 +532,7 @@ Aggregate hunk counts, added lines, and deleted lines per file or function
 context header across a branch diff:
 
 ```bash
-git diff main...HEAD | duckdb -batch -dark-mode -box \
+git diff main...HEAD | duckdb -batch -dark-mode \
   -init skills/duckdb/scripts/diff_macros.sql -c "
 SELECT
   file_path,
@@ -577,10 +577,11 @@ Markdown sections and fenced code blocks with SQL.
 
 List top-level sections with both their own intro line range
 (`line_start..line_end`) and full subtree line range
-(`line_start..subtree_line_end`) before calling `read_file`:
+(`line_start..subtree_line_end`) before calling `read_file` (pass `-csv` when
+scanning large outlines or globs so table row/byte caps never truncate rows):
 
 ```bash
-duckdb -batch -dark-mode -box \
+duckdb -batch -dark-mode -csv \
   -init skills/duckdb/scripts/markdown_macros.sql -c "
 SELECT
   section_id,
@@ -598,23 +599,27 @@ WHERE level <= 2;
 
 ### Recipe 9.2: Audit Fenced Code Blocks Across a Glob (`read_md_code_blocks`)
 
-Extract fenced code blocks by language tag or enclosing section across an entire
-repository. A non-matching glob returns zero rows with exit code 0, and any
-non-UTF-8 file aborts the scan, so verify `read_md_sections` is non-empty first:
+Extract fenced code blocks by language tag across a repository, join line
+continuations (`\\\n`), and audit each non-comment logical shell line where
+`duckdb` appears in command position (avoiding false positives on paths or
+`brew install duckdb`, and false negatives on multi-command blocks or string
+literals; verify `read_md_sections` is non-empty first):
 
 ```bash
-duckdb -batch -dark-mode -box \
+duckdb -batch -dark-mode -csv \
   -init skills/duckdb/scripts/markdown_macros.sql -c "
 SELECT
-  regexp_extract(file_path, '[^/]+/[^/]+$') AS skill_file,
-  block_id,
-  section_heading,
-  lang,
-  line_start,
-  line_end
-FROM read_md_code_blocks('skills/**/*.md')
-WHERE lang IN ('bash', 'sh')
-  AND contains(code, 'duckdb')
-  AND NOT contains(code, '-dark-mode');
+  regexp_extract(b.file_path, '[^/]+/[^/]+$') AS skill_file,
+  b.block_id,
+  b.section_heading,
+  b.line_start,
+  trim(l.cmd) AS offending_cmd
+FROM read_md_code_blocks('skills/**/*.md') b,
+  unnest(string_split(regexp_replace(b.code, '\\\r?\n', ' ', 'g'), chr(10))) AS l(cmd)
+WHERE b.lang IN ('bash', 'sh')
+  AND NOT regexp_matches(l.cmd, '^\s*#')
+  AND regexp_matches(l.cmd, '(?:^\s*|[|;&]|\$\()\s*duckdb(?:\s|$)')
+  AND NOT regexp_matches(l.cmd, '(^|\s)-(dark|light)-mode(\s|$)')
+  AND NOT regexp_matches(l.cmd, '\|\s*duckdb\s+-format(\s*(\||>)|$)');
 "
 ```

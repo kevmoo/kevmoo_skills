@@ -2,52 +2,59 @@
   "repo_criteria": ["evals/code_quality_rubric.json"],
   "evals": [
     {
-      "id": "duckdb_task_1_subshell_flags",
-      "prompt": "Using the duckdb skill, what flags must always be passed when invoking duckdb in a non-interactive agent subshell, and why?",
+      "id": "duckdb_task_1_exploratory_pty_sqlite_jsonl_rollup",
+      "prompt": "Attach a local SQLite index database 'index.db' ('sessions(session_id, title, parent_id)') read-only and join it against 'logs/*.jsonl' (which may have schema drift across files and truncated trailing lines) to count failed 'run_command' tool calls ('status = ERROR') per root session in a PTY subshell, optimizing stdout for compact AI-agent reading without 40-row clipping or whitespace padding.",
       "expected_chat_output": [
-        "Specifies passing '-batch -dark-mode' (or '-light-mode') together.",
-        "Explains that '-batch' alone does not disable DuckDB's 5-second OSC terminal background color detection timeout."
+        "Invokes 'duckdb -batch -dark-mode -agent' so PTY execution avoids the 5-second OSC color timeout and renders compact unpadded typed tables instead of padded '-box' or '-markdown'.",
+        "Attaches 'index.db' with 'ATTACH ... (TYPE SQLITE, READ_ONLY)' and reads 'logs/*.jsonl' with 'union_by_name=true', 'ignore_errors=true', 'filename=true', and 'tool_calls' typed as 'STRUCT(name VARCHAR, args JSON)[]' (or extracted via '->>') rather than 'JSON[]'."
       ],
       "expected_repo_state": ["No files are modified."],
       "agent_config": "bare-agent"
     },
     {
-      "id": "duckdb_task_2_transcript_tool_calls_struct",
-      "prompt": "Using the duckdb skill, how should I type the 'tool_calls' column in explicit 'columns={...}' projection when querying 'transcript.jsonl' files so that filtering on 'tc.name' does not fail with a Malformed JSON error?",
+      "id": "duckdb_task_2_agent_wrapper_zero_stderr",
+      "prompt": "Write an executable POSIX '#!/bin/sh' wrapper script 'duckdb-wrapper' for a team whose AI coding harness sets 'MY_AGENT_HARNESS=1'. Piped exploratory queries must emit compact DuckDB v2.0 Agent Mode tables while respecting caller '-light-mode' or '-interactive' overrides, '-json' and '-csv' queries must emit 0 bytes on stderr even if 'DUCKDB_AGENT_MODE=1' was exported upstream, and PTY '-manual regexp_extract' lookups must finish in under 1 second without opening a pager.",
       "expected_chat_output": [
-        "Recommends typing 'tool_calls' explicitly as 'STRUCT(name VARCHAR, args JSON)[]' inside 'columns={...}' rather than 'JSON[]', or using the '->>' operator."
+        "Exports 'AI_AGENT=1' and unsets 'DUCKDB_AGENT_MODE' when 'MY_AGENT_HARNESS=1' is active so DuckDB suppresses Agent Mode stderr banners on '-json', '-csv', and '-markdown'.",
+        "Inspects positional arguments before prepending '-batch' (unless '-interactive' is present) and '-dark-mode' (unless '-dark-mode' or '-light-mode' is present), avoiding both the 5-second color probe and interactive 'less' pager on '-manual'."
       ],
-      "expected_repo_state": ["No files are modified."],
+      "expected_repo_state": [
+        "An executable POSIX shell script 'duckdb-wrapper' is created or presented cleanly."
+      ],
       "agent_config": "bare-agent"
     },
     {
-      "id": "duckdb_task_3_code_diff_macros",
-      "prompt": "Using the duckdb skill, how can I query a raw git diff pipeline with SQL to find added lines matching a pattern and their 1-indexed file line numbers?",
+      "id": "duckdb_task_3_markdown_corpus_export_and_audit",
+      "prompt": "Index 'skills/**/*.md' (>200 sections, >40 KB) using the bundled Markdown SQL macros: (1) export the complete untruncated section outline ('file_path', 'section_id', 'level', 'heading', 'line_start', 'subtree_line_end') to 'sections_out.csv' with zero rows clipped, and (2) audit fenced 'bash'/'sh' code blocks for 'duckdb' CLI invocations missing '-dark-mode' while excluding pure piped 'duckdb -format' stdin examples without false negatives on '-format-file' or string literals.",
       "expected_chat_output": [
-        "References loading 'scripts/diff_macros.sql' via '-init'.",
-        "Mentions 'read_diff_lines' or 'read_diff_hunks' for raw unified diffs (such as '/dev/stdin')."
+        "Loads 'scripts/markdown_macros.sql' via '-init' and uses '-csv' (or '-json', not '-agent' which caps at 1,000 rows / 10,000 bytes even under '-batch' redirection) on 'read_md_sections' so all sections export untruncated.",
+        "Queries 'read_md_code_blocks' with token-boundary regex ('regexp_matches') rather than naive 'NOT contains(code, ''-format'')' substring exclusion."
       ],
-      "expected_repo_state": ["No files are modified."],
+      "expected_repo_state": [
+        "'sections_out.csv' contains all corpus sections with zero row or byte truncation markers."
+      ],
       "agent_config": "bare-agent"
     },
     {
-      "id": "duckdb_task_4_markdown_macros",
-      "prompt": "Using the duckdb skill, how can I index a large Markdown file (>350 lines) with SQL to get its section outline and full subtree line ranges before calling read_file?",
+      "id": "duckdb_task_4_diff_macros_added_lines",
+      "prompt": "Pipe 'git diff HEAD~1' into DuckDB SQL to list every added Dart line matching 'Future<' along with its file path and exact 1-indexed destination line number.",
       "expected_chat_output": [
-        "References loading 'scripts/markdown_macros.sql' via '-init'.",
-        "Mentions 'read_md_sections' and using 'line_start' and 'subtree_line_end' (or 'line_end') to slice sections."
+        "Loads 'scripts/diff_macros.sql' via '-init' with '-batch -dark-mode' (omitting '-no-stdin' because '/dev/stdin' is read).",
+        "Queries 'read_diff_lines(''/dev/stdin'')' filtering on 'change_type = ''add''' and projecting 'file_path' and 'new_line_no'."
       ],
-      "expected_repo_state": ["No files are modified."],
+      "expected_repo_state": ["No tracked repository files are modified."],
       "agent_config": "bare-agent"
     },
     {
-      "id": "duckdb_task_5_sqlite_jsonl_join_search",
-      "prompt": "Using the duckdb skill, how do I search across a glob of JSONL log files (such as transcript.jsonl) and join the matches against a local SQLite index database (such as conversation_summaries.db) in a single query?",
+      "id": "duckdb_task_5_v2_manual_formatter_and_v15_storage",
+      "prompt": "Using only the local DuckDB v2.0 CLI offline: (1) dump the built-in manual entry for 'list_transform' to 'manual.txt' in under 1 second, (2) format an unformatted SQL string into plain uncolored SQL in 'formatted.sql', and (3) create 'shared_metrics.duckdb' with a 3-row 'metrics' table readable by DuckDB v1.5.x clients.",
       "expected_chat_output": [
-        "Uses 'ATTACH ... (TYPE SQLITE, READ_ONLY)' on the SQLite database and joins it with 'read_json(..., filename=true)' over the JSONL glob.",
-        "Extracts the join key from 'filename' (e.g. via 'regexp_extract') and filters or aggregates matching rows."
+        "Runs 'duckdb -batch -dark-mode -manual list_transform' and pipes SQL through 'duckdb -dark-mode -format' with redirection or '| cat' so no 5-second TTY color probe or ANSI escape codes occur.",
+        "Creates 'shared_metrics.duckdb' with '-storage-version v1.5.0' (or 'v1.2.0') instead of DuckDB v2.0's default v69 ('v2.0.0+') storage format, and verifies via 'duckdb_databases()'."
       ],
-      "expected_repo_state": ["No files are modified."],
+      "expected_repo_state": [
+        "'manual.txt', 'formatted.sql' (plain SQL without ANSI escapes), and v1.5-compatible 'shared_metrics.duckdb' are created."
+      ],
       "agent_config": "bare-agent"
     }
   ]
