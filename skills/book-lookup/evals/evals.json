@@ -1,0 +1,27 @@
+{
+  "repo_criteria": ["evals/code_quality_rubric.json"],
+  "evals": [
+    {
+      "id": "book_lookup_1_anchor_book_doi",
+      "prompt": "Find the canonical identifier for Walter Scheidel's The Great Leveler so I can cite it.",
+      "expected_chat_output": [
+        "Runs scripts/book_lookup.py book-doi with the title and the author instead of answering from memory.",
+        "Reports the 2017 Princeton DOI 10.1515/9781400884605 as the anchor and notes that later DOIs are other editions.",
+        "Discards any same-titled result whose author_match is false."
+      ],
+      "expected_repo_state": ["No files are modified."],
+      "agent_config": "bare-agent"
+    },
+    {
+      "id": "book_lookup_2_isbn10_and_full_text",
+      "prompt": "Using the book-lookup skill, confirm ISBN 0735224382 and tell me whether The Federalist has a free public full text.",
+      "expected_chat_output": [
+        "Runs scripts/book_lookup.py isbn 0735224382 and reports it as ISBN-13 9780735224384, The Narrow Corridor by Acemoglu and Robinson.",
+        "Runs scripts/book_lookup.py search for The Federalist and reports the Project Gutenberg ebook link from full_text.",
+        "Does not suggest shadow libraries."
+      ],
+      "expected_repo_state": ["No files are modified."],
+      "agent_config": "bare-agent"
+    }
+  ]
+}

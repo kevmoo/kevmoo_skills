@@ -42,6 +42,13 @@
       ]
     },
     {
+      "title": "Research",
+      "description": "Skills for anchoring books and historical texts to verified identifiers and finding legal public full text.",
+      "skills": [
+        "book-lookup"
+      ]
+    },
+    {
       "title": "Self-Improvement",
       "description": "Skills for bookmarking workflow papercuts mid-task and auditing session transcripts to harden rules, hooks, and tools.",
       "skills": [
