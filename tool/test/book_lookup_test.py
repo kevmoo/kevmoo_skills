@@ -42,13 +42,14 @@ EDITION = {
 WORK = {"authors": [{"author": {"key": "/authors/OL1A"}}, {"author": {"key": "/authors/OL2A"}}]}
 
 
-def crossref_item(doi, kind, year, family):
+def crossref_item(doi, kind, year, family, given=None):
     """Return a minimal Crossref work."""
+    person = {"family": family, "given": given} if given else {"family": family}
     return {
         "DOI": doi,
         "type": kind,
         "title": ["The Great Leveler"],
-        "author": [{"family": family}],
+        "author": [person],
         "publisher": "Press",
         "issued": {"date-parts": [[year, 1, 1]]},
         "ISBN": ["9781400884605"],
@@ -87,9 +88,13 @@ class IsbnTest(unittest.TestCase):
     def test_isbn10_with_x_check_digit(self):
         self.assertEqual(book.normalize_isbn("080442957X"), "9780804429573")
 
-    def test_bad_check_digit_is_rejected(self):
-        with self.assertRaises(ValueError):
+    def test_bad_isbn13_check_digit_names_the_expected_digit(self):
+        with self.assertRaisesRegex(ValueError, r"expected 4 \(9780735224384\)"):
             book.normalize_isbn("9780735224385")
+
+    def test_bad_isbn10_check_digit_names_the_expected_digit(self):
+        with self.assertRaisesRegex(ValueError, r"expected 1 \(0465031331\)"):
+            book.normalize_isbn("0-465-03133-6")
 
     def test_garbage_is_rejected(self):
         with self.assertRaises(ValueError):
@@ -144,11 +149,40 @@ class IsbnRecordTest(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIsNone(data["result"])
 
-    def test_invalid_isbn_exits_1_without_fetching(self):
-        with mock.patch.object(book, "fetch_json") as fetch:
-            code, _ = run_cli(["isbn", "9780735224385"], {})
+    def test_invalid_isbn_exits_1_with_json_error(self):
+        code, data = run_cli(["isbn", "9780735224385"], {})
         self.assertEqual(code, 1)
-        fetch.assert_not_called()
+        self.assertFalse(data["found"])
+        self.assertIn("check digit mismatch", data["error"])
+
+
+class EditionsTest(unittest.TestCase):
+    def test_editions_sort_oldest_first_with_scans(self):
+        entries = [
+            {"key": "/books/OL2M", "title": "Political Parties", "publish_date": "1962"},
+            {
+                "key": "/books/OL1M",
+                "title": "Political parties",
+                "publish_date": "1915",
+                "languages": [{"key": "/languages/eng"}],
+                "ocaid": "politicalparties00mich",
+            },
+            {"key": "/books/OL3M", "title": "Undated"},
+        ]
+        code, data = run_cli(
+            ["editions", "https://openlibrary.org/works/OL1914748W"],
+            {"/works/OL1914748W/editions.json": {"entries": entries}},
+        )
+        self.assertEqual(code, 0)
+        self.assertEqual([e["year"] for e in data["result"]], [1915, 1962, None])
+        first = data["result"][0]
+        self.assertEqual(first["languages"], ["eng"])
+        self.assertEqual(first["scan_url"], "https://archive.org/details/politicalparties00mich")
+
+    def test_bad_work_id_exits_1(self):
+        code, data = run_cli(["editions", "not-a-work"], {})
+        self.assertEqual(code, 1)
+        self.assertIn("work id", data["error"])
 
 
 class CrossrefTest(unittest.TestCase):
@@ -166,6 +200,29 @@ class CrossrefTest(unittest.TestCase):
         item = crossref_item("10.4324/x-14", "book-chapter", 2024, "Levitsky")
         self.assertFalse(book.shape_crossref(item)["is_whole_book"])
 
+    def test_oxford_chapter_typed_as_book_is_not_whole_book(self):
+        for doi in ("10.1093/oso/9780190634889.003.0007", "10.1093/oxfordhb/9780198755609.013.22"):
+            item = crossref_item(doi, "book", 2017, "Dorman")
+            self.assertFalse(book.shape_crossref(item)["is_whole_book"], doi)
+        whole = crossref_item("10.1093/acprof:oso/9780190626594.001.0001", "monograph", 2016, "G")
+        self.assertTrue(book.shape_crossref(whole)["is_whole_book"])
+
+    def test_author_match_checks_first_initial_when_known(self):
+        people = [{"family": "Mann", "given": "Michael"}]
+        self.assertFalse(book.author_matches("Thomas Mann", people))
+        self.assertTrue(book.author_matches("Mann", people))
+        self.assertTrue(book.author_matches("Thomas Mann", [{"family": "Mann"}]))
+
+    def test_book_doi_without_author_match_exits_1(self):
+        items = [crossref_item("10.1/x", "monograph", 2001, "Christophers")]
+        code, data = run_cli(
+            ["book-doi", "The Great Leveler", "--author", "Walter Scheidel"],
+            {"query.bibliographic": {"message": {"items": items}}},
+        )
+        self.assertEqual(code, 1)
+        self.assertFalse(data["found"])
+        self.assertFalse(data["result"][0]["author_match"])
+
     def test_book_doi_puts_author_matches_first_then_oldest(self):
         items = [
             crossref_item("10.1/c", "monograph", 2018, "Scheidel"),
@@ -182,13 +239,13 @@ class CrossrefTest(unittest.TestCase):
 
 
 class FailureTest(unittest.TestCase):
-    def test_network_failure_exits_2(self):
+    def test_network_failure_exits_2_with_json_error(self):
         out = io.StringIO()
         fail = mock.patch.object(book, "fetch_json", side_effect=book.FetchError("boom"))
         with fail, contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
             code = book.main(["search", "anything"])
         self.assertEqual(code, 2)
-        self.assertEqual(out.getvalue(), "")
+        self.assertEqual(json.loads(out.getvalue()), {"found": False, "error": "boom"})
 
 
 if __name__ == "__main__":
