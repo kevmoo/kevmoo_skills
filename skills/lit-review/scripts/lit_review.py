@@ -44,10 +44,12 @@ WORK_FIELDS = (
     "primary_location,primary_topic,referenced_works,best_oa_location"
 )
 DROP_TYPES = {"paratext", "erratum", "editorial", "letter", "peer-review", "other", "retraction"}
-VERDICTS = ("supported", "partly", "contradicted", "cant-tell")
+VERDICTS = ("supported", "partly", "contradicted", "misattributed", "cant-tell")
+ABSTRACT_LIMIT = 4000
 # A safety valve only: a short-title check catches generic titles first.
 MENTION_MAX_HITS = 10000
-PREFERRED_TYPES = ("book", "article", "preprint", "report")
+# Reprints and fragments that should lose to the original record of the same title.
+DEMOTED_TYPES = {"book-review", "book-chapter", "paratext", "erratum", "editorial"}
 
 
 class FetchError(Exception):
@@ -115,11 +117,12 @@ def save(path, data):
     path.write_text(json.dumps(data, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
-def abstract_text(work, limit=1500):
-    """Return the abstract rebuilt from OpenAlex's inverted index, truncated to limit."""
+def abstract_text(work, limit=ABSTRACT_LIMIT):
+    """Return the abstract rebuilt from OpenAlex's inverted index, marking any truncation."""
     index = work.get("abstract_inverted_index") or {}
     words = sorted((pos, word) for word, places in index.items() for pos in places)
-    return " ".join(word for _, word in words)[:limit]
+    text = " ".join(word for _, word in words)
+    return text if len(text) <= limit else text[:limit] + " [truncated]"
 
 
 def shape_work(work):
@@ -144,18 +147,22 @@ def shape_work(work):
 
 
 def parse_source(line):
-    """Parse a seed line: a DOI, an OpenAlex id, or 'title | surname | year'."""
-    text = line.strip()
-    doi = re.match(r"^(?:https?://(?:dx\.)?doi\.org/|doi:)?(10\.\S+)$", text, re.IGNORECASE)
+    """Parse a seed line: a DOI or OpenAlex id, or a title, each optionally '| surname | year'."""
+    parts = [p.strip() for p in line.strip().split("|")]
+    head = parts[0]
+    extra = {}
+    if len(parts) > 1 and parts[1]:
+        extra["surname"] = parts[1]
+    if len(parts) > 2 and parts[2].isdigit():
+        extra["year"] = int(parts[2])
+    doi = re.match(r"^(?:https?://(?:dx\.)?doi\.org/|doi:)?(10\.\S+)$", head, re.IGNORECASE)
     if doi:
-        return {"doi": doi.group(1)}
-    if re.fullmatch(r"(?:https://openalex\.org/)?W\d+", text):
-        return {"openalex_id": short_id(text)}
-    parts = [p.strip() for p in text.split("|")]
-    if not parts[0]:
+        return {"doi": doi.group(1), **extra}
+    if re.fullmatch(r"(?:https://openalex\.org/)?W\d+", head):
+        return {"openalex_id": short_id(head), **extra}
+    if not head:
         raise ValueError(f"empty title in seed line: {line!r}")
-    year = int(parts[2]) if len(parts) > 2 and parts[2].isdigit() else None
-    return {"title": parts[0], "surname": parts[1] if len(parts) > 1 else "", "year": year}
+    return {"title": head, "surname": extra.get("surname", ""), "year": extra.get("year")}
 
 
 def norm_title(text):
@@ -188,54 +195,78 @@ def match_confidence(source, work):
 
 
 def resolve_source(source):
-    """Return (work or None, confidence) for a parsed seed source."""
+    """Return (work or None, confidence, alternates) for a parsed seed source.
+
+    Alternates are other records with the same title (journal reprints such as
+    ACM SIGPLAN Notices copies of conference papers), so the choice is visible.
+    """
     select = WORK_FIELDS.replace(",referenced_works", "")
-    if "doi" in source:
-        work = fetch(api_url(f"/works/https://doi.org/{source['doi']}", {"select": select}))
-        return work, "exact" if work else "none"
-    if "openalex_id" in source:
-        work = fetch(api_url(f"/works/{source['openalex_id']}", {"select": select}))
-        return work, "exact" if work else "none"
+    if "doi" in source or "openalex_id" in source:
+        path = f"https://doi.org/{source['doi']}" if "doi" in source else source["openalex_id"]
+        work = fetch(api_url(f"/works/{path}", {"select": select}))
+        return work, "exact" if work else "none", []
     title = re.sub(r"[,:?!|]", " ", source["title"])
     filters = f"title.search:{title}"
     if source.get("surname"):
         filters += f",raw_author_name.search:{source['surname']}"
-    params = {"filter": filters, "per-page": 10, "select": select + ",cited_by_count"}
-    data = fetch(api_url("/works", params)) or {}
+    data = fetch(api_url("/works", {"filter": filters, "per-page": 10, "select": select})) or {}
     candidates = data.get("results") or []
     if not candidates:
-        return None, "none"
+        return None, "none", []
 
     def rank(work):
-        """Prefer confident matches, then title similarity, real works, and citations."""
+        """Prefer confident matches, then title similarity, originals over reprints, citations."""
         similarity = round(title_similarity(source["title"], work["display_name"]), 2)
         confident = match_confidence(source, work) in ("exact", "likely")
-        return (confident, similarity, work.get("type") in PREFERRED_TYPES, work["cited_by_count"])
+        original = work.get("type") not in DEMOTED_TYPES
+        return (confident, similarity, original, work.get("cited_by_count") or 0)
 
-    best = max(candidates, key=rank)
-    return best, match_confidence(source, best)
+    ranked = sorted(candidates, key=rank, reverse=True)
+    best = ranked[0]
+    alternates = [
+        {k: shape_work(w)[k] for k in ("id", "doi", "year", "type", "venue", "cites")}
+        for w in ranked[1:]
+        if title_similarity(best["display_name"], w["display_name"]) >= 0.9
+    ]
+    return best, match_confidence(source, best), alternates
+
+
+def seed_record(line, previous):
+    """Resolve one seed line into a seeds.json record, keeping any earlier annotations."""
+    source = parse_source(line)
+    work, confidence, alternates = resolve_source(source)
+    record = {**previous, "input": line, "source": source, "confidence": confidence}
+    record.update({"work": None, "alternates": alternates, "notes": []})
+    if work and confidence != "none":
+        record["work"] = shape_work(work)
+        if not record["work"]["doi"]:
+            record["notes"].append("no DOI; if this is a book, anchor it with book-lookup")
+    if alternates:
+        record["notes"].append(
+            f"{len(alternates)} other record(s) share this title; see alternates"
+        )
+    return record
 
 
 def cmd_seed(args):
-    """Resolve each source line and merge the results into seeds.json."""
-    lines = [
-        line for line in Path(args.file).read_text(encoding="utf-8").splitlines() if line.strip()
-    ]
+    """Resolve every line of the sources file; seeds.json mirrors the file afterward."""
+    text = Path(args.file).read_text(encoding="utf-8")
+    lines = list(dict.fromkeys(line.strip() for line in text.splitlines() if line.strip()))
     path = Path(args.dir) / "seeds.json"
-    seeds = {s["input"]: s for s in load(path, [])}
-    for line in lines:
-        source = parse_source(line)
-        work, confidence = resolve_source(source)
-        record = seeds.get(line.strip(), {"input": line.strip()})
-        record.update({"source": source, "confidence": confidence, "work": None})
-        if work and confidence != "none":
-            record["work"] = shape_work(work)
-        seeds[line.strip()] = record
-    save(path, list(seeds.values()))
+    previous = {s["input"]: s for s in load(path, [])}
+    seeds = [seed_record(line, previous.get(line, {})) for line in lines]
+    save(path, seeds)
     counts = {}
-    for record in seeds.values():
+    for record in seeds:
         counts[record["confidence"]] = counts.get(record["confidence"], 0) + 1
-    return {"seeds": len(seeds), "by_confidence": counts, "path": str(path)}, True
+    removed = [i for i in previous if i not in lines]
+    flagged = {seed_label(s): s["notes"] for s in seeds if s["notes"]}
+    return {
+        "seeds": len(seeds),
+        "by_confidence": counts,
+        "removed": removed,
+        "notes": flagged,
+    }, True
 
 
 def seed_label(seed):
@@ -324,6 +355,23 @@ def collect(seeds, per_seed):
     return pool, notes
 
 
+def merge_duplicates(pool):
+    """Merge candidates with the same title and first author, keeping the most-cited record."""
+    merged = {}
+    for entry in sorted(pool.values(), key=lambda e: -e["cites"]):
+        first = (entry["authors"] or [""])[0].split()
+        key = (norm_title(entry["title"]), first[-1].lower() if first else "")
+        if key not in merged:
+            merged[key] = {**entry, "duplicates": []}
+            continue
+        kept = merged[key]
+        kept["duplicates"].append(entry["id"])
+        for relation, labels in entry["links"].items():
+            target = kept["links"].setdefault(relation, [])
+            target.extend(label for label in labels if label not in target)
+    return {entry["id"]: entry for entry in merged.values()}
+
+
 def cmd_fanout(args):
     """Fan out from the seeds, filter, rank and write candidates.json."""
     root = Path(args.dir)
@@ -331,11 +379,18 @@ def cmd_fanout(args):
     if not seeds:
         raise ValueError(f"no seeds in {root / 'seeds.json'}; run seed first")
     pool, notes = collect(seeds, args.per_seed)
+    pool = merge_duplicates(pool)
     seed_ids = {s["work"]["id"] for s in seeds if s.get("work")}
-    subfields = {s["work"]["subfield"] for s in seeds if s.get("work") and s["work"]["subfield"]}
+    seed_ids |= {a["id"] for s in seeds for a in s.get("alternates") or []}
+    subfields = set()
+    if not args.no_subfield_filter:
+        subfields = {
+            s["work"]["subfield"] for s in seeds if s.get("work") and s["work"]["subfield"]
+        }
     this_year, kept, dropped = datetime.date.today().year, [], {}
     for wid, entry in pool.items():
-        reason = "is a seed" if wid in seed_ids else quality_reason(entry, subfields, this_year)
+        is_seed = wid in seed_ids or seed_ids & set(entry["duplicates"])
+        reason = "is a seed" if is_seed else quality_reason(entry, subfields, this_year)
         if reason:
             dropped[reason] = dropped.get(reason, 0) + 1
             continue
@@ -425,7 +480,7 @@ def cmd_claim_add(args):
 
 
 def cmd_claim_verdict(args):
-    """Record the agent's verdict on a claim, with the quote that settles it."""
+    """Record the agent's verdict on a claim, with the quote or note that settles it."""
     path = Path(args.dir) / "claims.json"
     claims = load(path, [])
     claim = next((c for c in claims if c["id"] == args.id), None)
@@ -433,6 +488,8 @@ def cmd_claim_verdict(args):
         raise ValueError(f"no claim {args.id} in {path}")
     if args.verdict in ("supported", "contradicted") and not args.quote:
         raise ValueError(f"a {args.verdict} verdict needs --quote from the source")
+    if args.verdict in ("misattributed", "cant-tell") and not args.note:
+        raise ValueError(f"a {args.verdict} verdict needs --note saying why")
     claim["verdict"] = {
         "verdict": args.verdict,
         "depth": args.depth,
@@ -444,22 +501,38 @@ def cmd_claim_verdict(args):
     return claim, True
 
 
+def oa_urls(work):
+    """Return a work's open-access URLs to try: PDF links first, then landing pages."""
+    best = work.get("best_oa_location") or {}
+    others = [loc for loc in work.get("locations") or [] if loc and loc.get("is_oa")]
+    locations = [best] + others
+    pdfs = [loc.get("pdf_url") for loc in locations]
+    landings = [loc.get("landing_page_url") for loc in locations]
+    return [url for url in dict.fromkeys(pdfs + landings) if url]
+
+
 def cmd_fulltext(args):
-    """Download a work's open-access copy into fulltext/ and return its path."""
+    """Download the first open-access copy that is really a PDF into fulltext/."""
     root = Path(args.dir)
-    work = fetch(api_url(f"/works/{args.work}", {"select": "id,best_oa_location"}))
-    location = (work or {}).get("best_oa_location") or {}
-    url = location.get("pdf_url") or location.get("landing_page_url")
-    if not url:
+    work = fetch(api_url(f"/works/{args.work}", {"select": "id,best_oa_location,locations"}))
+    urls = oa_urls(work or {})
+    if not urls:
         return {"work": args.work, "error": "no open-access copy in OpenAlex"}, False
-    body = fetch(url, binary=True)
-    if body is None:
-        return {"work": args.work, "url": url, "error": "open-access link returned 404"}, False
-    suffix = ".pdf" if body[:5] == b"%PDF-" else ".html"
-    path = root / "fulltext" / f"{args.work}{suffix}"
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(body)
-    return {"work": args.work, "url": url, "path": str(path), "bytes": len(body)}, True
+    attempts = []
+    for url in urls:
+        try:
+            body = fetch(url, binary=True)
+        except FetchError as error:
+            attempts.append({"url": url, "result": str(error)})
+            continue
+        if body and body[:5] == b"%PDF-":
+            path = root / "fulltext" / f"{args.work}.pdf"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(body)
+            return {"work": args.work, "url": url, "path": str(path), "bytes": len(body)}, True
+        found = "not found" if body is None else "HTML, not a PDF (landing page or bot check)"
+        attempts.append({"url": url, "result": found})
+    return {"work": args.work, "error": "no PDF retrievable", "attempts": attempts}, False
 
 
 def md(text):
@@ -560,8 +633,12 @@ def build_parser():
         return p
 
     add("seed", cmd_seed, "resolve sources to OpenAlex").add_argument("file")
-    add("fanout", cmd_fanout, "fan out from seeds").add_argument(
-        "--per-seed", type=int, default=200
+    p = add("fanout", cmd_fanout, "fan out from seeds")
+    p.add_argument("--per-seed", type=int, default=200)
+    p.add_argument(
+        "--no-subfield-filter",
+        action="store_true",
+        help="keep candidates outside the seeds' OpenAlex subfields",
     )
     p = add("pick", cmd_pick, "keep candidates and fetch abstracts")
     p.add_argument("ids", nargs="+")

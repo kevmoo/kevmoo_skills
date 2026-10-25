@@ -84,6 +84,17 @@ class ParseAndMatchTest(unittest.TestCase):
             {"title": "The Great Leveler", "surname": "Scheidel", "year": 2017},
         )
 
+    def test_doi_line_keeps_citation_surname_and_year(self):
+        self.assertEqual(
+            lit.parse_source("10.1145/x | Rastogi | 2015"),
+            {"doi": "10.1145/x", "surname": "Rastogi", "year": 2015},
+        )
+
+    def test_long_abstract_is_marked_truncated(self):
+        index = {f"w{i}": [i] for i in range(2000)}
+        text = lit.abstract_text({"abstract_inverted_index": index})
+        self.assertTrue(text.endswith(" [truncated]"))
+
     def test_empty_title_is_rejected(self):
         with self.assertRaises(ValueError):
             lit.parse_source(" | Scheidel | 2017")
@@ -126,6 +137,29 @@ class SeedTest(ReviewTestCase):
         self.assertEqual(seeds[0]["work"]["id"], "W2")
         self.assertEqual(seeds[1]["confidence"], "exact")
         self.assertEqual(out["result"]["by_confidence"], {"exact": 2})
+        self.assertEqual([a["id"] for a in seeds[0]["alternates"]], ["W1", "W3"])
+
+    def test_original_beats_reprint_and_reseed_mirrors_the_file(self):
+        sources = self.dir / "sources.txt"
+        sources.write_text("Is Sound Gradual Typing Dead? | Takikawa | 2016\nOld | X | 2000\n")
+        results = {
+            "results": [
+                work("W1", "Is sound gradual typing dead?", 2016, cites=16),
+                work("W2", "Is sound gradual typing dead?", 2016, cites=92),
+            ]
+        }
+        self.run_cli(["seed", str(sources)], [("title.search", results)])
+        self.assertEqual(self.read("seeds.json")[0]["work"]["id"], "W2")
+        sources.write_text("Is Sound Gradual Typing Dead? | Takikawa | 2016\n")
+        _, out = self.run_cli(["seed", str(sources)], [("title.search", results)])
+        self.assertEqual(out["result"]["removed"], ["Old | X | 2000"])
+        self.assertEqual(len(self.read("seeds.json")), 1)
+
+    def test_record_without_doi_gets_a_book_lookup_note(self):
+        (self.dir / "sources.txt").write_text("W5\n")
+        no_doi = {**work("W5", "The Dart Programming Language", 2015), "doi": None}
+        _, out = self.run_cli(["seed", str(self.dir / "sources.txt")], [("works/W5", no_doi)])
+        self.assertIn("book-lookup", next(iter(out["result"]["notes"].values()))[0])
 
 
 class FanoutTest(ReviewTestCase):
@@ -188,6 +222,26 @@ class FanoutTest(ReviewTestCase):
         self.assertEqual(candidates[0]["link_count"], 2)
         self.assertIn("too generic", result["seed_notes"]["Altemeyer 2006"])
 
+    def test_duplicate_records_merge_into_the_most_cited(self):
+        self.write("seeds.json", self.seeds()[:1])
+        citers = {
+            "results": [
+                work("W7", "Gradual Typing for Python", cites=93, authors=("Michael Vitousek",)),
+                work("W8", "Gradual typing for Python!", cites=5, authors=("M. Vitousek",)),
+            ]
+        }
+        self.run_cli(["fanout"], [("cites:W100", citers), ("works/W100", {})])
+        candidates = self.read("candidates.json")
+        self.assertEqual([c["id"] for c in candidates], ["W7"])
+        self.assertEqual(candidates[0]["duplicates"], ["W8"])
+
+    def test_no_subfield_filter_keeps_other_subfields(self):
+        self.write("seeds.json", self.seeds()[:1])
+        citers = {"results": [work("W2", "Other field", cites=900, subfield="1702")]}
+        routes = [("cites:W100", citers), ("works/W100", {})]
+        self.run_cli(["fanout", "--no-subfield-filter"], routes)
+        self.assertEqual([c["id"] for c in self.read("candidates.json")], ["W2"])
+
     def test_rerun_keeps_agent_annotations(self):
         self.write("seeds.json", self.seeds()[:1])
         self.write(
@@ -238,6 +292,57 @@ class PickAndClaimTest(ReviewTestCase):
         claim = self.read("claims.json")[0]
         self.assertEqual(claim["abstract"], "Elites shape democracy")
         self.assertEqual(claim["verdict"]["page"], "4")
+
+    def test_misattributed_needs_a_note(self):
+        routes = [("works/W1", work("W1", "Elite Origins"))]
+        self.run_cli(
+            ["claim-add", "--work", "W1", "--text", "Unsoundness crashes programs"], routes
+        )
+        code, out = self.run_cli(["claim-verdict", "C1", "--verdict", "misattributed"])
+        self.assertEqual(code, 1)
+        self.assertIn("--note", out["error"])
+
+
+class FulltextTest(ReviewTestCase):
+    def locations(self):
+        return {
+            "best_oa_location": {
+                "pdf_url": "https://a.org/blocked.pdf",
+                "landing_page_url": "https://a.org/l",
+            },
+            "locations": [{"is_oa": True, "pdf_url": "https://b.org/ok.pdf"}],
+        }
+
+    def test_skips_blocked_and_html_until_a_real_pdf(self):
+        def fake(url, binary=False):
+            if "works/W1" in url:
+                return self.locations()
+            if "blocked" in url:
+                raise lit.FetchError("HTTP 403")
+            return b"%PDF-1.7 body" if url.endswith("ok.pdf") else b"<html>"
+
+        out = io.StringIO()
+        patch = mock.patch.object(lit, "fetch", side_effect=fake)
+        with patch, contextlib.redirect_stdout(out):
+            code = lit.main(["fulltext", "--dir", str(self.dir), "W1"])
+        result = json.loads(out.getvalue())["result"]
+        self.assertEqual(code, 0)
+        self.assertEqual(result["url"], "https://b.org/ok.pdf")
+        self.assertTrue((self.dir / "fulltext" / "W1.pdf").exists())
+
+    def test_html_only_is_a_failure(self):
+        routes = [("works/W1", {"best_oa_location": {"landing_page_url": "https://a.org/l"}})]
+        out = io.StringIO()
+        fake = mock.patch.object(
+            lit,
+            "fetch",
+            side_effect=lambda url, binary=False: b"<html>" if binary else routes[0][1],
+        )
+        with fake, contextlib.redirect_stdout(out):
+            code = lit.main(["fulltext", "--dir", str(self.dir), "W1"])
+        self.assertEqual(code, 1)
+        attempts = json.loads(out.getvalue())["result"]["attempts"]
+        self.assertIn("not a PDF", attempts[0]["result"])
 
 
 class RenderTest(ReviewTestCase):
