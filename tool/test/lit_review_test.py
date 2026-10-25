@@ -114,6 +114,11 @@ class ParseAndMatchTest(unittest.TestCase):
             lit.match_confidence(source, work("W2", "How Democracies Die", 2018)), "exact"
         )
 
+    def test_recorded_talk_is_never_exact(self):
+        source = {"title": "It's Even Worse Than It Looks", "surname": "Mann", "year": 2012}
+        talk = work("W4", "It's Even Worse than It Looks", 2012, kind="other")
+        self.assertEqual(lit.match_confidence(source, talk), "uncertain")
+
     def test_book_review_is_never_exact(self):
         source = {"title": "Social Dominance", "surname": "Sidanius", "year": 1999}
         review = work("W3", "Social Dominance", 1999, kind="book-review")
