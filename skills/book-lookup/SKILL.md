@@ -8,7 +8,7 @@ description: >-
   list or bibliography, checking a book's author, year, or edition, turning an
   ISBN into a record, or finding a public-domain copy on Project Gutenberg or
   the Internet Archive. Don't use for journal articles or citation graphs (use
-  OpenAlex or a literature-review workflow), for reading paywalled books, or
+  lit-review), for reading paywalled books, or
   for shadow libraries.
 key_features:
   - Book DOI, ISBN-13, and archive anchors from fetched records

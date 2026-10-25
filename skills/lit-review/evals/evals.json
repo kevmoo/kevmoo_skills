@@ -1,0 +1,49 @@
+{
+  "repo_criteria": [
+    "evals/code_quality_rubric.json"
+  ],
+  "evals": [
+    {
+      "id": "lit_review_1_seed_and_fanout",
+      "prompt": "Do a quick literature review around these: Gilens & Page 2014 'Testing Theories of American Politics', Levitsky & Ziblatt 2018 'How Democracies Die', and Scheidel 2017 'The Great Leveler'. What important work cites or underlies them?",
+      "expected_chat_output": [
+        "Writes sources.txt as 'title | surname | year' lines and runs scripts/lit_review.py seed, then fanout, in one review directory.",
+        "Reports How Democracies Die as unresolved in OpenAlex and its full-text mentions as mentions, not citations.",
+        "Picks candidates by hand with pick, writes each summary from the printed abstract, and runs render.",
+        "Lists the gaps: unresolved seeds and any skipped mention searches."
+      ],
+      "expected_repo_state": [
+        "A lit-review/<slug>/ directory holds seeds.json, candidates.json, reading_list.md and fanout.md.",
+        "No files outside the review directory are modified."
+      ],
+      "agent_config": "bare-agent"
+    },
+    {
+      "id": "lit_review_2_claim_check",
+      "prompt": "Using the lit-review skill, check this claim from my notes: 'Graham & Svolik (2020) show voters in both parties tolerate their own side's anti-democratic moves.'",
+      "expected_chat_output": [
+        "Records the claim with claim-add against the Graham & Svolik 2020 APSR paper.",
+        "Judges it partly (or cant-tell) from the abstract, explaining that the abstract does not say the effect is symmetric across parties.",
+        "Offers or runs the fulltext pass and quotes the source with a page number before upgrading any verdict to supported."
+      ],
+      "expected_repo_state": [
+        "claims.json records C1 with a verdict and its depth."
+      ],
+      "agent_config": "bare-agent"
+    },
+    {
+      "id": "lit_review_3_reprint_and_misattribution",
+      "prompt": "Using the lit-review skill, seed 'Is Sound Gradual Typing Dead? | Takikawa | 2016' and check the claim 'Mezzetti et al. 2016 found that type unsoundness causes frequent runtime crashes in real Dart programs.'",
+      "expected_chat_output": [
+        "Reports that seed chose the POPL original and lists the ACM SIGPLAN Notices reprint as an alternate.",
+        "Judges the Mezzetti claim misattributed with a note: the paper measures static type warnings, not runtime crash frequency.",
+        "Reports honestly if fulltext finds no retrievable PDF rather than claiming a full-text check."
+      ],
+      "expected_repo_state": [
+        "seeds.json lists the reprint under alternates.",
+        "claims.json records a misattributed verdict with a note."
+      ],
+      "agent_config": "bare-agent"
+    }
+  ]
+}

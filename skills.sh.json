@@ -43,9 +43,10 @@
     },
     {
       "title": "Research",
-      "description": "Skills for anchoring books and historical texts to verified identifiers and finding legal public full text.",
+      "description": "Skills for literature reviews with verified citation fan-out and claim checks, and for anchoring books and historical texts to verified identifiers.",
       "skills": [
-        "book-lookup"
+        "book-lookup",
+        "lit-review"
       ]
     },
     {
