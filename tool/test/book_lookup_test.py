@@ -238,6 +238,25 @@ class CrossrefTest(unittest.TestCase):
         self.assertFalse(data["result"][2]["author_match"])
 
 
+class UserAgentTest(unittest.TestCase):
+    def test_no_contact_by_default(self):
+        with mock.patch.dict("os.environ", {}, clear=True):
+            self.assertEqual(book.user_agent(), book.USER_AGENT)
+
+    def test_contact_email_is_added_as_mailto(self):
+        with mock.patch.dict("os.environ", {"SKILLS_CONTACT_EMAIL": "me@example.com"}):
+            self.assertEqual(
+                book.user_agent(),
+                "book-lookup-skill/0.1 (+https://github.com/kevmoo/kevmoo_skills; "
+                "mailto:me@example.com)",
+            )
+
+    def test_malformed_contact_is_ignored(self):
+        for bad in ("not-an-email", "a@b.com) evil", "a@b.com\r\nX: y"):
+            with mock.patch.dict("os.environ", {"SKILLS_CONTACT_EMAIL": bad}):
+                self.assertEqual(book.user_agent(), book.USER_AGENT, bad)
+
+
 class FailureTest(unittest.TestCase):
     def test_network_failure_exits_2_with_json_error(self):
         out = io.StringIO()

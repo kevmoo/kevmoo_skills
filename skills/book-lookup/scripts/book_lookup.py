@@ -19,6 +19,7 @@ input, 2 network or HTTP failure (retryable).
 
 import argparse
 import json
+import os
 import re
 import sys
 import time
@@ -27,6 +28,8 @@ import urllib.parse
 import urllib.request
 
 USER_AGENT = "book-lookup-skill/0.1 (+https://github.com/kevmoo/kevmoo_skills)"
+# Opt-in contact address: Crossref serves identified clients from its faster "polite pool".
+CONTACT_ENV = "SKILLS_CONTACT_EMAIL"
 OPEN_LIBRARY = "https://openlibrary.org"
 CROSSREF = "https://api.crossref.org"
 BOOK_TYPES = ("book", "monograph", "edited-book", "reference-book")
@@ -43,9 +46,17 @@ class FetchError(Exception):
     """A network or HTTP failure that should end the run with exit code 2."""
 
 
+def user_agent():
+    """Return the User-Agent, with a mailto contact when SKILLS_CONTACT_EMAIL is set."""
+    email = os.environ.get(CONTACT_ENV, "").strip()
+    if not email or "@" not in email or any(c in email for c in "()\r\n "):
+        return USER_AGENT
+    return f"{USER_AGENT[:-1]}; mailto:{email})"
+
+
 def fetch_json(url):
     """Return the parsed JSON at url, or None on 404. Retries twice on 429, 5xx and resets."""
-    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+    request = urllib.request.Request(url, headers={"User-Agent": user_agent()})
     for attempt in range(3):
         try:
             with urllib.request.urlopen(request, timeout=30) as response:

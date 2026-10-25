@@ -128,7 +128,10 @@ already retried twice, so wait a few seconds and run it once more.
 - **Founders Online can return a bot challenge** to scripted fetches. Avalon
   Project is the fallback for founding-era documents.
 - **Be gentle with the APIs.** Open Library and Crossref are free public
-  services; avoid loops of more than a few dozen lookups without pausing.
+  services; avoid loops of more than a few dozen lookups without pausing. When
+  `SKILLS_CONTACT_EMAIL` is set, the script adds it to its User-Agent as a
+  `mailto:` contact, which Crossref rewards with higher rate limits. Never set
+  or invent an address yourself; it is the user's choice.
 
 ## Output
 
