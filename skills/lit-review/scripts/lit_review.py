@@ -48,6 +48,8 @@ VERDICTS = ("supported", "partly", "contradicted", "misattributed", "cant-tell")
 ABSTRACT_LIMIT = 4000
 # A safety valve only: a short-title check catches generic titles first.
 MENTION_MAX_HITS = 10000
+# Records about a work rather than the work itself (reviews, recorded talks, front matter).
+NOT_THE_WORK_TYPES = {"book-review", "paratext", "other", "peer-review", "editorial", "erratum"}
 # Reprints and fragments that should lose to the original record of the same title.
 DEMOTED_TYPES = {"book-review", "book-chapter", "paratext", "erratum", "editorial"}
 
@@ -187,7 +189,7 @@ def match_confidence(source, work):
         return "none"
     # A review, or a record from another year (a reprint chapter, a different book), is not
     # the cited work even when the title matches.
-    if not year_ok or work.get("type") in ("book-review", "paratext"):
+    if not year_ok or work.get("type") in NOT_THE_WORK_TYPES:
         return "uncertain"
     if similarity >= 0.9:
         return "exact"
