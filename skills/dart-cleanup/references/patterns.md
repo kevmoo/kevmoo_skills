@@ -30,20 +30,19 @@ language examples used by [`SKILL.md`](../SKILL.md).
 - **Internal Decomposition & Shallow-Helper Guardrail (`lib/src/`)**: **Stop
   rule:** only declarations above `cognitive_complexity` 15 (production) or 40
   (`_test.dart`) are work items; stop once the max is `<= 15` (Target Zone
-  `8–15`, not `0`). When decomposing, forbid stateful `_Populator` / `_Runner`
-  helper classes that mutate caller maps/sets in-place; require **file-private
-  pure functions (`_computeX(input) -> output`)** with zero out-parameters and
-  `<= 4` parameters (`<= 3` preferred, `sliceScoreAtRoot >= 3`). Flag
-  single-caller (`FanIn == 1`, `TestFanIn == 0`) pass-through helpers
-  (`cognitive_complexity:shallow`: high-arity `>= 5` parameters, micro-helpers
-  `< 5` body lines and `CC <= 1`, `SignatureLines >= BodyLines`, or
-  `CROSS_FILE_SINGLE_CALLER`): re-inline a `SAFE_INLINE` helper when
-  `CallerCCAfter <= 15` and it is a pass-through with no same-shape siblings and
-  no meaningful domain contract; when `CallerCCAfter > 15` and `HelperCC <= 4`
-  (`FLATTEN_AND_INLINE`), flatten the caller in place instead of
-  bucket-brigading local variables across helper signatures. Benchmark hot
-  per-element loops before splitting them; prefer a per-declaration
-  `// cognitive_complexity:ignore` with a reason comment. Details: the
+  `8–15`, not `0`). On borderline functions (`CC 16–22`), exhaust in-place and
+  cross-method simplifications first (shared `FanIn >= 2` helpers, promoting
+  multi-branch nested closures, coalescing identical-return branches, folding
+  twin blocks into 2-element loops, hoisting outer-scope loop invariants) and
+  never extract single-caller helpers at `callNestingDepth == 0` (`0` net file
+  CC saved) or asymmetrically extract one arm of a peer dispatch. When
+  decomposing, forbid stateful `_Populator` / `_Runner` classes that mutate
+  caller collections in-place; require **file-private pure functions
+  (`_computeX(input) -> output`)** with zero out-parameters and `<= 4`
+  parameters (`<= 3` preferred, `sliceScoreAtRoot >= 3`). Treat
+  `cognitive_complexity:shallow` findings as advisory; benchmark hot per-element
+  inner loops (2D matrix/grid, pixel, byte, token kernels) and keep them inline
+  with `// cognitive_complexity:ignore <reason>`. Details: the
   `dart-cognitive-complexity` skill.
 
 <!-- END SPOT: dart-complexity-and-helpers -->
