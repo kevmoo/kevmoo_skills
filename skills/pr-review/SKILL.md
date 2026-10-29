@@ -130,13 +130,15 @@ dependencies rather than diff hunks in isolation.
      Reuse_ · _9. Simplification_ · _10. Efficiency_ · _11. Altitude_ · _12.
      Readability & Conventions_ · _13. Cyclomatic Complexity_.
    - In `Review Mode: Deep`, run deterministic CLI verification (`dart format`,
-     `dart analyze --fatal-infos`, `cognitive_complexity`, `dart test`) in the
-     parent agent, and dispatch read-only subagents (`Model: "flash"`) across
-     bounded file slices (`<= 10` files per subagent) and angle clusters before
-     running the Inquisitor pass. Have each subagent return its markdown
-     findings directly in its response message so the parent agent can
-     synthesize and write `pr_review_<PR>.md` inside the parent session's
-     artifact sandbox.
+     `dart analyze --fatal-infos`, `cognitive_complexity`, `dart test`) once in
+     the parent agent, then dispatch strictly read-only subagents
+     (`Model: "flash"`, `EnableWriteTools: false` or a read-only `Explore` /
+     `research` agent type with no shell execution; never an unrestricted
+     general subagent) across bounded file slices (`<= 10` files per subagent)
+     and angle clusters before running the Inquisitor pass. Forbid subagents
+     from running `dart test`, `dart analyze`, or task polling, and have each
+     return its markdown findings directly in its reply so the parent agent
+     synthesizes `pr_review_<PR>.md`.
 2. **Empirical Verification & Anti-Slop Gate**:
    - Before keeping a candidate finding or offering
      `"Select findings to post inline to GitHub"`, empirically verify it via

@@ -32,6 +32,19 @@ Audit what was deleted:
   dropped?
 - Were fallback branches removed prematurely before downstream consumers
   migrated?
+- **Reflection-Based Drift & Sync Tests (`dart:mirrors` Removal)**: When a diff
+  removes `dart:mirrors` reflection tests that guard against API or
+  reserved-name drift (such as checking newly added `Object` or SDK mixin
+  members), prefer migrating the check to static `package:analyzer`
+  (`AnalysisContextCollection`) inspection whenever `analyzer` is already in the
+  transitive dev dependency graph (for example via `dart_style` or `build_test`)
+  rather than deleting coverage outright.
+- **Shared Contract Helpers Across Delegating / Wrapper Subtypes**: When
+  replacing reflection-based test harnesses or refactoring collection wrapper
+  tests, verify that shared contract-helper calls (such as `testIterable()`)
+  remain wired up on every concrete delegating subtype (`DelegatingList`,
+  `DelegatingSet`, `DelegatingQueue`) rather than assuming private base-class
+  inheritance covers them.
 
 ### 3. Cross-File Tracer
 
@@ -187,6 +200,17 @@ as `[SUGGESTION]`:
   only the happy path?
 - Does every bug fix include a deterministic regression test reproducing the
   original issue?
+- **Flutter Web Test Bundling vs. `@TestOn('vm')`**: Unlike
+  `dart test -p chrome`, `flutter test --platform=chrome` compiles all
+  discovered `*_test.dart` files into a single synthetic web entrypoint before
+  `package:test` evaluates `@TestOn('vm')`. Verify that Flutter package tests
+  importing `dart:io` or `dart:ffi` are isolated by directory or explicit CLI
+  target paths (such as `test/vm/` vs. `test/web/`) or conditional imports
+  rather than relying on `@TestOn('vm')` alone.
+- **Fixture Variable Shadowing in Refactored Suites**: When moving or
+  consolidating test blocks, check for local declarations (`final server = ...`,
+  `var client = ...`) that shadow suite-level `setUp` variables and leave
+  `tearDown` cleaning up an uninitialized or stale handle.
 
 ### 8. Reuse
 
@@ -349,6 +373,12 @@ Filter every candidate finding against these five pathologies:
     record/tuple of mutated local state, or would be flagged by
     `cognitive_complexity:shallow` (`SAFE_INLINE`, `MICRO_HELPER`, `SIG_HEAVY`,
     `LOW_COMPLEXITY_PAYOFF`).
+  - **Modern Dart 3.14+ Syntax (Primary Constructors)**: Never flag valid Dart
+    `3.14+` primary constructor declarations (`class Foo(this.x)`,
+    `final class _Foo(final T x)`, `final class const _Bar()`,
+    `enum Kind(this.label)`) or `new(...)` / `const new(...)` constructor heads
+    as syntax errors when the package SDK constraint is `>= 3.14.0` (or the
+    `primary-constructors` experiment is enabled).
   - **Foreign-Language Idiom & Unverified Linter Duplication**: Never recommend
     `kConstantName` (instead of `lowerCamelCase`), explicit `break;` inside Dart
     3 `switch` cases, `sprintf`/string builders for single-expression string
