@@ -64,12 +64,26 @@ When creating a worktree, observe strict placement and naming rules:
    Git repository status, and ensure the repo is not the Dart SDK. Do not
    require a clean working directory; worktrees allow branching safely from a
    dirty tree.
-2. **Fetch Latest Remote State & Resolve Base Branch**: Prefer `upstream` over
-   `origin` when an `upstream` remote exists so fork repositories never branch
-   from a lagging `origin/main`, then dynamically resolve the remote default
-   branch (`<remote>/HEAD`, `<remote>/main`, or `<remote>/master`):
+2. **Fetch Latest Remote State & Resolve Base Branch**: Prefer `origin` on
+   standalone personal repositories and forks under `~/github/<owner>/<repo>`
+   (unless `remote.upstream.gh-resolved` is `base`), and prefer `upstream` on
+   external contribution checkouts at `~/github/<repo>` so branches never start
+   from a lagging `origin/main`, then resolve `<remote>/HEAD`, `<remote>/main`,
+   or `<remote>/master`:
    ```bash
-   REMOTE=$(git remote | grep -qx upstream && echo "upstream" || echo "origin")
+   REPO_ROOT=$(git rev-parse --show-toplevel)
+   REMOTE="origin"
+   if git remote | grep -qx upstream; then
+     case "${REPO_ROOT}" in
+       "${HOME}"/github/*/*/*) REMOTE="upstream" ;;
+       "${HOME}"/github/*/*)
+         if [ "$(git config --get remote.upstream.gh-resolved || true)" = "base" ]; then
+           REMOTE="upstream"
+         fi
+         ;;
+       *) REMOTE="upstream" ;;
+     esac
+   fi
    git fetch "${REMOTE}"
    TARGET_BASE=$(git symbolic-ref "refs/remotes/${REMOTE}/HEAD" 2>/dev/null || (git show-ref --verify --quiet "refs/remotes/${REMOTE}/main" && echo "${REMOTE}/main") || echo "${REMOTE}/master")
    ```
