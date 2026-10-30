@@ -37,7 +37,7 @@
       "expected_chat_output": [
         "Reports that seed chose the POPL original and lists the ACM SIGPLAN Notices reprint as an alternate.",
         "Judges the Mezzetti claim misattributed with a note: the paper measures static type warnings, not runtime crash frequency.",
-        "Reports honestly if fulltext finds no retrievable PDF rather than claiming a full-text check."
+        "Reports honestly if fulltext finds no retrievable full text rather than claiming a full-text check."
       ],
       "expected_repo_state": [
         "seeds.json lists the reprint under alternates.",
