@@ -347,7 +347,72 @@ class FulltextTest(ReviewTestCase):
             code = lit.main(["fulltext", "--dir", str(self.dir), "W1"])
         self.assertEqual(code, 1)
         attempts = json.loads(out.getvalue())["result"]["attempts"]
-        self.assertIn("not a PDF", attempts[0]["result"])
+        self.assertIn("not full text", attempts[0]["result"])
+
+    def fulltext(self, record, pages):
+        """Run fulltext on W1 with record as its OpenAlex record and pages by URL."""
+
+        def fake(url, binary=False):
+            return record if "works/W1" in url else pages.get(url)
+
+        out = io.StringIO()
+        with mock.patch.object(lit, "fetch", side_effect=fake), contextlib.redirect_stdout(out):
+            code = lit.main(["fulltext", "--dir", str(self.dir), "W1"])
+        return code, json.loads(out.getvalue())["result"]
+
+    def test_arxiv_html_beats_pdf(self):
+        record = {"best_oa_location": {"pdf_url": "https://arxiv.org/pdf/2101.00001v2"}}
+        pages = {
+            "https://arxiv.org/html/2101.00001v2": b'<div class="ltx_document">',
+            "https://arxiv.org/pdf/2101.00001v2": b"%PDF-1.7 body",
+        }
+        code, result = self.fulltext(record, pages)
+        self.assertEqual(code, 0)
+        self.assertEqual(result["format"], "html")
+        self.assertTrue((self.dir / "fulltext" / "W1.html").exists())
+
+    def test_arxiv_latex_source_when_no_html(self):
+        tar = io.BytesIO()
+        with lit.tarfile.open(fileobj=tar, mode="w:gz") as archive:
+            info = lit.tarfile.TarInfo("main.tex")
+            info.size = 5
+            archive.addfile(info, io.BytesIO(b"\\begin"))
+        record = {"doi": "https://doi.org/10.48550/arXiv.2101.00001", "best_oa_location": {}}
+        code, result = self.fulltext(
+            record, {"https://arxiv.org/e-print/2101.00001": tar.getvalue()}
+        )
+        self.assertEqual(code, 0)
+        self.assertEqual(result["format"], "latex")
+        self.assertTrue((self.dir / "fulltext" / "W1.tar.gz").exists())
+
+    def test_fulltext_landing_page_beats_pdf(self):
+        record = {
+            "best_oa_location": {
+                "landing_page_url": "https://a.org/l",
+                "pdf_url": "https://a.org/p.pdf",
+            }
+        }
+        pages = {
+            "https://a.org/l": (b"<p>" + b"x" * 300 + b"</p>") * 12,
+            "https://a.org/p.pdf": b"%PDF-1.7 body",
+        }
+        code, result = self.fulltext(record, pages)
+        self.assertEqual(code, 0)
+        self.assertEqual(result["url"], "https://a.org/l")
+
+    def test_repository_record_page_falls_through_to_pdf(self):
+        record = {
+            "best_oa_location": {
+                "landing_page_url": "https://a.org/l",
+                "pdf_url": "https://a.org/p.pdf",
+            }
+        }
+        # An abstract plus short metadata fields, like an SSOAR or DSpace record.
+        record_page = (b"<p>" + b"a" * 900 + b"</p>") * 2 + b"<p>Author: X</p>" * 30
+        pages = {"https://a.org/l": record_page, "https://a.org/p.pdf": b"%PDF-1.7 body"}
+        code, result = self.fulltext(record, pages)
+        self.assertEqual(code, 0)
+        self.assertEqual(result["format"], "pdf")
 
 
 class RenderTest(ReviewTestCase):

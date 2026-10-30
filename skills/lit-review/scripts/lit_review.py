@@ -15,7 +15,8 @@ fetches, counts and records. Subcommands:
                  optionally set a theme and the agent's summary.
   claim-add      Record a claim and the work cited for it; fetches its abstract.
   claim-verdict  Record the agent's verdict, quote and page for a claim.
-  fulltext       Download a work's open-access copy into the review directory.
+  fulltext       Save a work's open-access full text (arXiv HTML or LaTeX,
+                 then HTML, then PDF) into the review directory.
   render         Write reading_list.md, fanout.md and claims.md from the JSON.
 
 Output is always one JSON object on stdout. Exit codes: 0 success, 1 invalid
@@ -25,10 +26,12 @@ input or nothing found, 2 network or HTTP failure (retryable).
 import argparse
 import datetime
 import difflib
+import io
 import json
 import os
 import re
 import sys
+import tarfile
 import time
 import urllib.error
 import urllib.parse
@@ -503,20 +506,60 @@ def cmd_claim_verdict(args):
     return claim, True
 
 
+ARXIV_ID = re.compile(r"arxiv\.org/(?:abs|pdf)/(.+?)(?:\.pdf)?$|10\.48550/arxiv\.(.+)$", re.I)
+# An HTML page with fewer substantial paragraphs is taken for an abstract page,
+# a repository record or a bot check.
+FULLTEXT_MIN_PARAGRAPHS = 10
+FULLTEXT_PARAGRAPH_CHARS = 200
+PARAGRAPH = re.compile(r"<p[\s>](.*?)</p>", re.I | re.S)
+TAG = re.compile(r"<[^>]+>")
+
+
+def arxiv_id(work, locations):
+    """Return the work's arXiv id from its DOI or an arxiv.org link, or None."""
+    urls = [work.get("doi")] + [loc.get("landing_page_url") for loc in locations]
+    urls += [loc.get("pdf_url") for loc in locations]
+    for url in urls:
+        match = ARXIV_ID.search(url or "")
+        if match:
+            return match.group(1) or match.group(2)
+    return None
+
+
 def oa_urls(work):
-    """Return a work's open-access URLs to try: PDF links first, then landing pages."""
+    """Return a work's open-access URLs to try: arXiv HTML and LaTeX, landing pages, PDFs."""
     best = work.get("best_oa_location") or {}
     others = [loc for loc in work.get("locations") or [] if loc and loc.get("is_oa")]
     locations = [best] + others
-    pdfs = [loc.get("pdf_url") for loc in locations]
+    arxiv = arxiv_id(work, locations)
+    sources = [f"https://arxiv.org/{kind}/{arxiv}" for kind in ("html", "e-print")] if arxiv else []
     landings = [loc.get("landing_page_url") for loc in locations]
-    return [url for url in dict.fromkeys(pdfs + landings) if url]
+    pdfs = [loc.get("pdf_url") for loc in locations]
+    return [url for url in dict.fromkeys(sources + landings + pdfs) if url]
+
+
+def fulltext_file(body):
+    """Return (suffix, format) for a body that is real full text, else None."""
+    if body[:5] == b"%PDF-":
+        return ".pdf", "pdf"
+    if body[:2] == b"\x1f\x8b":
+        try:
+            with tarfile.open(fileobj=io.BytesIO(body), mode="r:gz"):
+                return ".tar.gz", "latex"
+        except (tarfile.TarError, OSError, EOFError):
+            return ".tex.gz", "latex"
+    text = body.decode("utf-8", errors="replace")
+    paragraphs = [TAG.sub("", p).strip() for p in PARAGRAPH.findall(text)]
+    substantial = [p for p in paragraphs if len(p) >= FULLTEXT_PARAGRAPH_CHARS]
+    if "ltx_document" in text or len(substantial) >= FULLTEXT_MIN_PARAGRAPHS:
+        return ".html", "html"
+    return None
 
 
 def cmd_fulltext(args):
-    """Download the first open-access copy that is really a PDF into fulltext/."""
+    """Save the first open-access full text into fulltext/, preferring source formats to PDFs."""
     root = Path(args.dir)
-    work = fetch(api_url(f"/works/{args.work}", {"select": "id,best_oa_location,locations"}))
+    work = fetch(api_url(f"/works/{args.work}", {"select": "id,doi,best_oa_location,locations"}))
     urls = oa_urls(work or {})
     if not urls:
         return {"work": args.work, "error": "no open-access copy in OpenAlex"}, False
@@ -527,14 +570,17 @@ def cmd_fulltext(args):
         except FetchError as error:
             attempts.append({"url": url, "result": str(error)})
             continue
-        if body and body[:5] == b"%PDF-":
-            path = root / "fulltext" / f"{args.work}.pdf"
+        found = fulltext_file(body) if body else None
+        if found:
+            suffix, kind = found
+            path = root / "fulltext" / f"{args.work}{suffix}"
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(body)
-            return {"work": args.work, "url": url, "path": str(path), "bytes": len(body)}, True
-        found = "not found" if body is None else "HTML, not a PDF (landing page or bot check)"
-        attempts.append({"url": url, "result": found})
-    return {"work": args.work, "error": "no PDF retrievable", "attempts": attempts}, False
+            result = {"url": url, "format": kind, "path": str(path), "bytes": len(body)}
+            return {"work": args.work, **result}, True
+        result = "not found" if body is None else "not full text (abstract page or bot check)"
+        attempts.append({"url": url, "result": result})
+    return {"work": args.work, "error": "no full text retrievable", "attempts": attempts}, False
 
 
 def md(text):
