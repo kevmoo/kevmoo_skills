@@ -507,8 +507,12 @@ def cmd_claim_verdict(args):
 
 
 ARXIV_ID = re.compile(r"arxiv\.org/(?:abs|pdf)/(.+?)(?:\.pdf)?$|10\.48550/arxiv\.(.+)$", re.I)
-# An HTML page with fewer paragraphs is taken for an abstract page or bot check.
-FULLTEXT_MIN_PARAGRAPHS = 20
+# An HTML page with fewer substantial paragraphs is taken for an abstract page,
+# a repository record or a bot check.
+FULLTEXT_MIN_PARAGRAPHS = 10
+FULLTEXT_PARAGRAPH_CHARS = 200
+PARAGRAPH = re.compile(r"<p[\s>](.*?)</p>", re.I | re.S)
+TAG = re.compile(r"<[^>]+>")
 
 
 def arxiv_id(work, locations):
@@ -544,8 +548,10 @@ def fulltext_file(body):
                 return ".tar.gz", "latex"
         except (tarfile.TarError, OSError, EOFError):
             return ".tex.gz", "latex"
-    text = body.decode("utf-8", errors="replace").lower()
-    if "ltx_document" in text or text.count("<p") >= FULLTEXT_MIN_PARAGRAPHS:
+    text = body.decode("utf-8", errors="replace")
+    paragraphs = [TAG.sub("", p).strip() for p in PARAGRAPH.findall(text)]
+    substantial = [p for p in paragraphs if len(p) >= FULLTEXT_PARAGRAPH_CHARS]
+    if "ltx_document" in text or len(substantial) >= FULLTEXT_MIN_PARAGRAPHS:
         return ".html", "html"
     return None
 

@@ -392,10 +392,27 @@ class FulltextTest(ReviewTestCase):
                 "pdf_url": "https://a.org/p.pdf",
             }
         }
-        pages = {"https://a.org/l": b"<p>x" * 40, "https://a.org/p.pdf": b"%PDF-1.7 body"}
+        pages = {
+            "https://a.org/l": (b"<p>" + b"x" * 300 + b"</p>") * 12,
+            "https://a.org/p.pdf": b"%PDF-1.7 body",
+        }
         code, result = self.fulltext(record, pages)
         self.assertEqual(code, 0)
         self.assertEqual(result["url"], "https://a.org/l")
+
+    def test_repository_record_page_falls_through_to_pdf(self):
+        record = {
+            "best_oa_location": {
+                "landing_page_url": "https://a.org/l",
+                "pdf_url": "https://a.org/p.pdf",
+            }
+        }
+        # An abstract plus short metadata fields, like an SSOAR or DSpace record.
+        record_page = (b"<p>" + b"a" * 900 + b"</p>") * 2 + b"<p>Author: X</p>" * 30
+        pages = {"https://a.org/l": record_page, "https://a.org/p.pdf": b"%PDF-1.7 body"}
+        code, result = self.fulltext(record, pages)
+        self.assertEqual(code, 0)
+        self.assertEqual(result["format"], "pdf")
 
 
 class RenderTest(ReviewTestCase):
