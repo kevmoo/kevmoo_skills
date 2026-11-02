@@ -53,21 +53,26 @@ def responder(routes):
     return fake
 
 
+def query(url):
+    """Return the decoded query parameters of a fetched URL."""
+    return dict(lit.urllib.parse.parse_qsl(lit.urllib.parse.urlsplit(url).query))
+
+
 def rejects_wildcards(url, binary=False):
-    """Fail like OpenAlex on a wildcard or stray quote in a search filter; else no results."""
-    search = lit.urllib.parse.unquote_plus(url).split("filter=", 1)[1].split("&", 1)[0]
-    if "*" in search or search.count('"') not in (0, 2):
+    """Fail like OpenAlex on a wildcard in a search filter; else answer with no results."""
+    if "*" in query(url)["filter"]:
         raise lit.FetchError("HTTP 400")
     return {"meta": {"count": 0}, "results": []}
 
 
 def pages_of_ids(url, binary=False):
-    """Answer an openalex:a|b filter like OpenAlex: over 100 ids fail, one page holds 50."""
-    decoded = lit.urllib.parse.unquote_plus(url)
-    ids = decoded.split("openalex:", 1)[1].split("&", 1)[0].split("|")
+    """Answer an openalex:a|b filter like OpenAlex: over 100 ids fail, 25 per page by default."""
+    params = query(url)
+    ids = params["filter"].split("openalex:", 1)[1].split("|")
     if len(ids) > 100:
         raise lit.FetchError("HTTP 400")
-    return {"results": [work(i, i) for i in ids if i != "W404"][:50]}
+    found = [work(i, i) for i in ids if i != "W404"]
+    return {"results": found[: int(params.get("per-page", 25))]}
 
 
 class ReviewTestCase(unittest.TestCase):
@@ -182,8 +187,11 @@ class SeedTest(ReviewTestCase):
         patch = mock.patch.object(lit, "fetch", side_effect=rejects_wildcards)
         with patch as fetch, contextlib.redirect_stdout(io.StringIO()):
             code = lit.main(["seed", "--dir", str(self.dir), str(self.dir / "sources.txt")])
-        self.assertEqual(code, 0)
-        self.assertEqual(fetch.call_count, 1)
+        self.assertEqual((code, fetch.call_count), (0, 1))
+        self.assertEqual(
+            query(fetch.call_args.args[0])["filter"],
+            "title.search:The A   search  algorithm,raw_author_name.search:O Brien",
+        )
         self.assertEqual(self.read("seeds.json")[0]["confidence"], "none")
 
     def test_record_without_doi_gets_a_book_lookup_note(self):
@@ -290,6 +298,10 @@ class FanoutTest(ReviewTestCase):
         with patch as fetch, contextlib.redirect_stdout(io.StringIO()):
             code = lit.main(["fanout", "--dir", str(self.dir)])
         self.assertEqual((code, fetch.call_count), (1, 1))
+        self.assertEqual(
+            query(fetch.call_args.args[0])["filter"],
+            'fulltext.search:"Positive C -algebras and  quoted  things" O Brien',
+        )
 
     def test_fanout_without_seeds_exits_1(self):
         code, out = self.run_cli(["fanout"])
