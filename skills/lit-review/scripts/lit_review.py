@@ -170,6 +170,11 @@ def parse_source(line):
     return {"title": head, "surname": extra.get("surname", ""), "year": extra.get("year")}
 
 
+def search_terms(text):
+    """Return text without the characters OpenAlex search filters reject or parse as syntax."""
+    return re.sub(r'[,:?!|*"]', " ", text or "")
+
+
 def norm_title(text):
     """Return a title lowercased with punctuation removed."""
     return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9 ]", " ", (text or "").lower())).strip()
@@ -210,10 +215,9 @@ def resolve_source(source):
         path = f"https://doi.org/{source['doi']}" if "doi" in source else source["openalex_id"]
         work = fetch(api_url(f"/works/{path}", {"select": select}))
         return work, "exact" if work else "none", []
-    title = re.sub(r"[,:?!|]", " ", source["title"])
-    filters = f"title.search:{title}"
+    filters = f"title.search:{search_terms(source['title'])}"
     if source.get("surname"):
-        filters += f",raw_author_name.search:{source['surname']}"
+        filters += f",raw_author_name.search:{search_terms(source['surname'])}"
     data = fetch(api_url("/works", {"filter": filters, "per-page": 10, "select": select})) or {}
     candidates = data.get("results") or []
     if not candidates:
@@ -293,16 +297,20 @@ def citing_works(work_id, per_seed):
     return (fetch(api_url("/works", params)) or {}).get("results", [])
 
 
-def referenced_works(work_id):
-    """Return the works that work_id cites, hydrated in batches of 50."""
-    work = fetch(api_url(f"/works/{work_id}", {"select": "id,referenced_works"})) or {}
-    ids = [short_id(r) for r in work.get("referenced_works") or []]
+def works_by_id(ids, select):
+    """Return the works for short OpenAlex ids, in batches of 50 (one full page each)."""
     results = []
     for start in range(0, len(ids), 50):
         params = {"filter": "openalex:" + "|".join(ids[start : start + 50]), "per-page": 50}
-        params["select"] = WORK_FIELDS
+        params["select"] = select
         results += (fetch(api_url("/works", params)) or {}).get("results", [])
     return results
+
+
+def referenced_works(work_id):
+    """Return the works that work_id cites."""
+    work = fetch(api_url(f"/works/{work_id}", {"select": "id,referenced_works"})) or {}
+    return works_by_id([short_id(r) for r in work.get("referenced_works") or []], WORK_FIELDS)
 
 
 def mention_search(seed):
@@ -314,7 +322,7 @@ def mention_search(seed):
     if len(re.findall(r"[A-Za-z]{3,}", title)) < 3:
         return [], "title too generic for a full-text search"
     params = {
-        "filter": f'fulltext.search:"{title}" {surname}',
+        "filter": f'fulltext.search:"{search_terms(title)}" {search_terms(surname)}',
         "sort": "cited_by_count:desc",
         "per-page": 100,
         "select": WORK_FIELDS,
@@ -434,11 +442,8 @@ def cmd_pick(args):
     if args.summary and len(args.ids) != 1:
         raise ValueError("--summary applies to one candidate at a time")
     need = [i for i in args.ids if "abstract" not in candidates[i]]
-    if need:
-        params = {"filter": "openalex:" + "|".join(need), "per-page": 50}
-        params["select"] = "id,abstract_inverted_index,best_oa_location"
-        for work in (fetch(api_url("/works", params)) or {}).get("results", []):
-            candidates[short_id(work["id"])]["abstract"] = abstract_text(work)
+    for work in works_by_id(need, "id,abstract_inverted_index"):
+        candidates[short_id(work["id"])]["abstract"] = abstract_text(work)
     for wid in args.ids:
         candidates[wid]["picked"] = True
         if args.theme:
@@ -446,7 +451,7 @@ def cmd_pick(args):
         if args.summary:
             candidates[wid]["summary"] = args.summary
     save(path, list(candidates.values()))
-    shown = [{"id": i, "abstract": candidates[i].get("abstract", "")} for i in args.ids]
+    shown = [{"id": i, "abstract": candidates[i].get("abstract")} for i in args.ids]
     return {"picked": shown}, True
 
 

@@ -53,6 +53,28 @@ def responder(routes):
     return fake
 
 
+def query(url):
+    """Return the decoded query parameters of a fetched URL."""
+    return dict(lit.urllib.parse.parse_qsl(lit.urllib.parse.urlsplit(url).query))
+
+
+def rejects_wildcards(url, binary=False):
+    """Fail like OpenAlex on a wildcard in a search filter; else answer with no results."""
+    if "*" in query(url)["filter"]:
+        raise lit.FetchError("HTTP 400")
+    return {"meta": {"count": 0}, "results": []}
+
+
+def pages_of_ids(url, binary=False):
+    """Answer an openalex:a|b filter like OpenAlex: over 100 ids fail, 25 per page by default."""
+    params = query(url)
+    ids = params["filter"].split("openalex:", 1)[1].split("|")
+    if len(ids) > 100:
+        raise lit.FetchError("HTTP 400")
+    found = [work(i, i) for i in ids if i != "W404"]
+    return {"results": found[: int(params.get("per-page", 25))]}
+
+
 class ReviewTestCase(unittest.TestCase):
     def setUp(self):
         tmp = tempfile.TemporaryDirectory()
@@ -160,6 +182,18 @@ class SeedTest(ReviewTestCase):
         self.assertEqual(out["result"]["removed"], ["Old | X | 2000"])
         self.assertEqual(len(self.read("seeds.json")), 1)
 
+    def test_wildcards_and_quotes_never_reach_a_search_filter(self):
+        (self.dir / "sources.txt").write_text('The A* "search" algorithm | O*Brien | 1968\n')
+        patch = mock.patch.object(lit, "fetch", side_effect=rejects_wildcards)
+        with patch as fetch, contextlib.redirect_stdout(io.StringIO()):
+            code = lit.main(["seed", "--dir", str(self.dir), str(self.dir / "sources.txt")])
+        self.assertEqual((code, fetch.call_count), (0, 1))
+        self.assertEqual(
+            query(fetch.call_args.args[0])["filter"],
+            "title.search:The A   search  algorithm,raw_author_name.search:O Brien",
+        )
+        self.assertEqual(self.read("seeds.json")[0]["confidence"], "none")
+
     def test_record_without_doi_gets_a_book_lookup_note(self):
         (self.dir / "sources.txt").write_text("W5\n")
         no_doi = {**work("W5", "The Dart Programming Language", 2015), "doi": None}
@@ -257,6 +291,18 @@ class FanoutTest(ReviewTestCase):
         kept = self.read("candidates.json")[0]
         self.assertEqual((kept["picked"], kept["summary"], kept["theme"]), (True, "Mine", "T"))
 
+    def test_mention_search_survives_wildcards_and_quotes(self):
+        source = {"title": 'Positive C*-algebras and "quoted" things', "surname": "O*Brien"}
+        self.write("seeds.json", [{"input": "x", "source": source, "confidence": "none"}])
+        patch = mock.patch.object(lit, "fetch", side_effect=rejects_wildcards)
+        with patch as fetch, contextlib.redirect_stdout(io.StringIO()):
+            code = lit.main(["fanout", "--dir", str(self.dir)])
+        self.assertEqual((code, fetch.call_count), (1, 1))
+        self.assertEqual(
+            query(fetch.call_args.args[0])["filter"],
+            'fulltext.search:"Positive C -algebras and  quoted  things" O Brien',
+        )
+
     def test_fanout_without_seeds_exits_1(self):
         code, out = self.run_cli(["fanout"])
         self.assertEqual(code, 1)
@@ -278,6 +324,20 @@ class PickAndClaimTest(ReviewTestCase):
         self.assertEqual(
             (stored["picked"], stored["theme"], stored["summary"]), (True, "Elites", "S")
         )
+
+    def test_pick_fetches_every_abstract_past_one_page(self):
+        ids = [f"W{n}" for n in range(1, 121)] + ["W404"]
+        shaped = [{**lit.shape_work(work(i, i)), "links": {}, "link_count": 1} for i in ids]
+        self.write("candidates.json", shaped)
+        out = io.StringIO()
+        patch = mock.patch.object(lit, "fetch", side_effect=pages_of_ids)
+        with patch as fetch, contextlib.redirect_stdout(out):
+            code = lit.main(["pick", "--dir", str(self.dir), *ids])
+        self.assertEqual(code, 0)
+        self.assertEqual(fetch.call_count, 3)
+        abstracts = {p["id"]: p["abstract"] for p in json.loads(out.getvalue())["result"]["picked"]}
+        self.assertEqual(abstracts.pop("W404"), None)
+        self.assertEqual(set(abstracts.values()), {"Elites shape democracy"})
 
     def test_pick_unknown_id_exits_1(self):
         code, out = self.run_cli(["pick", "W404"])
