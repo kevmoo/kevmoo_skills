@@ -119,7 +119,9 @@ python3 <skill-dir>/scripts/lit_review.py pick --dir <review-dir> W111 --summary
 `pick` prints each abstract. Write each summary **from that abstract only**: one
 line on what the work adds, never a claim the abstract does not make. A work
 with no abstract gets a summary built from its title, marked as such. An
-abstract ending in `[truncated]` was cut at 4,000 characters.
+abstract ending in `[truncated]` was cut at 4,000 characters. A `null` abstract
+was not fetched, because OpenAlex returned no record for that id; it is not an
+empty abstract.
 
 ### 4. Check claims
 
