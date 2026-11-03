@@ -2,12 +2,13 @@
 name: cold-read
 description: >-
   Reads a draft issue, pull request, bug report, commit message, or review
-  comment as a busy, fresh-context reader and reports whether that reader can
-  make their next decision from the first few lines. Use when invoking
-  /cold-read, before posting any agent-written artifact to a human audience, or
-  when measuring how quickly past artifacts let a triager, code owner, or
-  reviewer decide. Don't use for reviewing code diffs (use pr-review), triaging
-  existing review comments (use pr-triage), or copy-editing prose style.
+  comment as a busy, fresh-context reader persona and reports whether that
+  reader can make their next decision from the first few lines. Use when
+  invoking /cold-read, before posting any agent-written artifact to a human
+  audience, or when measuring how quickly past artifacts let a triager, code
+  owner, or reviewer decide. Don't use for reviewing code diffs (use
+  pr-review), triaging existing review comments (use pr-triage), or
+  copy-editing prose style.
 key_features:
   - Fresh-context reader simulation (triager, owner, reviewer)
   - Decision line and words-above-fold measurement

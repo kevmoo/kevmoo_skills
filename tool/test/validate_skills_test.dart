@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:_kevmoo_skills_tool/upskill_checks.dart';
 import 'package:logging/logging.dart';
 import 'package:skills_lint/skills_lint.dart';
 import 'package:test/test.dart';
@@ -122,6 +123,216 @@ void main() {
     );
     await analyzeProcess.shouldExit(0);
   }, timeout: const Timeout(Duration(minutes: 3)));
+
+  _registerUpskillRepoTests();
+  _registerP1AndP2UnitTests();
+  _registerP3AndP4UnitTests();
+  _registerP5UnitTests();
+}
+
+void _registerUpskillRepoTests() {
+  test('Enforce upskill static checks (P1.1, P1.2, P2.1, P3.4, P4.2) on all '
+      'skills', () {
+    final skillsDir = _requireSkillsDir();
+    final findings = <SkillStaticFinding>[];
+    final skillDirs = skillsDir.listSync().whereType<Directory>().toList()
+      ..sort((a, b) => a.path.compareTo(b.path));
+    for (final dir in skillDirs) {
+      findings.addAll(auditSkillDirectory(dir));
+    }
+    expect(
+      findings,
+      isEmpty,
+      reason:
+          'Upskill static checks failed:\n'
+          '${findings.map((f) => '  - $f').join('\n')}',
+    );
+  });
+
+  test('Enforce P5.1 Zero-Content-Loss corpus diff on modified skills', () {
+    final skillsDir = _requireSkillsDir();
+    for (final ref in <String?>[null, 'HEAD']) {
+      final diffResults = verifyModifiedSkillsAgainstGit(
+        skillsDir: skillsDir,
+        baseRef: ref,
+      );
+      for (final entry in diffResults.entries) {
+        expect(
+          entry.value.passed,
+          isTrue,
+          reason:
+              'P5.1 Zero-Content-Loss check failed for skill '
+              '"${entry.key}" against ${ref ?? 'default base ref'}: '
+              '${entry.value}',
+        );
+      }
+    }
+  });
+}
+
+void _registerP1AndP2UnitTests() {
+  group('P1.1 / P1.2 view_file Byte & Char Ceiling unit tests', () {
+    test('detects oversized SKILL.md and references/*.md files', () {
+      final tmp = Directory.systemTemp.createTempSync('upskill_p1_test_');
+      addTearDown(() => tmp.deleteSync(recursive: true));
+      File('${tmp.path}/SKILL.md').writeAsStringSync('a' * 120);
+      final refsDir = Directory('${tmp.path}/references')..createSync();
+      File('${refsDir.path}/big.md').writeAsStringSync('b' * 120);
+
+      expect(
+        checkSkillSizeBudgets(tmp, maxSkillChars: 200, maxBytes: 200),
+        isEmpty,
+      );
+      final findings = checkSkillSizeBudgets(
+        tmp,
+        maxSkillChars: 100,
+        maxBytes: 100,
+      );
+      expect(findings.map((f) => f.code), containsAll(['P1.1', 'P1.2']));
+    });
+  });
+
+  group('P2.1 Self-Contained Quick Start Delegation unit tests', () {
+    test('passes when Quick Start table row includes CLI --flags', () {
+      const md = '''
+| Task | Command |
+| :--- | :--- |
+| Run query | `duckdb -batch --version` (see references/recipes.md) |
+| Read docs | Read `references/recipes.md` first (see references/recipes.md) |
+''';
+      expect(findIncompleteQuickStartDelegations(md), isEmpty);
+    });
+
+    test(
+      'fails when table row combines flagless CLI stub with see pointer',
+      () {
+        const md = '''
+| Task | Command |
+| :--- | :--- |
+| Run query | `duckdb query` — see references/recipes.md |
+| Run g3 CLI | `/google/bin/releases/f1/f1-sql` (see foo/SKILL.md) |
+| Inside fence | ignored below |
+```markdown
+| Ignored | `duckdb query` — see references/recipes.md |
+```
+''';
+        expect(findIncompleteQuickStartDelegations(md), hasLength(2));
+      },
+    );
+  });
+}
+
+void _registerP3AndP4UnitTests() {
+  group('P3.4 Anti-Frontmatter-Blindness unit tests', () {
+    test('passes when every reference topic has a >=4-char token in desc', () {
+      const desc =
+          'Evaluates drafts with a fresh reader persona and SQL recipes.';
+      final missing = findMissingReferenceTopics(
+        description: desc,
+        referenceFileNames: [
+          'persona.md',
+          'recipes.md',
+          'README.md',
+          'contributing.md',
+        ],
+      );
+      expect(missing, isEmpty);
+    });
+
+    test('fails when reference topic tokens are absent from description', () {
+      const desc = 'Evaluates drafts with a fresh reader.';
+      final missing = findMissingReferenceTopics(
+        description: desc,
+        referenceFileNames: ['persona.md', 'miss-diagnosis-examples.md'],
+      );
+      expect(missing, hasLength(2));
+      expect(missing.first, contains('persona.md'));
+      expect(missing.last, contains('miss-diagnosis-examples.md'));
+    });
+  });
+
+  group('P4.2 GFM Table Pipe Hygiene unit tests', () {
+    test('passes on escaped pipes, logical OR pipes, and fenced blocks', () {
+      const md = r'''
+| Check | Command |
+| :--- | :--- |
+| Escaped | `foo \| bar` |
+| Logical OR | `cmd1 || cmd2` |
+
+```bash
+| Inside fence | `unescaped | pipe` |
+```
+''';
+      expect(hasUnescapedPipeInsideTableInlineCode(md), isFalse);
+      expect(findUnescapedPipesInTableInlineCode(md), isEmpty);
+    });
+
+    test('fails on unescaped pipe inside inline code span in table row', () {
+      const md = '''
+| Check | Command |
+| :--- | :--- |
+| Broken | `cat file.txt | grep foo` |
+''';
+      expect(hasUnescapedPipeInsideTableInlineCode(md), isTrue);
+      expect(
+        findUnescapedPipesInTableInlineCode(md),
+        equals(['`cat file.txt | grep foo`']),
+      );
+    });
+  });
+}
+
+void _registerP5UnitTests() {
+  group('P5.1 Zero-Content-Loss Corpus Token-Set Diff unit tests', () {
+    test('passes when all flags and script/reference paths are preserved', () {
+      const base = '''
+Run `scripts/check.py --strict --format=json` and read `references/guide.md`.
+''';
+      const candidate = '''
+Updated docs: read `references/guide.md` and run
+`scripts/check.py --strict --format=json --verbose`.
+''';
+      final diff = verifySkillCorpusDiff(
+        baseCorpus: base,
+        candidateCorpus: candidate,
+      );
+      expect(diff.passed, isTrue);
+      expect(diff.missingFlags, isEmpty);
+      expect(diff.missingPaths, isEmpty);
+    });
+
+    test('fails when a CLI flag or relative path is accidentally dropped', () {
+      const base = '''
+Run `scripts/check.py --strict --timeout` and read `references/guide.md`.
+''';
+      const candidate = '''
+Run `scripts/check.py --strict`.
+''';
+      final diff = verifySkillCorpusDiff(
+        baseCorpus: base,
+        candidateCorpus: candidate,
+      );
+      expect(diff.passed, isFalse);
+      expect(diff.missingFlags, equals({'--timeout'}));
+      expect(diff.missingPaths, equals({'references/guide.md'}));
+    });
+
+    test('passes when dropped tokens are explicitly suppressed', () {
+      const base = '''
+Run `scripts/legacy.py --legacy-flag --keep-flag` and `references/old.md`.
+''';
+      const candidate = '''
+<!-- allow-drop: --legacy-flag -->
+Run `scripts/legacy.py --keep-flag`.
+''';
+      final diff = verifySkillCorpusDiff(
+        baseCorpus: base,
+        candidateCorpus: candidate,
+        allowedDrops: {'references/old.md'},
+      );
+      expect(diff.passed, isTrue);
+    });
+  });
 }
 
 Directory _requireSkillsDir() {
