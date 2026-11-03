@@ -4,14 +4,15 @@ description: >-
   Builds a primary-source-grounded prerequisite graph (or linear mastery track)
   of atomic concepts and tests the user across unfamiliar technical domains,
   specifications, or codebases one concept at a time with hard comprehension
-  gates, targeted teaching blocks, and fresh transfer questions. Use when
-  invoking /quiz-me, "quiz me", verifying that you truly know and have
-  internalized a complex domain or architecture from first principles, or
-  mapping prerequisite concepts and key mental shifts with active comprehension
-  checks. Don't use for single-turn factual lookups (use quick-question),
-  unquizzed learning walkthroughs, document/code review, co-editing, or issue
-  triage (use slice-and-dice), branching design decision trees (use grilling or
-  clarify-confirm-continue), or passive text summarization.
+  gates, miss diagnosis, targeted teaching blocks, and fresh transfer
+  questions. Use when invoking /quiz-me, "quiz me", verifying that you truly
+  know and have internalized a complex domain or architecture from first
+  principles, or mapping prerequisite concepts and key mental shifts with
+  active comprehension checks. Don't use for single-turn factual lookups (use
+  quick-question), unquizzed learning walkthroughs, document/code review,
+  co-editing, or issue triage (use slice-and-dice), branching design decision
+  trees (use grilling or clarify-confirm-continue), or passive text
+  summarization.
 key_features:
   - Hard comprehension gates ("SND + retrieval practice") across a prerequisite DAG or linear checklist
   - Open-ended or inline "Pick + Explain Why" scenario checks with anti-guessing calibration prompts

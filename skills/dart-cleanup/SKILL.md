@@ -1,10 +1,10 @@
 ---
 name: dart-cleanup
 description: >-
-  Orchestrates specialized Dart refactoring, code quality, testing, and modern
-  language features on demand. Use when cleaning up, modernizing, refactoring,
-  or optimizing Dart code. Don't use for non-Dart projects or general codebase
-  search.
+  Orchestrates specialized Dart refactoring patterns, code quality, testing,
+  and modern language features on demand. Use when cleaning up, modernizing,
+  refactoring, or optimizing Dart code. Don't use for non-Dart projects or
+  general codebase search.
 author: kevmoo
 target_environment: personal
 compatibility: "Requires local checkouts in ~/github/kevmoo and ~/github/skills"

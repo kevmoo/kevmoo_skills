@@ -8,10 +8,10 @@ description: >-
   code diffs, or Markdown corpora, inspecting schemas and row counts, searching
   and joining JSONL log globs with SQLite index databases (such as
   transcript.jsonl and conversation_summaries.db), joining files across formats,
-  converting datasets to Parquet, or filtering stdin pipelines. Prefer it over
-  ad hoc Python or jq for filtering, grouping, and joining local data. Don't use
-  for remote cloud data warehouses (BigQuery, Snowflake, Spanner) or PLx
-  dashboards.
+  converting datasets to Parquet, running analytical SQL recipes, or filtering
+  stdin pipelines. Prefer it over ad hoc Python or jq for filtering, grouping,
+  and joining local data. Don't use for remote cloud data warehouses (BigQuery,
+  Snowflake, Spanner) or PLx dashboards.
 key_features:
   - Non-interactive subshell flag safety (-batch -dark-mode) & v2.0+ Agent Mode (-agent)
   - Fast JSONL, CSV, Parquet, and SQLite querying
