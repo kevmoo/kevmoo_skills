@@ -44,6 +44,20 @@
         "No artifact files are written to disk."
       ],
       "agent_config": "bare-agent"
+    },
+    {
+      "id": "cold_read_pr_decision_first",
+      "prompt": "/cold-read skills/cold-read/evals/fixtures/decision_first_pr.md --role reviewer",
+      "expected_chat_output": [
+        "Reports verdict decide_in_n.",
+        "Reports a decision_line of 3 or less without deferring to the later non-obvious exclusions bullet.",
+        "Does NOT list the non-obvious exclusions or second-pass cleanup bullets in cut_list."
+      ],
+      "expected_repo_state": [
+        "No files are modified.",
+        "No artifact files are written to disk."
+      ],
+      "agent_config": "bare-agent"
     }
   ]
 }
