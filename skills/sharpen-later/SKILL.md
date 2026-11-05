@@ -63,4 +63,4 @@ in the **same turn**. A dedicated `/sharpen-saw` session investigates it later.
   overrides).
 - The session id comes from `$CLAUDE_CODE_SESSION_ID`; under another agent, pass
   `--session <id>`. A subagent logs against its parent session.
-- Needs Python 3.9+ and nothing else.
+- Needs Python 3.12+ and nothing else.

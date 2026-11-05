@@ -37,7 +37,7 @@ tools, rules and skills that caused it.
 ## Workflow
 
 `scripts/sharpen_saw.py` sits in this skill's directory: replace `<skill-dir>`
-below with that directory. It needs Python 3.9+ and nothing else, and reads the
+below with that directory. It needs Python 3.12+ and nothing else, and reads the
 session transcripts under `~/.claude/projects/` without loading them into
 context. Subagent transcripts are left out unless you pass
 `--include-subagents`.

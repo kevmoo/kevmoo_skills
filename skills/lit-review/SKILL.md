@@ -30,7 +30,7 @@ could not tell.
 ## Setup
 
 - `scripts/lit_review.py` sits in this skill's directory: replace `<skill-dir>`
-  with that directory. It is standard-library Python 3.9+ and prints one JSON
+  with that directory. It is standard-library Python 3.12+ and prints one JSON
   object per run (`{"ok", "result"}` or `{"ok": false, "error"}`). Exit codes:
   `0` success, `1` invalid input or nothing found, `2` network failure (wait a
   few seconds and rerun once; it already retried twice).

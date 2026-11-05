@@ -50,7 +50,7 @@ and list the reissue DOI as an alternative with `medium` confidence.
 ## The Script
 
 `scripts/book_lookup.py` sits in this skill's directory: replace `<skill-dir>`
-with that directory. It is standard-library Python 3.9+, needs no API key, and
+with that directory. It is standard-library Python 3.12+, needs no API key, and
 always prints one JSON object: `{"found": true, "result": ...}`, or
 `{"found": false, "error": "..."}`. Exit codes: `0` found, `1` nothing found or
 invalid input, `2` network or HTTP failure. Exit `2` is retryable: the script
