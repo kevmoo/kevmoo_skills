@@ -2,7 +2,7 @@
 """Mine agent session transcripts offline for recurring friction.
 
 Subcommands: scan, audit, view, queue, resolve. Standard library only, so the
-script runs as copied on any machine with Python 3.9+.
+script runs as copied on any machine with Python 3.12+.
 """
 
 from __future__ import annotations

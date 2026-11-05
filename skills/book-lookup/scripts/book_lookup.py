@@ -240,7 +240,7 @@ def book_dois(title, author=None, rows=10):
     items = [shape_crossref(i) for i in raw_items]
     if author:
         # Crossref matches titles loosely: a same-titled book by someone else is common.
-        for item, raw in zip(items, raw_items):
+        for item, raw in zip(items, raw_items, strict=True):
             item["author_match"] = author_matches(author, raw.get("author") or [])
     return sorted(
         items,
