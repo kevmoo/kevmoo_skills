@@ -57,8 +57,10 @@ moment you can make your next decision.
 8. `decision_line` is the first physical line of the block (title, paragraph,
    list item, or heading) where your role's required criteria (Rule 6) are met,
    without waiting for later supporting details. A paragraph wrapped across
-   several physical lines counts from its first line. `-1` means the file never
-   gave you enough.
+   several physical lines counts from its first line; `-1` means the file never
+   gave you enough. `words_above_fold` is a rough whitespace word count across
+   lines `1..decision_line` (or the whole file when `decision_line == -1`); do
+   not recount or agonize over markdown punctuation.
 9. `verdict` follows from `decision_line` and N: `decide_in_n` when
    `1 <= decision_line <= N`, `decide_later` when `decision_line > N`,
    `cannot_decide` when `decision_line == -1`.
