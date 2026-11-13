@@ -50,9 +50,9 @@ functions, classes, methods, and types across 39 languages and data formats.
 
 - **Massive Monorepos Without Scoping:** Never run un-scoped repo-wide
   `sem find <name>` or `sem grep <pattern>` on huge monorepos (for example,
-  `dart-sdk` or Google3 CitC); cold index builds exceed `20s` timeouts. Always
-  scope to `--in <file_or_subdir>`, pass a subdirectory to `sem grep`, or use
-  `rg` / monorepo code search.
+  `dart-sdk` or large multi-package trees); cold index builds exceed `20s`
+  timeouts. Always scope to `--in <file_or_subdir>`, pass a subdirectory to
+  `sem grep`, or use `rg` / indexed code search.
 - **Incomplete Static Callers:** `sem find --callers` and `sem impact` may
   report an `INCOMPLETE` / `possibleCallers` block for unresolved bare-name or
   dynamic calls—inspect those sites instead of treating resolved callers as
@@ -145,7 +145,7 @@ sem diff -v
 sem diff --format json
 sem diff --format markdown
 
-# Pipe any unified diff via stdin (works in Jujutsu / CitC workspaces without .git)
+# Pipe any unified diff via stdin (works in Jujutsu workspaces without .git)
 jj diff --git | sem diff --patch --no-cosmetics --format json
 
 # Compare any two files directly (no git repo required)
