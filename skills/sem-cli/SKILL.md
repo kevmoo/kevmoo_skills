@@ -10,25 +10,36 @@ key_features:
   - semantic diffs
 ---
 
-# `sem-cli` Skill (`sem v0.24+`)
+# `sem-cli` Skill (`sem v0.30+`)
 
 This skill provides instructions on how to use `sem` (`sem-cli`), an AST entity
 indexer, call-graph navigator, and semantic version control tool that tracks
 functions, classes, methods, and types across 39 languages and data formats.
+
+> **Anti-Scroll Habit & `v0.30+` Verbs:** Before multi-chunk reads of
+> `>300`-line files, run `sem find --in <file>` (alias `sem entities <file>`) to
+> get class, method, and constructor line bounds in ~25ms. In `v0.30+`,
+> `sem find` unifies `--in` (`entities`), `--callers` (`callers`), `--refs`
+> (`refs`), and `--context` (`context`), while all legacy verb names remain
+> supported aliases.
 
 ## Capabilities & Limitations (What `sem` Does Well and Does Not Do)
 
 ### What `sem` Does Well
 
 - **Instant Cold-Start Code Exploration:** Builds an on-disk mmap query index
-  (`index.sem`) that answers definition lookups (`sem find`), direct callers
-  (`sem callers`), direct callees (`sem refs`), and trigram regex searches
-  (`sem grep`) in **~7ms warm** without running an LSP daemon.
+  (`index.sem`) that answers file outlines (`sem find --in <file>`), definition
+  lookups (`sem find`), direct callers (`sem find --callers` / `sem callers`),
+  direct callees (`sem find --refs` / `sem refs`), and trigram regex searches
+  (`sem grep <pattern> <path>`) in **~20ms** on small–medium repos without
+  running an LSP daemon.
 - **Signature-Only Context Packing:** Fits **5–10x wider call-graph maps** into
-  LLM context windows using `sem context --headers`.
+  LLM context windows using `sem find --context --headers`
+  (`sem context --headers`).
 - **Entity-Addressed Substring Search:** Searches entity bodies
-  (`sem entities --text`) and returns the **enclosing AST entity ID**
-  (`file::kind::name`) rather than raw `grep` line numbers.
+  (`sem find --in src/ --text "..."` / `sem entities --text`) and returns the
+  **enclosing AST entity ID** (`file::kind::name`) rather than raw `grep` line
+  numbers.
 - **Hotspot & Co-Change Discovery:** Identifies most-modified entities and
   co-change pairs ("if you touch X, don't forget Y") via `sem log`.
 - **Structural Diffs & History:** Shows added, modified, renamed, or deleted
@@ -37,6 +48,16 @@ functions, classes, methods, and types across 39 languages and data formats.
 
 ### What `sem` Does Not Do (Important Limitations)
 
+- **Massive Monorepos Without Scoping:** Never run un-scoped repo-wide
+  `sem find <name>` or `sem grep <pattern>` on huge monorepos (for example,
+  `dart-sdk` or Google3 CitC); cold index builds exceed `20s` timeouts. Always
+  scope to `--in <file_or_subdir>`, pass a subdirectory to `sem grep`, or use
+  `rg` / monorepo code search.
+- **Incomplete Static Callers:** `sem find --callers` and `sem impact` may
+  report an `INCOMPLETE` / `possibleCallers` block for unresolved bare-name or
+  dynamic calls—inspect those sites instead of treating resolved callers as
+  exhaustive. Older builds (`< v0.30.1`) had silent false negatives on Dart
+  callers/refs and rejected paths on `sem grep`; keep `sem >= v0.30.1`.
 - **External Dependencies:** `sem` only indexes entities defined within the
   local repository's source files. It **does not** parse or track external
   packages or transitive library dependencies (e.g., from `pubspec.yaml`,
@@ -176,20 +197,27 @@ sem log <entity_name> -v
 
 ### 4. Instant Index Lookups (`sem find`, `sem callers`, `sem refs`, `sem grep`)
 
-Fast cold/warm lookups backed by `index.sem`:
+Fast cold/warm lookups backed by `index.sem` (`v0.30+` consolidates these under
+`sem find`, while legacy verb names remain aliases):
 
 ```bash
-# Locate entity definition
+# File outline before multi-chunk reads of >300-line files (~25ms)
+sem find --in <file_path>
+
+# Locate entity definition (scope huge monorepos with --in <subdir>)
 sem find <entity_name> --json
 
-# Direct callers of an entity
+# Direct callers of an entity (check INCOMPLETE / possible callers too)
+sem find <entity_name> --callers --json
 sem callers <entity_name> --json
 
 # Direct callees referenced by an entity
+sem find <entity_name> --refs --json
 sem refs <entity_name> --json
 
-# Trigram text search across indexed source files
+# Trigram text search (optionally scoped to a path)
 sem grep "TODO"
+sem grep "TODO" src/
 ```
 
 ### 5. Token-Budgeted Context (`sem context`)
@@ -225,7 +253,16 @@ sem blame <file_path> --json
   subcommands, verify the binary with `sem --version` or `which sem`. Ensure
   Homebrew (`$(brew --prefix)/bin/sem`) or Cargo (`~/.cargo/bin/sem`) precedes
   `/usr/bin` in `PATH`.
+- **`--only <kind>` Strictness & Empty Diffs:** Omit `--only` unless filtering
+  intentionally (`--only function` errors on files with zero top-level
+  functions). In non-Git workspaces (such as Jujutsu), bare `sem diff` fails
+  (`not a git repository`) and `jj diff --git | sem diff --patch` errors when
+  the working copy diff is empty.
+- **Cross-Filesystem `sem update` (`os error 18`):** If `sem update` fails with
+  `Invalid cross-device link`, set `TMPDIR` on the same filesystem as
+  `~/.local/bin` (for example,
+  `mkdir -p ~/.local/tmp && TMPDIR="$HOME/.local/tmp" sem update`).
 - **Asynchronous Execution for Large Graphs:** On very large repositories, the
-  initial index/graph build can take several seconds. Run `sem impact` or
-  `sem graph` with an extended or background timeout (e.g., `WaitMsBeforeAsync`
-  or `run_in_background`) if cold-starting on a massive monorepo.
+  initial index/graph build can exceed `20s`. Scope with `--in <subdir>` or
+  `sem grep <pattern> <subdir>`, or run `sem impact`/`sem graph` in the
+  background (`WaitMsBeforeAsync` / `run_in_background`).
