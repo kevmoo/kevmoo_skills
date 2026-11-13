@@ -1,7 +1,5 @@
 {
-  "repo_criteria": [
-    "evals/code_quality_rubric.json"
-  ],
+  "repo_criteria": ["evals/code_quality_rubric.json"],
   "evals": [
     {
       "id": "sem_task_1_external_boundary",
@@ -22,9 +20,7 @@
         "Uses 'sem diff --staged --format markdown' for the semantic diff.",
         "Uses 'sem impact authenticateUser --tests --json' (using '--json' rather than '--format json') for the impact analysis."
       ],
-      "expected_repo_state": [
-        "No files are modified."
-      ],
+      "expected_repo_state": ["No files are modified."],
       "agent_config": "bare-agent"
     },
     {
@@ -34,9 +30,7 @@
         "Provides 'sem log --json' (or 'sem log --limit 200 --json') with no entity argument to discover repository hotspots and co-change pairs.",
         "Provides 'sem callers diff_command --json' for the instant mmap-backed direct caller lookup."
       ],
-      "expected_repo_state": [
-        "No files are modified."
-      ],
+      "expected_repo_state": ["No files are modified."],
       "agent_config": "bare-agent"
     },
     {
@@ -45,9 +39,7 @@
       "expected_chat_output": [
         "Uses 'sem context --entity authenticateUser --entity verifyToken --hops 2 --headers --budget 6000 --json' (including the '--headers', '--hops 2', and repeatable '--entity' flags)."
       ],
-      "expected_repo_state": [
-        "No files are modified."
-      ],
+      "expected_repo_state": ["No files are modified."],
       "agent_config": "bare-agent"
     },
     {
@@ -57,9 +49,26 @@
         "Provides 'sem entities src/ --text \"PERMISSION_DENIED\" --json' for entity-addressed substring search.",
         "Provides 'jj diff --git | sem diff --patch --no-cosmetics --format json' to pipe unified diff output into sem diff with cosmetic changes stripped."
       ],
-      "expected_repo_state": [
-        "No files are modified."
+      "expected_repo_state": ["No files are modified."],
+      "agent_config": "bare-agent"
+    },
+    {
+      "id": "sem_task_6_file_outline",
+      "prompt": "Using the sem-cli skill, how do I get the structural outline and exact line spans of all entities inside a 700-line file 'lib/src/kscripts_runner.dart' in JSON before reading targeted line ranges?",
+      "expected_chat_output": [
+        "Provides 'sem find --in lib/src/kscripts_runner.dart --json' (or legacy 'sem entities lib/src/kscripts_runner.dart --json') to retrieve entity names and line spans before calling file reads."
       ],
+      "expected_repo_state": ["No files are modified."],
+      "agent_config": "bare-agent"
+    },
+    {
+      "id": "sem_task_7_monorepo_scoping",
+      "prompt": "Using the sem-cli skill, I want to search for 'AnalysisServer' in a 2M-line monorepo checkout. What should I avoid, and what commands should I run instead?",
+      "expected_chat_output": [
+        "Warns against running un-scoped repo-wide 'sem find <name>' or 'sem grep <pattern>' without a path/directory scope because whole-monorepo AST indexing can exceed command timeouts.",
+        "Recommends scoping 'sem find --in <subdir>' / 'sem grep <pattern> <subdir>' to a specific subdirectory or using 'rg' / indexed code search first."
+      ],
+      "expected_repo_state": ["No files are modified."],
       "agent_config": "bare-agent"
     }
   ]
