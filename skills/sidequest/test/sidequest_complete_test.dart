@@ -39,7 +39,7 @@ void main() {
     check(data.quests.first.status).equals(QuestStatus.completed);
     check(data.quests.first.vcs?.stage).equals(VcsStage.clean);
     check(data.quests.first.vcs?.branch).equals('feat/clean-on-complete');
-    check(data.quests.first.vcs!.modifiedFiles).isEmpty();
+    check(data.quests.first.vcs!.modifiedFiles).isEmpty;
 
     check(await runner.run(['reopen', 'M1'])).equals(0);
     check(

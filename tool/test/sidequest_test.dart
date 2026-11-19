@@ -273,14 +273,14 @@ void main() {
         // Pending Step and Pending Sub-Quest use [ ] without *(IN PROGRESS)*
         check(markdown).contains('  * [ ] 👣 *Step 1.1.2:* Pending Next Step');
         check(markdown).not(
-          (c) => c.contains('*Step 1.1.2:* Pending Next Step *(IN PROGRESS)*'),
+          .it()..contains('*Step 1.1.2:* Pending Next Step *(IN PROGRESS)*'),
         );
         check(
           markdown,
         ).contains('* [ ] 🛡️ **Sub-Quest 1.2:** Upcoming Discussed Milestone');
-        check(markdown).not(
-          (c) => c.contains('Upcoming Discussed Milestone *(IN PROGRESS)*'),
-        );
+        check(
+          markdown,
+        ).not(.it()..contains('Upcoming Discussed Milestone *(IN PROGRESS)*'));
         check(markdown).contains('  * [ ] 👣 *Step 1.2.1:* Upcoming Step');
 
         // Parked Sub-Quest and Step use [ ] 🎒 and *(PARKED)*
@@ -327,7 +327,7 @@ void main() {
       );
 
       final markdown = emitMarkdown(data);
-      check(markdown).not((c) => c.contains('> [!CAUTION]'));
+      check(markdown).not(.it()..contains('> [!CAUTION]'));
     });
 
     test('omits CAUTION header when quests have null vcs', () {
@@ -336,7 +336,7 @@ void main() {
       );
 
       final markdown = emitMarkdown(data);
-      check(markdown).not((c) => c.contains('> [!CAUTION]'));
+      check(markdown).not(.it()..contains('> [!CAUTION]'));
     });
 
     test('omits CAUTION header for completed quests even if vcs was dirty', () {
@@ -371,7 +371,7 @@ void main() {
       );
 
       final markdown = emitMarkdown(data);
-      check(markdown).not((c) => c.contains('> [!CAUTION]'));
+      check(markdown).not(.it()..contains('> [!CAUTION]'));
     });
   });
 
@@ -401,8 +401,8 @@ void main() {
         final jsonFile = File(p.join(tempDir.path, 'sidequest.json'));
         final mdFile = File(p.join(tempDir.path, 'sidequest.md'));
 
-        check(await jsonFile.exists()).isTrue();
-        check(await mdFile.exists()).isTrue();
+        check(await jsonFile.exists()).isTrue;
+        check(await mdFile.exists()).isTrue;
 
         final loaded = await store.load();
         check(loaded).isNotNull();
@@ -641,7 +641,7 @@ void main() {
       data = await runAndLoad(['reopen', '1.1.1']);
       check(data.quests[0].status).equals(QuestStatus.active);
       check(data.quests[0].subQuests[0].status).equals(TaskStatus.pending);
-      check(data.quests[0].subQuests[0].completionOrder).isNull();
+      check(data.quests[0].subQuests[0].completionOrder).isNull;
       check(data.lastCompletionOrder).equals(0);
 
       // 5. Complete 1.1.1 and 1.1 again, then add a new step under 1.1 ->
@@ -652,7 +652,7 @@ void main() {
 
       data = await runAndLoad(['step', 'add', '1.1', 'Follow-up Step']);
       check(data.quests[0].subQuests[0].status).equals(TaskStatus.pending);
-      check(data.quests[0].subQuests[0].completionOrder).isNull();
+      check(data.quests[0].subQuests[0].completionOrder).isNull;
       check(data.lastCompletionOrder).equals(1);
 
       // 6. Starting 1.1.2 promotes 1.1 to inProgress
@@ -745,7 +745,7 @@ void main() {
       check(data.quests[0].status).equals(QuestStatus.completed);
       check(data.quests[0].vcs?.stage).equals(VcsStage.clean);
       check(data.quests[0].vcs?.branch).equals('feat/quest-1');
-      check(data.quests[0].vcs!.modifiedFiles).isEmpty();
+      check(data.quests[0].vcs!.modifiedFiles).isEmpty;
 
       // Explicit `--stage` is preserved when completing a MainQuest
       await runAndLoad(['reopen', '1']);
@@ -764,7 +764,7 @@ void main() {
       // Reopen Global SideQuest G1
       data = await runAndLoad(['reopen', 'G1']);
       check(data.globalSideQuests[0].status).equals(SideQuestStatus.active);
-      check(data.globalSideQuests[0].completionOrder).isNull();
+      check(data.globalSideQuests[0].completionOrder).isNull;
       check(data.lastCompletionOrder).equals(0);
 
       // Add and remove MainQuest 2
