@@ -47,14 +47,18 @@ artifacts as process narration and as background the reader already has.
    `triager` for issues/bugs filed against external teams or multi-author
    repositories (even if one maintainer recently touched the referenced file).
    Pull request bodies default to `reviewer`.
-2. **Spawn a fresh-context, tool-restricted read-only reader.** Define or select
-   a strictly read-only subagent (`EnableWriteTools: false` or a read-only
-   `Explore` / `research` agent with file-read access only and no shell
-   execution—never an unrestricted general `self` subagent, so `flash` cannot
-   shell out to `python3` or `wc` for `words_above_fold`). Give it only three
-   inputs: the contents of [references/persona.md](references/persona.md), the
-   role and N, and the draft file path—nothing else from the current
-   conversation.
+2. **Spawn a fresh-context, tool-restricted read-only reader.** Prefer defining
+   a custom read-only subagent (`EnableWriteTools: false`,
+   `EnableMCPTools: false`, no shell execution) rather than a built-in research
+   subagent with repository code-search access (which can crawl sibling
+   `evals/fixtures/` files) or an unrestricted `self` subagent (which can shell
+   out to `python3` or `wc`). When the draft path sits outside the subagent's
+   workspace sandbox, copy it into
+   `<appDataDir>/brain/<conversation-id>/scratch/` first. Give the reader only
+   three inputs: the contents of [references/persona.md](references/persona.md),
+   the role and N, and the exact draft file path—forbidding all directory
+   probes, code searches, and MCP tool calls so it executes a single `read_file`
+   call on that path.
 3. **Require the JSON shape** in
    [references/schema.json](references/schema.json). Re-run once if the reply is
    prose. Recompute `verdict` from `decision_line` and N yourself; the model's
