@@ -131,14 +131,24 @@ dependencies rather than diff hunks in isolation.
      Readability & Conventions_ · _13. Cyclomatic Complexity_.
    - In `Review Mode: Deep`, run deterministic CLI verification (`dart format`,
      `dart analyze --fatal-infos`, `cognitive_complexity`, `dart test`) once in
-     the parent agent, then dispatch strictly read-only subagents
-     (`Model: "flash"`, `EnableWriteTools: false` or a read-only `Explore` /
-     `research` agent type with no shell execution; never an unrestricted
-     general subagent) across bounded file slices (`<= 10` files per subagent)
-     and angle clusters before running the Inquisitor pass. Forbid subagents
-     from running `dart test`, `dart analyze`, or task polling, and have each
-     return its markdown findings directly in its reply so the parent agent
-     synthesizes `pr_review_<PR>.md`.
+     the parent agent, then dispatch strictly read-only slice subagents
+     (`Model: "flash"`, `EnableWriteTools: false`, `EnableMCPTools: false`, or
+     an isolated read-only `Explore` agent with no shell execution; never an
+     unrestricted general subagent) across bounded file slices (`<= 10` files
+     per subagent) and angle clusters before running the Inquisitor pass:
+     - **Explicit File Manifest & Scratch Staging**: Because read-only subagents
+       lack directory-listing tools (`list_dir`), include an explicit file
+       manifest (`file_manifest.txt` or exact list of existing file paths) in
+       every subagent prompt so subagents never guess sibling filenames
+       (`ENOENT`). When the target repository sits outside the parent workspace
+       sandbox, stage the diff and target files under
+       `<appDataDir>/brain/<conversation_id>/scratch/` and pass those staged
+       paths in the manifest.
+     - **Tool Restrictions**: Forbid subagents from calling `dart test`,
+       `dart analyze`, task polling, code-search tools, or eager MCP
+       language-server tools (which fail outside registered project roots), and
+       have each return its markdown findings directly in its reply so the
+       parent agent synthesizes `pr_review_<PR>.md`.
 2. **Empirical Verification & Anti-Slop Gate**:
    - Before keeping a candidate finding or offering
      `"Select findings to post inline to GitHub"`, empirically verify it via
